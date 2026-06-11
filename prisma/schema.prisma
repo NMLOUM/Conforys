@@ -11,13 +11,30 @@ datasource db {
 }
 
 // ─────────────────────────────────────────────
-//  MODULE 1 : UTILISATEURS & RÔLES (le socle)
+//  MODULE 1 : ENTREPRISES, UTILISATEURS & RÔLES
 // ─────────────────────────────────────────────
 
 enum Role {
-  ADMIN           // Administrateur de la plateforme
+  ADMIN            // Administrateur de la plateforme
   RESPONSABLE_QHSE // Responsable QHSE de l'entreprise
-  EMPLOYE         // Employé déclarant
+  EMPLOYE          // Employé déclarant
+}
+
+model Entreprise {
+  id        String   @id @default(uuid())
+  nom       String
+  secteur   String?  // Secteur d'activité (BTP, agroalimentaire, etc.)
+  adresse   String?
+  telephone String?
+  email     String?  @unique
+
+  // Relation : une entreprise a plusieurs utilisateurs
+  users     User[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("entreprises")
 }
 
 model User {
@@ -28,6 +45,10 @@ model User {
   password  String
   role      Role     @default(EMPLOYE)
   actif     Boolean  @default(true)
+
+  // Relation : un utilisateur appartient à une entreprise
+  entreprise   Entreprise @relation(fields: [entrepriseId], references: [id])
+  entrepriseId String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
