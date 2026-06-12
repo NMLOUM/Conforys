@@ -12,6 +12,7 @@ const entrepriseRoutes = require("./routes/entrepriseRoutes");
 const incidentRoutes = require("./routes/incidentsRoutes");
 
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const epiRoutes = require("./routes/epiRoutes");
 // Création de l'application Express
 const app = express();
 
@@ -38,5 +39,6 @@ app.use("/api/entreprises", entrepriseRoutes);
 // Branchement des routes Incidents (commencent par /api/incidents)
 app.use("/api/incidents", incidentRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/epis", epiRoutes);
 // Export de l'application pour le démarrage dans server.js
 module.exports = app;

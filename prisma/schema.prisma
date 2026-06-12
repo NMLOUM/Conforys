@@ -72,6 +72,7 @@ model Site {
   entrepriseId String
 
   incidents Incident[]
+  epis Epi[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -132,6 +133,38 @@ model Incident {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("incidents")
+}
+
+// ─────────────────────────────────────────────
+//  MODULE 3 : GESTION DES EPI
+//  (Équipements de Protection Individuelle)
+// ─────────────────────────────────────────────
+
+enum StatutEpi {
+  DISPONIBLE      // En stock, utilisable
+  EN_RUPTURE      // Stock épuisé
+  PERIME          // Date de péremption dépassée
+  COMMANDE        // En cours de commande
+}
+
+model Epi {
+  id          String     @id @default(uuid())
+  designation String                              // Ex: Casque de chantier
+  type        String                              // Ex: Protection tête
+  reference   String?                             // Référence fournisseur
+  quantite    Int        @default(0)              // Stock disponible
+  seuilAlerte Int        @default(5)              // Seuil de réapprovisionnement
+  statut      StatutEpi  @default(DISPONIBLE)
+  datePeremption DateTime? @map("date_peremption") // Optionnel (certains EPI expirent)
+
+  // Relation : l'EPI est rattaché à un site
+  site   Site   @relation(fields: [siteId], references: [id])
+  siteId String @map("site_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("epis")
 }
 
 
