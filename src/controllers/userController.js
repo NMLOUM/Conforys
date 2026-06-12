@@ -47,5 +47,62 @@ const createUser = async (req, res) => {
   }
 };
 
+// Fonction qui MET À JOUR un utilisateur existant
+const updateUser = async (req, res) => {
+  try {
+    // Récupération de l'identifiant depuis l'URL (/api/users/:id)
+    const { id } = req.params;
+    // Extraction des champs modifiables envoyés dans le corps
+    const { nom, prenom, email, password, role } = req.body;
+
+    // Construction de l'objet de mise à jour (uniquement les champs fournis)
+    const dataToUpdate = {};
+    if (nom !== undefined) dataToUpdate.nom = nom;
+    if (prenom !== undefined) dataToUpdate.prenom = prenom;
+    if (email !== undefined) dataToUpdate.email = email;
+    if (role !== undefined) dataToUpdate.role = role;
+
+    // Si un nouveau mot de passe est fourni, on le hache avant de le stocker
+    if (password !== undefined) {
+      dataToUpdate.password = await bcrypt.hash(password, 10);
+    }
+
+    // Mise à jour de l'utilisateur en base
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: dataToUpdate,
+    });
+
+    // Réponse de succès avec l'utilisateur mis à jour
+    res.status(200).json({ success: true, data: updatedUser });
+  } catch (error) {
+    // Erreur P2025 = enregistrement introuvable dans Prisma
+    if (error.code === "P2025") {
+      return res.status(404).json({ success: false, message: "Utilisateur introuvable." });
+    }
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Fonction qui SUPPRIME un utilisateur
+const deleteUser = async (req, res) => {
+  try {
+    // Récupération de l'identifiant depuis l'URL (/api/users/:id)
+    const { id } = req.params;
+
+    // Suppression de l'utilisateur en base
+    await prisma.user.delete({ where: { id } });
+
+    // Réponse de succès sans contenu (204) ou avec message
+    res.status(200).json({ success: true, message: "Utilisateur supprimé avec succès." });
+  } catch (error) {
+    // Erreur P2025 = enregistrement introuvable dans Prisma
+    if (error.code === "P2025") {
+      return res.status(404).json({ success: false, message: "Utilisateur introuvable." });
+    }
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Export des fonctions pour les utiliser dans les routes
-module.exports = { getAllUsers, createUser };
+module.exports = { getAllUsers, createUser, updateUser, deleteUser };
