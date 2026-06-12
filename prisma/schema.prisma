@@ -51,10 +51,14 @@ model User {
   entrepriseId String
 
   // Relation : incidents déclarés par cet utilisateur (employé déclarant)
-  incidentsDeclares Incident[] @relation("IncidentsDeclares")
+  incidentsDeclares Incident[]     @relation("IncidentsDeclares")
   // Relation : incidents validés par cet utilisateur (responsable QHSE)
-  incidentsValides  Incident[] @relation("IncidentsValides")
-  audits Audit[]
+  incidentsValides  Incident[]     @relation("IncidentsValides")
+  audits            Audit[]
+  // Relation many-to-many : formations auxquelles l'utilisateur participe
+  formations        Formation[]    @relation("ParticipantsFormation")
+  // Relation : habilitations détenues par cet utilisateur
+  habilitations     Habilitation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -72,10 +76,10 @@ model Site {
   entreprise   Entreprise @relation(fields: [entrepriseId], references: [id])
   entrepriseId String
 
-  incidents Incident[]
-  epis Epi[]
-  audits Audit[]
-  
+  incidents  Incident[]
+  epis       Epi[]
+  audits     Audit[]
+  formations Formation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -211,4 +215,67 @@ model Audit {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("audits")
+}
+
+// ─────────────────────────────────────────────
+//  MODULE 5 : FORMATIONS
+// ─────────────────────────────────────────────
+
+enum StatutFormation {
+  PLANIFIEE  // Formation programmée
+  EN_COURS   // Formation en cours de réalisation
+  TERMINEE   // Formation clôturée
+  ANNULEE    // Formation annulée
+}
+
+model Formation {
+  id          String         @id @default(uuid())
+  titre       String
+  description String?
+  formateur   String
+  statut      StatutFormation @default(PLANIFIEE)
+  dateDebut   DateTime       @map("date_debut")
+  dateFin     DateTime?      @map("date_fin")
+  dureeHeures Float?         @map("duree_heures")
+
+  // Relation : la formation se déroule sur un site
+  site   Site   @relation(fields: [siteId], references: [id])
+  siteId String @map("site_id")
+
+  // Relation many-to-many : les participants (utilisateurs) à cette formation
+  participants User[] @relation("ParticipantsFormation")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@map("formations")
+}
+
+// ─────────────────────────────────────────────
+//  MODULE 6 : HABILITATIONS
+// ─────────────────────────────────────────────
+
+enum StatutHabilitation {
+  VALIDE          // Habilitation en cours de validité
+  EXPIREE         // Date d'expiration dépassée
+  BIENTOT_EXPIREE // Expire dans moins de 30 jours
+}
+
+model Habilitation {
+  id             String             @id @default(uuid())
+  intitule       String                                    // Ex: Habilitation électrique B1V
+  type           String                                    // Ex: Electrique, Chimique, Hauteur
+  niveau         String?                                   // Ex: B1, B2, BR...
+  dateObtention  DateTime           @map("date_obtention")
+  dateExpiration DateTime           @map("date_expiration")
+  statut         StatutHabilitation @default(VALIDE)
+
+  // Relation : le titulaire de l'habilitation
+  titulaire   User   @relation(fields: [titulaireId], references: [id])
+  titulaireId String @map("titulaire_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@map("habilitations")
 }

@@ -12,7 +12,11 @@ const entrepriseRoutes = require("./routes/entrepriseRoutes");
 const incidentRoutes = require("./routes/incidentsRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const epiRoutes = require("./routes/epiRoutes");
-const auditRoutes = require("./routes/auditRoutes");
+const auditRoutes        = require("./routes/auditRoutes");
+// Importation des routes Formations
+const formationRoutes    = require("./routes/formationRoutes");
+// Importation des routes Habilitations
+const habilitationRoutes = require("./routes/habilitationRoutes");
 // Création de l'application Express
 const app = express();
 
@@ -41,5 +45,9 @@ app.use("/api/incidents", incidentRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/epis", epiRoutes);
 app.use("/api/audits", auditRoutes);
+// Branchement des routes Formations (commencent par /api/formations)
+app.use("/api/formations", formationRoutes);
+// Branchement des routes Habilitations (commencent par /api/habilitations)
+app.use("/api/habilitations", habilitationRoutes);
 // Export de l'application pour le démarrage dans server.js
 module.exports = app;
