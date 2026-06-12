@@ -1,11 +1,21 @@
-
-require("dotenv/config");     // Charge les variables d'environnement (.env)
+require("dotenv/config");
 const app = require("./src/app");
+const prisma = require("./src/config/prisma");
 
-// Port d'écoute (depuis .env ou 5000 par défaut)
 const PORT = process.env.PORT || 5000;
 
-// Démarrage du serveur
-app.listen(PORT, () => {
-  console.log(`✅ Serveur CONFORYS démarré sur http://localhost:${PORT}`);
-});
+async function startServer() {
+  try {
+    await prisma.$connect();
+    console.log("✅ Connexion à la base de données réussie");
+
+    app.listen(PORT, () => {
+      console.log(`✅ Serveur CONFORYS démarré sur http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error("❌ Erreur de connexion à la base :", error);
+    process.exit(1);
+  }
+}
+
+startServer();
