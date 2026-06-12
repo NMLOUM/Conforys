@@ -11,6 +11,14 @@ const login = async (req, res) => {
     // Récupération de l'email et du mot de passe envoyés par l'utilisateur
     const { email, password } = req.body;
 
+    // Validation : les deux champs sont obligatoires
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "L'email et le mot de passe sont obligatoires.",
+      });
+    }
+
     // Recherche de l'utilisateur dans la base grâce à son email (unique)
     const user = await prisma.user.findUnique({
       where: { email },

@@ -8,6 +8,8 @@ const userRoutes = require("./routes/userRoutes");
 const authRoutes = require("./routes/authRoutes");
 // Importation des routes Entreprises
 const entrepriseRoutes = require("./routes/entrepriseRoutes");
+// Importation des routes Incidents
+const incidentRoutes = require("./routes/incidentsRoutes");
 
 // Création de l'application Express
 const app = express();
@@ -32,6 +34,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 // Branchement des routes Entreprises (commencent par /api/entreprises)
 app.use("/api/entreprises", entrepriseRoutes);
+// Branchement des routes Incidents (commencent par /api/incidents)
+app.use("/api/incidents", incidentRoutes);
 
 // Export de l'application pour le démarrage dans server.js
 module.exports = app;

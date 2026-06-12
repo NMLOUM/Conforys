@@ -4,9 +4,9 @@ const prisma = require("../config/prisma");
 // Fonction qui récupère TOUTES les entreprises
 const getAllEntreprises = async (req, res) => {
   try {
-    // Recherche de toutes les entreprises, avec le nombre d'utilisateurs liés
+    // Recherche de toutes les entreprises avec leurs utilisateurs (sans les mots de passe)
     const entreprises = await prisma.entreprise.findMany({
-      include: { users: true },
+      include: { users: { omit: { password: true } } },
     });
     // Réponse de succès (200) avec la liste des entreprises
     res.status(200).json({ success: true, data: entreprises });
@@ -21,10 +21,10 @@ const getEntrepriseById = async (req, res) => {
     // Récupération de l'identifiant depuis l'URL (/api/entreprises/:id)
     const { id } = req.params;
 
-    // Recherche de l'entreprise avec ses utilisateurs
+    // Recherche de l'entreprise avec ses utilisateurs (sans les mots de passe)
     const entreprise = await prisma.entreprise.findUnique({
       where: { id },
-      include: { users: true },
+      include: { users: { omit: { password: true } } },
     });
 
     // Si aucune entreprise trouvée, on renvoie une 404
@@ -105,6 +105,13 @@ const deleteEntreprise = async (req, res) => {
     // Erreur P2025 = enregistrement introuvable dans Prisma
     if (error.code === "P2025") {
       return res.status(404).json({ success: false, message: "Entreprise introuvable." });
+    }
+    // Contrainte de clé étrangère : l'entreprise a encore des utilisateurs (P2003 ou erreur FK PostgreSQL)
+    if (error.code === "P2003" || error.message?.includes("foreign key constraint")) {
+      return res.status(400).json({
+        success: false,
+        message: "Impossible de supprimer cette entreprise : elle contient des utilisateurs.",
+      });
     }
     res.status(500).json({ success: false, message: error.message });
   }

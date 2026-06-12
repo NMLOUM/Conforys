@@ -29,6 +29,7 @@ model Entreprise {
 
   // Relation : une entreprise a plusieurs utilisateurs
   users     User[]
+  sites Site[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -49,8 +50,88 @@ model User {
   entreprise   Entreprise @relation(fields: [entrepriseId], references: [id])
   entrepriseId String
 
+  // Relation : incidents déclarés par cet utilisateur (employé déclarant)
+  incidentsDeclares Incident[] @relation("IncidentsDeclares")
+  // Relation : incidents validés par cet utilisateur (responsable QHSE)
+  incidentsValides  Incident[] @relation("IncidentsValides")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("users")
 }
+
+
+model Site {
+  id        String  @id @default(uuid())
+  nom       String
+  adresse   String?
+  ville     String?
+
+  entreprise   Entreprise @relation(fields: [entrepriseId], references: [id])
+  entrepriseId String
+
+  incidents Incident[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sites")
+}
+
+enum TypeIncident {
+  ACCIDENT
+  PRESQU_ACCIDENT
+  SITUATION_DANGEREUSE
+  INCIDENT_ENVIRONNEMENTAL
+}
+
+enum StatutIncident {
+  BROUILLON
+  OUVERT
+  EN_COURS
+  CLOS
+  REJETE
+}
+
+enum GraviteIncident {
+  FAIBLE
+  MOYEN
+  GRAVE
+  CRITIQUE
+}
+
+model Incident {
+  id              String          @id @default(uuid())
+  numeroReference String          @unique @map("numero_reference")
+  type            TypeIncident
+  description     String
+  statut          StatutIncident  @default(BROUILLON)
+
+  latitude        Float?
+  longitude       Float?
+  adresseLisible  String?         @map("adresse_lisible")
+  photoUrl        String?         @map("photo_url")
+
+  gravite         GraviteIncident @default(FAIBLE)
+
+  dateIncident    DateTime        @map("date_incident")
+  dateDeclaration DateTime        @default(now()) @map("date_declaration")
+  dateCloture     DateTime?       @map("date_cloture")
+
+  declarePar   User    @relation("IncidentsDeclares", fields: [declareParId], references: [id])
+  declareParId String  @map("declare_par_id")
+
+  validePar    User?   @relation("IncidentsValides", fields: [valideParId], references: [id])
+  valideParId  String? @map("valide_par_id")
+
+  site         Site    @relation(fields: [siteId], references: [id])
+  siteId       String  @map("site_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("incidents")
+}
+
+
