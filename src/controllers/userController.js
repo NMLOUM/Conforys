@@ -1,5 +1,7 @@
 // Importation de l'instance Prisma partagée (connexion à la base)
 const prisma = require("../config/prisma");
+// Importation de bcrypt pour hacher les mots de passe
+const bcrypt = require("bcrypt");
 
 // Fonction qui récupère TOUS les utilisateurs
 const getAllUsers = async (req, res) => {
@@ -22,9 +24,19 @@ const createUser = async (req, res) => {
     // Extraction des données envoyées dans le corps de la requête
     const { nom, prenom, email, password, role, entrepriseId } = req.body;
 
-    // Création de l'utilisateur dans la base
+    // Hachage du mot de passe (10 = niveau de sécurité du chiffrement)
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Création de l'utilisateur avec le mot de passe haché
     const newUser = await prisma.user.create({
-      data: { nom, prenom, email, password, role, entrepriseId },
+      data: {
+        nom,
+        prenom,
+        email,
+        password: hashedPassword,
+        role,
+        entrepriseId,
+      },
     });
 
     // Réponse de succès (201 = ressource créée)
