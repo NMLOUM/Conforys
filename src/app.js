@@ -4,6 +4,8 @@ const express = require("express");
 const cors = require("cors");
 // Importation des routes Utilisateurs
 const userRoutes = require("./routes/userRoutes");
+// Importation des routes d'authentification
+const authRoutes = require("./routes/authRoutes");
 
 // Création de l'application Express
 const app = express();
@@ -22,7 +24,9 @@ app.get("/api/status", (req, res) => {
   });
 });
 
-// Branchement des routes Utilisateurs (toutes commencent par /api/users)
+// Branchement des routes d'authentification (commencent par /api/auth)
+app.use("/api/auth", authRoutes);
+// Branchement des routes Utilisateurs (commencent par /api/users)
 app.use("/api/users", userRoutes);
 
 // Export de l'application pour le démarrage dans server.js
