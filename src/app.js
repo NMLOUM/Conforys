@@ -11,6 +11,7 @@ const entrepriseRoutes = require("./routes/entrepriseRoutes");
 // Importation des routes Incidents
 const incidentRoutes = require("./routes/incidentsRoutes");
 
+const dashboardRoutes = require("./routes/dashboardRoutes");
 // Création de l'application Express
 const app = express();
 
@@ -36,6 +37,6 @@ app.use("/api/users", userRoutes);
 app.use("/api/entreprises", entrepriseRoutes);
 // Branchement des routes Incidents (commencent par /api/incidents)
 app.use("/api/incidents", incidentRoutes);
-
+app.use("/api/dashboard", dashboardRoutes);
 // Export de l'application pour le démarrage dans server.js
 module.exports = app;

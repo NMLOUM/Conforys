@@ -3,13 +3,18 @@ const prisma = require("../config/prisma");
 
 // Génère un numéro de référence unique : INC-2026-0001
 const genererReference = async () => {
-  // Année courante
   const annee = new Date().getFullYear();
-  // Compte combien d'incidents existent déjà (pour le numéro séquentiel)
-  const count = await prisma.incident.count();
-  // Formate le numéro sur 4 chiffres (0001, 0002, ...)
-  const numero = String(count + 1).padStart(4, "0");
-  return `INC-${annee}-${numero}`;
+  // Cherche la référence la plus haute de l'année en cours
+  // (résistant aux suppressions : on ne compte pas, on lit le max réel)
+  const dernier = await prisma.incident.findFirst({
+    where: { numeroReference: { startsWith: `INC-${annee}-` } },
+    orderBy: { numeroReference: "desc" },
+  });
+  // Extrait le compteur depuis "INC-2026-0003" → 3, ou démarre à 0
+  const dernierNumero = dernier
+    ? parseInt(dernier.numeroReference.split("-")[2], 10)
+    : 0;
+  return `INC-${annee}-${String(dernierNumero + 1).padStart(4, "0")}`;
 };
 
 // Récupère tous les incidents (avec déclarant et site)
