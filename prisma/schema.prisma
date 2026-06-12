@@ -54,6 +54,7 @@ model User {
   incidentsDeclares Incident[] @relation("IncidentsDeclares")
   // Relation : incidents validés par cet utilisateur (responsable QHSE)
   incidentsValides  Incident[] @relation("IncidentsValides")
+  audits Audit[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -73,6 +74,8 @@ model Site {
 
   incidents Incident[]
   epis Epi[]
+  audits Audit[]
+  
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -167,4 +170,45 @@ model Epi {
   @@map("epis")
 }
 
+// ─────────────────────────────────────────────
+//  MODULE 4 : AUDITS INTERNES
+// ─────────────────────────────────────────────
 
+enum TypeAudit {
+  SECURITE       // Audit sécurité
+  QUALITE        // Audit qualité
+  ENVIRONNEMENT  // Audit environnemental
+  HYGIENE        // Audit hygiène
+}
+
+enum StatutAudit {
+  PLANIFIE   // Audit programmé
+  EN_COURS   // Audit en cours de réalisation
+  TERMINE    // Audit clôturé
+  ANNULE     // Audit annulé
+}
+
+model Audit {
+  id          String      @id @default(uuid())
+  reference   String      @unique @map("reference")  // Ex: AUD-2026-0001
+  titre       String
+  type        TypeAudit
+  statut      StatutAudit @default(PLANIFIE)
+  datePrevue  DateTime    @map("date_prevue")          // Date planifiée
+  dateRealisee DateTime?  @map("date_realisee")        // Date réelle (optionnel)
+  scoreConformite Float?  @map("score_conformite")     // Score en % (0-100)
+  observations String?                                  // Commentaires de l'auditeur
+
+  // Relation : l'auditeur (utilisateur qui réalise l'audit)
+  auditeur   User   @relation(fields: [auditeurId], references: [id])
+  auditeurId String @map("auditeur_id")
+
+  // Relation : le site audité
+  site   Site   @relation(fields: [siteId], references: [id])
+  siteId String @map("site_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("audits")
+}

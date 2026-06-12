@@ -10,9 +10,9 @@ const authRoutes = require("./routes/authRoutes");
 const entrepriseRoutes = require("./routes/entrepriseRoutes");
 // Importation des routes Incidents
 const incidentRoutes = require("./routes/incidentsRoutes");
-
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const epiRoutes = require("./routes/epiRoutes");
+const auditRoutes = require("./routes/auditRoutes");
 // Création de l'application Express
 const app = express();
 
@@ -40,5 +40,6 @@ app.use("/api/entreprises", entrepriseRoutes);
 app.use("/api/incidents", incidentRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/epis", epiRoutes);
+app.use("/api/audits", auditRoutes);
 // Export de l'application pour le démarrage dans server.js
 module.exports = app;
