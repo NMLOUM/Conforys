@@ -75,7 +75,7 @@ function IncidentsPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                {["Référence", "Type", "Gravité", "Date", "Lieu"].map((h) => (
+                {["Référence", "Type", "Gravité", "Statut", "Date", "Lieu"].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
                     {h}
                   </th>
@@ -85,7 +85,7 @@ function IncidentsPage() {
             <tbody className="divide-y divide-gray-100">
               {incidents.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-gray-400">
+                  <td colSpan={6} className="px-4 py-10 text-center text-gray-400">
                     Aucun incident enregistré
                   </td>
                 </tr>
@@ -96,6 +96,9 @@ function IncidentsPage() {
                     <td className="px-4 py-3 text-gray-700">{inc.type}</td>
                     <td className="px-4 py-3">
                       <Badge variant={inc.gravite} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant={inc.statut} />
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {inc.dateIncident
