@@ -1,13 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/login";
-
-function Dashboard() {
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <p className="text-gray-500">Dashboard — à venir</p>
-    </div>
-  );
-}
+import Dashboard from "./pages/Dashboard";
 
 function App() {
   return (
