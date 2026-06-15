@@ -20,6 +20,8 @@ function FormationsPage() {
   const [envoi, setEnvoi] = useState(false);
   const [form, setForm] = useState(FORM_VIDE);
 
+  useEffect(() => { document.title = "CONFORYS — Formations"; return () => { document.title = "CONFORYS"; }; }, []);
+
   const charger = async () => {
     try {
       const res = await api.get("/formations");

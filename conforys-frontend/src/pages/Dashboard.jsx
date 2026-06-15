@@ -72,9 +72,13 @@ function KpiCard({ label, value, sub, subColor, icon, bgIcon }) {
 
 // ── Page principale ────────────────────────────────────────────────────────────
 function Dashboard() {
-  const [stats, setStats]         = useState(null);
+  const [stats, setStats]           = useState(null);
   const [chargement, setChargement] = useState(true);
+  const [periode, setPeriode]       = useState(12);
+  const [filtreGravite, setFiltreGravite] = useState(null);
   const navigate = useNavigate();
+
+  useEffect(() => { document.title = "CONFORYS — Tableau de bord"; return () => { document.title = "CONFORYS"; }; }, []);
 
   useEffect(() => {
     api.get("/dashboard/incidents")
@@ -83,10 +87,13 @@ function Dashboard() {
       .finally(() => setChargement(false));
   }, []);
 
-  const graviteData    = (stats?.parGravite || []).map((g) => ({ name: g.gravite,  value: g._count.gravite }));
-  const typeData       = (stats?.parType    || []).map((t) => ({ name: t.type,     value: t._count.type }));
-  const evolutionData  = stats?.evolutionMensuelle || [];
+  const graviteData    = (stats?.parGravite || []).map((g) => ({ name: g.gravite, value: g._count.gravite }));
+  const typeData       = (stats?.parType    || []).map((t) => ({ name: t.type,    value: t._count.type }));
+  const evolutionData  = (stats?.evolutionMensuelle || []).slice(-periode);
   const alertes        = stats?.alertes || [];
+  const incidentsAffiches = filtreGravite
+    ? (stats?.recents || []).filter((i) => i.gravite === filtreGravite)
+    : (stats?.recents || []);
 
   // Texte de tendance des incidents ce mois
   const evo = stats?.evolutionIncidents;
@@ -204,12 +211,24 @@ function Dashboard() {
             <div className="bg-white border border-gray-200 rounded-xl p-5 lg:col-span-2">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-sm font-bold text-navy">Évolution des incidents — 12 mois</p>
+                  <p className="text-sm font-bold text-navy">Évolution des incidents</p>
                   <p className="text-xs text-gray-400 mt-0.5">Ventilé par type d'incident</p>
                 </div>
-                <span className="text-xs font-medium px-2 py-1 rounded-full bg-navy/5 text-navy">
-                  {stats?.total ?? 0} au total
-                </span>
+                <div className="flex items-center gap-1">
+                  {[3, 6, 12].map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setPeriode(p)}
+                      className={`px-2.5 py-1 text-xs rounded-full font-medium transition ${
+                        periode === p
+                          ? "bg-navy text-white"
+                          : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                      }`}
+                    >
+                      {p} mois
+                    </button>
+                  ))}
+                </div>
               </div>
               <EvolutionChart data={evolutionData} />
             </div>
@@ -233,7 +252,15 @@ function Dashboard() {
             {/* Tableau incidents récents */}
             <div className="bg-white border border-gray-200 rounded-xl p-5 lg:col-span-2">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-sm font-bold text-navy">5 derniers incidents</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-bold text-navy">5 derniers incidents</p>
+                  {filtreGravite && (
+                    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-navy/10 text-navy font-medium">
+                      {filtreGravite}
+                      <button onClick={() => setFiltreGravite(null)} className="ml-1 hover:text-red-500">✕</button>
+                    </span>
+                  )}
+                </div>
                 <button
                   onClick={() => navigate("/incidents")}
                   className="text-xs text-navy/70 hover:text-navy font-medium hover:underline"
@@ -241,7 +268,7 @@ function Dashboard() {
                   Voir tout →
                 </button>
               </div>
-              {stats?.recents?.length > 0 ? (
+              {incidentsAffiches.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
@@ -253,7 +280,7 @@ function Dashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {stats.recents.map((inc) => (
+                      {incidentsAffiches.map((inc) => (
                         <tr key={inc.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => navigate("/incidents")}>
                           <td className="py-3 pr-3">
                             <p className="font-semibold text-navy">{inc.numeroReference}</p>
@@ -280,19 +307,27 @@ function Dashboard() {
                       <polyline points="20 6 9 17 4 12"/>
                     </svg>
                   </div>
-                  <p className="text-sm font-medium text-gray-600">Aucun incident déclaré</p>
-                  <p className="text-xs text-gray-400 mt-1">Les incidents apparaîtront ici</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    {filtreGravite ? `Aucun incident ${filtreGravite.toLowerCase()}` : "Aucun incident déclaré"}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {filtreGravite ? "Essayez un autre filtre" : "Les incidents apparaîtront ici"}
+                  </p>
                 </div>
               )}
             </div>
 
-            {/* Donut gravité */}
+            {/* Donut gravité — cliquable */}
             <div className="bg-white border border-gray-200 rounded-xl p-5">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-bold text-navy">Par gravité</p>
-                <span className="text-xs text-gray-400">{stats?.total ?? 0}</span>
+                <span className="text-xs text-gray-400">{stats?.total ?? 0} incidents</span>
               </div>
-              <GraviteChart data={graviteData} />
+              <GraviteChart
+                data={graviteData}
+                selected={filtreGravite}
+                onSelect={setFiltreGravite}
+              />
             </div>
 
             {/* Par type */}

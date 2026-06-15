@@ -18,6 +18,8 @@ function EpisPage() {
   const [envoi, setEnvoi] = useState(false);
   const [form, setForm] = useState(FORM_VIDE);
 
+  useEffect(() => { document.title = "CONFORYS — EPI"; return () => { document.title = "CONFORYS"; }; }, []);
+
   const charger = async () => {
     try {
       const res = await api.get("/epis");

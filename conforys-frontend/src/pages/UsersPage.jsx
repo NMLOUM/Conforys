@@ -7,6 +7,8 @@ function UsersPage() {
   const [users, setUsers] = useState([]);
   const [chargement, setChargement] = useState(true);
 
+  useEffect(() => { document.title = "CONFORYS — Utilisateurs"; return () => { document.title = "CONFORYS"; }; }, []);
+
   const charger = async () => {
     try {
       const res = await api.get("/users");

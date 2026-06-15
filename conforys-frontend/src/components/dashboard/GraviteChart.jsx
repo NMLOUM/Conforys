@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
 const COULEURS = {
   FAIBLE:   "#2E7D32",
@@ -19,21 +19,8 @@ const CustomTooltip = ({ active, payload }) => {
   );
 };
 
-const CustomLegend = ({ payload }) => (
-  <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2">
-    {payload.map((entry) => (
-      <div key={entry.value} className="flex items-center gap-1.5">
-        <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: entry.color }} />
-        <span className="text-xs text-gray-500">{entry.value}</span>
-      </div>
-    ))}
-  </div>
-);
-
-function GraviteChart({ data }) {
-  const sorted = ORDRE
-    .map((g) => data.find((d) => d.name === g))
-    .filter(Boolean);
+function GraviteChart({ data, selected, onSelect }) {
+  const sorted = ORDRE.map((g) => data.find((d) => d.name === g)).filter(Boolean);
 
   if (!sorted.length) {
     return (
@@ -43,28 +30,64 @@ function GraviteChart({ data }) {
     );
   }
 
+  const handleClick = (_, index) => {
+    const gravite = sorted[index]?.name;
+    onSelect?.(selected === gravite ? null : gravite);
+  };
+
   return (
-    <ResponsiveContainer width="100%" height={240}>
-      <PieChart>
-        <Pie
-          data={sorted}
-          cx="50%"
-          cy="45%"
-          innerRadius={55}
-          outerRadius={88}
-          dataKey="value"
-          nameKey="name"
-          paddingAngle={2}
-          strokeWidth={0}
-        >
-          {sorted.map((entry) => (
-            <Cell key={entry.name} fill={COULEURS[entry.name] || "#9ca3af"} />
-          ))}
-        </Pie>
-        <Tooltip content={<CustomTooltip />} />
-        <Legend content={<CustomLegend />} />
-      </PieChart>
-    </ResponsiveContainer>
+    <div>
+      <ResponsiveContainer width="100%" height={200}>
+        <PieChart>
+          <Pie
+            data={sorted}
+            cx="50%"
+            cy="50%"
+            innerRadius={52}
+            outerRadius={80}
+            dataKey="value"
+            nameKey="name"
+            paddingAngle={2}
+            strokeWidth={0}
+            onClick={handleClick}
+            style={{ cursor: "pointer" }}
+          >
+            {sorted.map((entry) => (
+              <Cell
+                key={entry.name}
+                fill={COULEURS[entry.name] || "#9ca3af"}
+                opacity={selected && selected !== entry.name ? 0.3 : 1}
+              />
+            ))}
+          </Pie>
+          <Tooltip content={<CustomTooltip />} />
+        </PieChart>
+      </ResponsiveContainer>
+
+      {/* Légende cliquable */}
+      <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5 mt-1">
+        {sorted.map((entry) => (
+          <button
+            key={entry.name}
+            onClick={() => onSelect?.(selected === entry.name ? null : entry.name)}
+            className={`flex items-center gap-1.5 text-xs transition-opacity ${
+              selected && selected !== entry.name ? "opacity-30" : "opacity-100"
+            }`}
+          >
+            <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COULEURS[entry.name] }} />
+            <span className="text-gray-600">{entry.name}</span>
+            <span className="font-semibold text-gray-800">{entry.value}</span>
+          </button>
+        ))}
+      </div>
+
+      {selected && (
+        <p className="text-center text-xs text-navy font-medium mt-2 cursor-pointer hover:underline"
+           onClick={() => onSelect?.(null)}>
+          ✕ Effacer le filtre
+        </p>
+      )}
+    </div>
   );
 }
 

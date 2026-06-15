@@ -22,6 +22,8 @@ function AuditsPage() {
     siteId: "",
   });
 
+  useEffect(() => { document.title = "CONFORYS — Audits"; return () => { document.title = "CONFORYS"; }; }, []);
+
   const charger = async () => {
     try {
       const res = await api.get("/audits");

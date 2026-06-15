@@ -25,6 +25,8 @@ function IncidentsPage() {
   const [envoi, setEnvoi] = useState(false);
   const [form, setForm] = useState(FORM_VIDE(user?.id));
 
+  useEffect(() => { document.title = "CONFORYS — Incidents"; return () => { document.title = "CONFORYS"; }; }, []);
+
   const charger = async () => {
     try {
       const res = await api.get("/incidents");
