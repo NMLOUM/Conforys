@@ -198,8 +198,8 @@ function Dashboard() {
             />
           </div>
 
-          {/* ── LIGNE 2 : Évolution 12 mois + Alertes ────────────────────── */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {/* ── LIGNE 2 : Évolution + Donut gravité + Par type ──────────── */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
 
             <div className="bg-white border border-gray-200 rounded-xl p-5 lg:col-span-2">
               <div className="flex items-center justify-between mb-4">
@@ -214,24 +214,27 @@ function Dashboard() {
               <EvolutionChart data={evolutionData} />
             </div>
 
+            {/* Donut gravité */}
             <div className="bg-white border border-gray-200 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-bold text-navy">Alertes en cours</p>
-                {alertes.length > 0 && (
-                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-100">
-                    {alertes.length}
-                  </span>
-                )}
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-bold text-navy">Par gravité</p>
+                <span className="text-xs text-gray-400">{stats?.total ?? 0} incidents</span>
               </div>
-              <AlertesCritiques alertes={alertes} />
+              <GraviteChart data={graviteData} />
+            </div>
+
+            {/* Par type */}
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <p className="text-sm font-bold text-navy mb-4">Par type</p>
+              <TypeChart data={typeData} />
             </div>
           </div>
 
-          {/* ── LIGNE 3 : Incidents récents + Gravité ────────────────────── */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {/* ── LIGNE 3 : Incidents récents + Alertes ────────────────────── */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
 
             {/* Tableau incidents récents */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5 lg:col-span-2">
+            <div className="bg-white border border-gray-200 rounded-xl p-5 lg:col-span-3">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm font-bold text-navy">5 derniers incidents</p>
                 <button
@@ -290,25 +293,21 @@ function Dashboard() {
               )}
             </div>
 
-            {/* Donut gravité */}
+            {/* Alertes en cours */}
             <div className="bg-white border border-gray-200 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-bold text-navy">Par gravité</p>
-                <span className="text-xs text-gray-400">{stats?.total ?? 0} incidents</span>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-bold text-navy">Alertes en cours</p>
+                {alertes.length > 0 && (
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-100">
+                    {alertes.length}
+                  </span>
+                )}
               </div>
-              <GraviteChart data={graviteData} />
+              <AlertesCritiques alertes={alertes} />
             </div>
           </div>
 
-          {/* ── LIGNE 4 : Par type ───────────────────────────────────────── */}
-          <div className="bg-white border border-gray-200 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-bold text-navy">Incidents par type</p>
-            </div>
-            <TypeChart data={typeData} />
-          </div>
-
-          {/* ── LIGNE 5 : Accès rapides ──────────────────────────────────── */}
+          {/* ── LIGNE 4 : Accès rapides ──────────────────────────────────── */}
           <div className="bg-white border border-gray-200 rounded-xl p-5">
             <p className="text-sm font-bold text-navy mb-3">Accès rapides</p>
             <AccesRapides />

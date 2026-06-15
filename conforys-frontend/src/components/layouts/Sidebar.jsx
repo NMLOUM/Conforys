@@ -15,7 +15,7 @@ function Sidebar() {
     <aside className="fixed top-0 left-0 w-56 h-screen bg-navy">
       {/* Logo */}
       <div className="flex items-center gap-2 px-6 py-5">
-        <span className="text-lg font-bold text-white">
+        <span className="text-lg font-bold text-white" translate="no">
           CONFORYS <span className="text-vert">✓</span>
         </span>
       </div>
