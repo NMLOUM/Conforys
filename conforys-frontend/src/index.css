@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+@theme {
+  --color-navy: #0D2B4E;
+  --color-vert: #2E7D32;
+}
+ 
