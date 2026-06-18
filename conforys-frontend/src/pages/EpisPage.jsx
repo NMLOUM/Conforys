@@ -1,26 +1,31 @@
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import Badge from "../components/ui/Badge";
 import { useRole } from "../hooks/useRole";
+import { epiSchema } from "../validators/epiSchema";
 
-const FORM_VIDE = {
-  designation: "",
-  type: "",
-  quantite: "",
-  seuilAlerte: "",
-  siteId: "",
-};
+const FORM_DEFAUT = { designation: "", type: "", quantite: "", seuilAlerte: "", siteId: "" };
 
 function EpisPage() {
   const { can } = useRole();
-  const [epis, setEpis] = useState([]);
+  const [epis,       setEpis]       = useState([]);
+  const [sites,      setSites]      = useState([]);
   const [chargement, setChargement] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [envoi, setEnvoi] = useState(false);
-  const [form, setForm] = useState(FORM_VIDE);
+  const [showModal,  setShowModal]  = useState(false);
+  const [erreurForm, setErreurForm] = useState("");
 
-  useEffect(() => { document.title = "CONFORYS — EPI"; return () => { document.title = "CONFORYS"; }; }, []);
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
+    resolver: zodResolver(epiSchema),
+    defaultValues: FORM_DEFAUT,
+  });
+
+  useEffect(() => {
+    document.title = "CONFORYS — EPI";
+    return () => { document.title = "CONFORYS"; };
+  }, []);
 
   const charger = async () => {
     try {
@@ -33,40 +38,41 @@ function EpisPage() {
     }
   };
 
-  useEffect(() => { charger(); }, []);
+  useEffect(() => {
+    charger();
+    api.get("/sites").then((r) => setSites(r.data.data || [])).catch(() => {});
+  }, []);
 
-  const handleChange = (e) =>
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const ouvrirModal = () => {
+    setErreurForm("");
+    reset(FORM_DEFAUT);
+    setShowModal(true);
+  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setEnvoi(true);
+  const onSubmit = async (data) => {
+    setErreurForm("");
     try {
-      await api.post("/epis", {
-        ...form,
-        quantite: parseInt(form.quantite, 10),
-        seuilAlerte: parseInt(form.seuilAlerte, 10),
-      });
+      await api.post("/epis", data);
       setShowModal(false);
-      setForm(FORM_VIDE);
       charger();
     } catch (err) {
-      console.error("Erreur création EPI:", err);
-    } finally {
-      setEnvoi(false);
+      setErreurForm(err.response?.data?.message || "Erreur lors de l'enregistrement.");
     }
   };
+
+  const FieldError = ({ name }) =>
+    errors[name] ? <p className="mt-1 text-xs text-red-600">{errors[name].message}</p> : null;
+
+  const inputCls = (name) =>
+    `w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-navy ${errors[name] ? "border-red-400" : "border-gray-300"}`;
 
   return (
     <AppLayout titre="Equipements de Protection Individuelle">
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-gray-500">{epis.length} EPI(s) enregistré(s)</p>
-        {/* EMPLOYE ne peut pas créer un EPI */}
         {can("ADMIN", "RESPONSABLE_QHSE") && (
-          <button
-            onClick={() => setShowModal(true)}
-            className="px-4 py-2 text-sm font-medium text-white rounded bg-navy hover:opacity-90 transition"
-          >
+          <button onClick={ouvrirModal}
+            className="px-4 py-2 text-sm font-medium text-white rounded bg-navy hover:opacity-90 transition">
             Nouveau
           </button>
         )}
@@ -80,19 +86,13 @@ function EpisPage() {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 {["Désignation", "Type", "Quantité", "Seuil alerte", "Statut"].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    {h}
-                  </th>
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {epis.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-gray-400">
-                    Aucun EPI enregistré
-                  </td>
-                </tr>
+                <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-400">Aucun EPI enregistré</td></tr>
               ) : (
                 epis.map((epi) => {
                   const enAlerte = epi.quantite <= epi.seuilAlerte;
@@ -102,9 +102,7 @@ function EpisPage() {
                       <td className="px-4 py-3 text-gray-600">{epi.type || "-"}</td>
                       <td className="px-4 py-3 text-gray-700">{epi.quantite}</td>
                       <td className="px-4 py-3 text-gray-600">{epi.seuilAlerte}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant={enAlerte ? "ALERTE" : "STOCK_OK"} />
-                      </td>
+                      <td className="px-4 py-3"><Badge variant={enAlerte ? "ALERTE" : "STOCK_OK"} /></td>
                     </tr>
                   );
                 })
@@ -115,58 +113,57 @@ function EpisPage() {
       )}
 
       {showModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={(e) => e.target === e.currentTarget && setShowModal(false)}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
           <div className="w-full max-w-md bg-white rounded-lg p-6 mx-4">
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-semibold text-navy">Nouvel EPI</h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">
-                &#x2715;
-              </button>
+              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">&#x2715;</button>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
+
+            {erreurForm && (
+              <div className="mb-4 p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded">{erreurForm}</div>
+            )}
+
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
                 <label className="block mb-1 text-xs font-medium text-gray-600">Désignation</label>
-                <input type="text" name="designation" value={form.designation}
-                  onChange={handleChange} required placeholder="ex: Casque de chantier"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-navy" />
+                <input type="text" {...register("designation")} placeholder="ex: Casque de chantier" className={inputCls("designation")} />
+                <FieldError name="designation" />
               </div>
               <div>
                 <label className="block mb-1 text-xs font-medium text-gray-600">Type</label>
-                <input type="text" name="type" value={form.type}
-                  onChange={handleChange} placeholder="ex: Protection tête"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-navy" />
+                <input type="text" {...register("type")} placeholder="ex: Protection tête" className={inputCls("type")} />
+                <FieldError name="type" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block mb-1 text-xs font-medium text-gray-600">Quantité</label>
-                  <input type="number" name="quantite" value={form.quantite}
-                    onChange={handleChange} required min={0}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-navy" />
+                  <input type="number" {...register("quantite")} min={0} className={inputCls("quantite")} />
+                  <FieldError name="quantite" />
                 </div>
                 <div>
                   <label className="block mb-1 text-xs font-medium text-gray-600">Seuil d'alerte</label>
-                  <input type="number" name="seuilAlerte" value={form.seuilAlerte}
-                    onChange={handleChange} required min={0}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-navy" />
+                  <input type="number" {...register("seuilAlerte")} min={0} className={inputCls("seuilAlerte")} />
+                  <FieldError name="seuilAlerte" />
                 </div>
               </div>
               <div>
-                <label className="block mb-1 text-xs font-medium text-gray-600">ID Site</label>
-                <input type="text" name="siteId" value={form.siteId}
-                  onChange={handleChange} required placeholder="Identifiant du site"
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-navy" />
+                <label className="block mb-1 text-xs font-medium text-gray-600">Site</label>
+                <select {...register("siteId")} className={inputCls("siteId")}>
+                  <option value="">— Sélectionner un site —</option>
+                  {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
+                </select>
+                <FieldError name="siteId" />
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)}
                   className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded hover:bg-gray-50">
                   Annuler
                 </button>
-                <button type="submit" disabled={envoi}
+                <button type="submit" disabled={isSubmitting}
                   className="px-4 py-2 text-sm font-medium text-white rounded bg-navy hover:opacity-90 disabled:opacity-50 transition">
-                  {envoi ? "Enregistrement..." : "Enregistrer"}
+                  {isSubmitting ? "Enregistrement..." : "Enregistrer"}
                 </button>
               </div>
             </form>

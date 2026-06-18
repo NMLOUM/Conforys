@@ -2,17 +2,25 @@ import { NavLink } from "react-router-dom";
 import { useRole } from "../../hooks/useRole";
 
 function Sidebar() {
-  const { isEmploye } = useRole();
+  const { isAdmin, isEmploye } = useRole();
 
-  const liens = [
-    { to: "/dashboard",  label: "Tableau de bord" },
-    { to: "/incidents",  label: "Incidents" },
-    { to: "/epis",       label: "EPI" },
-    { to: "/audits",     label: "Audits" },
-    { to: "/formations", label: "Formations" },
-    // Masqué pour les Employés : gestion des comptes réservée aux admins/QHSE
-    ...(!isEmploye ? [{ to: "/users", label: "Utilisateurs" }] : []),
-  ];
+  // Lien principal du dashboard selon le rôle
+  const lienDashboard = isAdmin
+    ? { to: "/dashboard-admin", label: "Administration" }
+    : isEmploye
+    ? { to: "/mon-espace",      label: "Mon espace" }
+    : { to: "/dashboard",       label: "Tableau de bord" };
+
+  // Modules partagés (tous les rôles voient incidents ; EMPLOYE ne voit pas EPI/Audits/Users)
+  const liensModules = [
+    { to: "/incidents",  label: "Incidents",    visible: true },
+    { to: "/epis",       label: "EPI",          visible: !isEmploye },
+    { to: "/audits",     label: "Audits",        visible: !isEmploye },
+    { to: "/formations", label: "Formations",   visible: true },
+    { to: "/users",      label: "Utilisateurs", visible: !isEmploye },
+  ].filter((l) => l.visible);
+
+  const liens = [lienDashboard, ...liensModules];
 
   return (
     <aside className="fixed top-0 left-0 w-56 h-screen bg-navy">

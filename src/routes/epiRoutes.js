@@ -6,6 +6,8 @@ const {
 } = require("../controllers/epiController");
 const { protect }   = require("../middlewares/authMiddleware");
 const { authorize } = require("../middlewares/roleMiddleware");
+const { validate }  = require("../middlewares/validate");
+const { epiSchema } = require("../validators/epiValidator");
 
 // ⚠️ Route spécifique placée avant /:id pour éviter le conflit
 // Lecture  →  tous les rôles
@@ -14,7 +16,7 @@ router.get("/",        protect, getAllEpis);
 router.get("/:id",     protect, getEpiById);
 
 // Écritures  →  ADMIN et RESPONSABLE_QHSE
-router.post("/",      protect, authorize("ADMIN", "RESPONSABLE_QHSE"), createEpi);
+router.post("/",      protect, authorize("ADMIN", "RESPONSABLE_QHSE"), validate(epiSchema), createEpi);
 router.put("/:id",    protect, authorize("ADMIN", "RESPONSABLE_QHSE"), updateEpi);
 router.delete("/:id", protect, authorize("ADMIN", "RESPONSABLE_QHSE"), deleteEpi);
 

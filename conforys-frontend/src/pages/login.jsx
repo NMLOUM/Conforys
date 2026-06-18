@@ -28,8 +28,14 @@ function Login() {
       const { token, user } = response.data;
       // On les stocke via le store
       login(token, user);
-      // Redirection vers le dashboard
-      navigate("/dashboard");
+      // Redirection vers le dashboard selon le rôle
+      const route =
+        user.role === "ADMIN"
+          ? "/dashboard-admin"
+          : user.role === "EMPLOYE"
+          ? "/mon-espace"
+          : "/dashboard";
+      navigate(route);
     } catch (err) {
       // En cas d'erreur (mauvais identifiants...)
       setErreur(

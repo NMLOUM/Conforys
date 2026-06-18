@@ -6,13 +6,15 @@ const {
 } = require("../controllers/auditController");
 const { protect }   = require("../middlewares/authMiddleware");
 const { authorize } = require("../middlewares/roleMiddleware");
+const { validate }    = require("../middlewares/validate");
+const { auditSchema } = require("../validators/auditValidator");
 
 // Lecture  →  tous les rôles
 router.get("/",    protect, getAllAudits);
 router.get("/:id", protect, getAuditById);
 
 // Écritures  →  ADMIN et RESPONSABLE_QHSE
-router.post("/",      protect, authorize("ADMIN", "RESPONSABLE_QHSE"), createAudit);
+router.post("/",      protect, authorize("ADMIN", "RESPONSABLE_QHSE"), validate(auditSchema), createAudit);
 router.put("/:id",    protect, authorize("ADMIN", "RESPONSABLE_QHSE"), updateAudit);
 router.delete("/:id", protect, authorize("ADMIN", "RESPONSABLE_QHSE"), deleteAudit);
 
