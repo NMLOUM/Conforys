@@ -1,27 +1,19 @@
-// Importation d'Express et de son routeur
 const express = require("express");
 const router = express.Router();
-// Importation des fonctions du contrôleur Entreprise
 const {
-  getAllEntreprises,
-  getEntrepriseById,
-  createEntreprise,
-  updateEntreprise,
-  deleteEntreprise,
+  getAllEntreprises, getEntrepriseById,
+  createEntreprise, updateEntreprise, deleteEntreprise,
 } = require("../controllers/entrepriseController");
-// Importation du middleware de protection
-const { protect } = require("../middlewares/authMiddleware");
+const { protect }   = require("../middlewares/authMiddleware");
+const { authorize } = require("../middlewares/roleMiddleware");
 
-// GET /api/entreprises  →  liste toutes les entreprises (PROTÉGÉ)
-router.get("/", protect, getAllEntreprises);
-// GET /api/entreprises/:id  →  récupère une entreprise par son id (PROTÉGÉ)
-router.get("/:id", protect, getEntrepriseById);
-// POST /api/entreprises  →  crée une nouvelle entreprise (PROTÉGÉ)
-router.post("/", protect, createEntreprise);
-// PUT /api/entreprises/:id  →  met à jour une entreprise (PROTÉGÉ)
-router.put("/:id", protect, updateEntreprise);
-// DELETE /api/entreprises/:id  →  supprime une entreprise (PROTÉGÉ)
-router.delete("/:id", protect, deleteEntreprise);
+// Lecture  →  ADMIN et RESPONSABLE_QHSE
+router.get("/",    protect, authorize("ADMIN", "RESPONSABLE_QHSE"), getAllEntreprises);
+router.get("/:id", protect, authorize("ADMIN", "RESPONSABLE_QHSE"), getEntrepriseById);
 
-// Export du routeur pour le brancher dans app.js
+// Écritures →  ADMIN uniquement
+router.post("/",    protect, authorize("ADMIN"), createEntreprise);
+router.put("/:id",  protect, authorize("ADMIN"), updateEntreprise);
+router.delete("/:id", protect, authorize("ADMIN"), deleteEntreprise);
+
 module.exports = router;

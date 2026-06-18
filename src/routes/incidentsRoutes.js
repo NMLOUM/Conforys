@@ -1,29 +1,23 @@
-// Importation d'Express et de son routeur
 const express = require("express");
 const router = express.Router();
-// Importation des fonctions du contrôleur Incidents
 const {
-  getAllIncidents,
-  getIncidentById,
-  createIncident,
-  updateIncident,
-  deleteIncident,
+  getAllIncidents, getIncidentById,
+  createIncident, updateIncident, deleteIncident,
 } = require("../controllers/incidentsController");
-// Importation du middleware de protection
-const { protect } = require("../middlewares/authMiddleware");
+const { protect }   = require("../middlewares/authMiddleware");
+const { authorize } = require("../middlewares/roleMiddleware");
 
-// Toutes les routes incidents sont protégées (token requis)
-
-// GET /api/incidents       →  liste tous les incidents
-router.get("/", protect, getAllIncidents);
-// GET /api/incidents/:id   →  détail d'un incident
+// Lecture  →  tous les rôles (tout le monde peut consulter)
+router.get("/",    protect, getAllIncidents);
 router.get("/:id", protect, getIncidentById);
-// POST /api/incidents      →  crée un incident
-router.post("/", protect, createIncident);
-// PUT /api/incidents/:id   →  met à jour un incident
-router.put("/:id", protect, updateIncident);
-// DELETE /api/incidents/:id →  supprime un incident
-router.delete("/:id", protect, deleteIncident);
 
-// Export du routeur pour le brancher dans app.js
+// Déclaration  →  tous les rôles (tout le monde peut déclarer un incident)
+router.post("/", protect, createIncident);
+
+// Modification/validation  →  ADMIN et RESPONSABLE_QHSE
+router.put("/:id", protect, authorize("ADMIN", "RESPONSABLE_QHSE"), updateIncident);
+
+// Suppression  →  ADMIN uniquement
+router.delete("/:id", protect, authorize("ADMIN"), deleteIncident);
+
 module.exports = router;

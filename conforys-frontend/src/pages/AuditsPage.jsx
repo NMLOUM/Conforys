@@ -3,12 +3,14 @@ import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import { useAuthStore } from "../store/authStore";
 import Badge from "../components/ui/Badge";
+import { useRole } from "../hooks/useRole";
 
 const TYPES = ["INTERNE", "EXTERNE", "FOURNISSEUR", "REGLEMENTAIRE"];
 const STATUTS = ["PLANIFIE", "EN_COURS", "TERMINE", "ANNULE"];
 
 function AuditsPage() {
   const user = useAuthStore((s) => s.user);
+  const { can } = useRole();
   const [audits, setAudits] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -58,12 +60,15 @@ function AuditsPage() {
     <AppLayout titre="Audits internes">
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-gray-500">{audits.length} audit(s)</p>
-        <button
-          onClick={() => setShowModal(true)}
-          className="px-4 py-2 text-sm font-medium text-white rounded bg-navy hover:opacity-90 transition"
-        >
-          Nouveau
-        </button>
+        {/* EMPLOYE ne peut pas créer un audit */}
+        {can("ADMIN", "RESPONSABLE_QHSE") && (
+          <button
+            onClick={() => setShowModal(true)}
+            className="px-4 py-2 text-sm font-medium text-white rounded bg-navy hover:opacity-90 transition"
+          >
+            Nouveau
+          </button>
+        )}
       </div>
 
       {chargement ? (

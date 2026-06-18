@@ -1,32 +1,21 @@
-// Importation d'Express et de son routeur
 const express = require("express");
 const router = express.Router();
-// Importation des fonctions du contrôleur Habilitations
 const {
-  getAllHabilitations,
-  getHabilitationsExpirantes,
-  getHabilitationById,
-  createHabilitation,
-  updateHabilitation,
-  deleteHabilitation,
+  getAllHabilitations, getHabilitationsExpirantes, getHabilitationById,
+  createHabilitation, updateHabilitation, deleteHabilitation,
 } = require("../controllers/habilitationController");
-// Importation du middleware de protection
-const { protect } = require("../middlewares/authMiddleware");
+const { protect }   = require("../middlewares/authMiddleware");
+const { authorize } = require("../middlewares/roleMiddleware");
 
-// GET /api/habilitations/expirantes  →  habilitations expirant dans < 30 jours (PROTÉGÉ)
-// ⚠️ Placé AVANT /:id pour ne pas être confondu avec un identifiant
+// ⚠️ Route spécifique placée avant /:id pour éviter le conflit
+// Lecture  →  tous les rôles
 router.get("/expirantes", protect, getHabilitationsExpirantes);
+router.get("/",           protect, getAllHabilitations);
+router.get("/:id",        protect, getHabilitationById);
 
-// GET /api/habilitations        →  liste toutes les habilitations (PROTÉGÉ)
-router.get("/", protect, getAllHabilitations);
-// GET /api/habilitations/:id    →  détail d'une habilitation (PROTÉGÉ)
-router.get("/:id", protect, getHabilitationById);
-// POST /api/habilitations       →  crée une habilitation (PROTÉGÉ)
-router.post("/", protect, createHabilitation);
-// PUT /api/habilitations/:id    →  met à jour une habilitation (PROTÉGÉ)
-router.put("/:id", protect, updateHabilitation);
-// DELETE /api/habilitations/:id →  supprime une habilitation (PROTÉGÉ)
-router.delete("/:id", protect, deleteHabilitation);
+// Écritures  →  ADMIN et RESPONSABLE_QHSE
+router.post("/",      protect, authorize("ADMIN", "RESPONSABLE_QHSE"), createHabilitation);
+router.put("/:id",    protect, authorize("ADMIN", "RESPONSABLE_QHSE"), updateHabilitation);
+router.delete("/:id", protect, authorize("ADMIN", "RESPONSABLE_QHSE"), deleteHabilitation);
 
-// Export du routeur pour le brancher dans app.js
 module.exports = router;

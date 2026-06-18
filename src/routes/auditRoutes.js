@@ -1,27 +1,19 @@
-// Importation d'Express et de son routeur
 const express = require("express");
 const router = express.Router();
-// Importation des fonctions du contrôleur Audits
 const {
-  getAllAudits,
-  getAuditById,
-  createAudit,
-  updateAudit,
-  deleteAudit,
+  getAllAudits, getAuditById,
+  createAudit, updateAudit, deleteAudit,
 } = require("../controllers/auditController");
-// Importation du middleware de protection
-const { protect } = require("../middlewares/authMiddleware");
+const { protect }   = require("../middlewares/authMiddleware");
+const { authorize } = require("../middlewares/roleMiddleware");
 
-// GET /api/audits        →  liste tous les audits
-router.get("/", protect, getAllAudits);
-// GET /api/audits/:id    →  détail d'un audit
+// Lecture  →  tous les rôles
+router.get("/",    protect, getAllAudits);
 router.get("/:id", protect, getAuditById);
-// POST /api/audits       →  crée un audit
-router.post("/", protect, createAudit);
-// PUT /api/audits/:id    →  met à jour un audit
-router.put("/:id", protect, updateAudit);
-// DELETE /api/audits/:id →  supprime un audit
-router.delete("/:id", protect, deleteAudit);
 
-// Export du routeur
+// Écritures  →  ADMIN et RESPONSABLE_QHSE
+router.post("/",      protect, authorize("ADMIN", "RESPONSABLE_QHSE"), createAudit);
+router.put("/:id",    protect, authorize("ADMIN", "RESPONSABLE_QHSE"), updateAudit);
+router.delete("/:id", protect, authorize("ADMIN", "RESPONSABLE_QHSE"), deleteAudit);
+
 module.exports = router;

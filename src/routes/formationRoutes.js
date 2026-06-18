@@ -1,27 +1,19 @@
-// Importation d'Express et de son routeur
 const express = require("express");
 const router = express.Router();
-// Importation des fonctions du contrôleur Formations
 const {
-  getAllFormations,
-  getFormationById,
-  createFormation,
-  updateFormation,
-  deleteFormation,
+  getAllFormations, getFormationById,
+  createFormation, updateFormation, deleteFormation,
 } = require("../controllers/formationController");
-// Importation du middleware de protection
-const { protect } = require("../middlewares/authMiddleware");
+const { protect }   = require("../middlewares/authMiddleware");
+const { authorize } = require("../middlewares/roleMiddleware");
 
-// GET /api/formations        →  liste toutes les formations (PROTÉGÉ)
-router.get("/", protect, getAllFormations);
-// GET /api/formations/:id    →  détail d'une formation (PROTÉGÉ)
+// Lecture  →  tous les rôles
+router.get("/",    protect, getAllFormations);
 router.get("/:id", protect, getFormationById);
-// POST /api/formations       →  crée une formation (PROTÉGÉ)
-router.post("/", protect, createFormation);
-// PUT /api/formations/:id    →  met à jour une formation (PROTÉGÉ)
-router.put("/:id", protect, updateFormation);
-// DELETE /api/formations/:id →  supprime une formation (PROTÉGÉ)
-router.delete("/:id", protect, deleteFormation);
 
-// Export du routeur pour le brancher dans app.js
+// Écritures  →  ADMIN et RESPONSABLE_QHSE
+router.post("/",      protect, authorize("ADMIN", "RESPONSABLE_QHSE"), createFormation);
+router.put("/:id",    protect, authorize("ADMIN", "RESPONSABLE_QHSE"), updateFormation);
+router.delete("/:id", protect, authorize("ADMIN", "RESPONSABLE_QHSE"), deleteFormation);
+
 module.exports = router;

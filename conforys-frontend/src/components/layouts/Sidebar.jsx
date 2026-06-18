@@ -1,14 +1,17 @@
 import { NavLink } from "react-router-dom";
+import { useRole } from "../../hooks/useRole";
 
 function Sidebar() {
-  // Liste des liens du menu
+  const { isEmploye } = useRole();
+
   const liens = [
-    { to: "/dashboard", label: "Tableau de bord" },
-    { to: "/incidents", label: "Incidents" },
-    { to: "/epis", label: "EPI" },
-    { to: "/audits", label: "Audits" },
+    { to: "/dashboard",  label: "Tableau de bord" },
+    { to: "/incidents",  label: "Incidents" },
+    { to: "/epis",       label: "EPI" },
+    { to: "/audits",     label: "Audits" },
     { to: "/formations", label: "Formations" },
-    { to: "/users", label: "Utilisateurs" },
+    // Masqué pour les Employés : gestion des comptes réservée aux admins/QHSE
+    ...(!isEmploye ? [{ to: "/users", label: "Utilisateurs" }] : []),
   ];
 
   return (

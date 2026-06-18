@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import Badge from "../components/ui/Badge";
+import { useRole } from "../hooks/useRole";
 
 const FORM_VIDE = {
   designation: "",
@@ -12,6 +13,7 @@ const FORM_VIDE = {
 };
 
 function EpisPage() {
+  const { can } = useRole();
   const [epis, setEpis] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -59,12 +61,15 @@ function EpisPage() {
     <AppLayout titre="Equipements de Protection Individuelle">
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-gray-500">{epis.length} EPI(s) enregistré(s)</p>
-        <button
-          onClick={() => setShowModal(true)}
-          className="px-4 py-2 text-sm font-medium text-white rounded bg-navy hover:opacity-90 transition"
-        >
-          Nouveau
-        </button>
+        {/* EMPLOYE ne peut pas créer un EPI */}
+        {can("ADMIN", "RESPONSABLE_QHSE") && (
+          <button
+            onClick={() => setShowModal(true)}
+            className="px-4 py-2 text-sm font-medium text-white rounded bg-navy hover:opacity-90 transition"
+          >
+            Nouveau
+          </button>
+        )}
       </div>
 
       {chargement ? (

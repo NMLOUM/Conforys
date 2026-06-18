@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import Badge from "../components/ui/Badge";
+import { useRole } from "../hooks/useRole";
 
 const STATUTS = ["PLANIFIEE", "EN_COURS", "TERMINEE", "ANNULEE"];
 
@@ -14,6 +15,7 @@ const FORM_VIDE = {
 };
 
 function FormationsPage() {
+  const { can } = useRole();
   const [formations, setFormations] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -57,12 +59,15 @@ function FormationsPage() {
     <AppLayout titre="Formations">
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-gray-500">{formations.length} formation(s)</p>
-        <button
-          onClick={() => setShowModal(true)}
-          className="px-4 py-2 text-sm font-medium text-white rounded bg-navy hover:opacity-90 transition"
-        >
-          Nouveau
-        </button>
+        {/* EMPLOYE ne peut pas créer une formation */}
+        {can("ADMIN", "RESPONSABLE_QHSE") && (
+          <button
+            onClick={() => setShowModal(true)}
+            className="px-4 py-2 text-sm font-medium text-white rounded bg-navy hover:opacity-90 transition"
+          >
+            Nouveau
+          </button>
+        )}
       </div>
 
       {chargement ? (

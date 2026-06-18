@@ -1,19 +1,19 @@
-// Importation d'Express et de son routeur
 const express = require("express");
 const router = express.Router();
-// Importation des fonctions du contrôleur Utilisateurs
 const { getAllUsers, createUser, updateUser, deleteUser } = require("../controllers/userController");
-// Importation du middleware de protection
-const { protect } = require("../middlewares/authMiddleware");
+const { protect }   = require("../middlewares/authMiddleware");
+const { authorize } = require("../middlewares/roleMiddleware");
 
-// GET /api/users  →  liste tous les utilisateurs (PROTÉGÉ : token requis)
-router.get("/", protect, getAllUsers);
-// POST /api/users  →  crée un nouvel utilisateur
-router.post("/", createUser);
-// PUT /api/users/:id  →  met à jour un utilisateur (PROTÉGÉ : token requis)
-router.put("/:id", protect, updateUser);
-// DELETE /api/users/:id  →  supprime un utilisateur (PROTÉGÉ : token requis)
-router.delete("/:id", protect, deleteUser);
+// GET  /api/users      →  ADMIN et RESPONSABLE_QHSE peuvent consulter la liste
+router.get("/", protect, authorize("ADMIN", "RESPONSABLE_QHSE"), getAllUsers);
 
-// Export du routeur pour le brancher dans app.js
+// POST /api/users      →  seul l'ADMIN peut créer un utilisateur
+router.post("/", protect, authorize("ADMIN"), createUser);
+
+// PUT  /api/users/:id  →  seul l'ADMIN peut modifier un utilisateur
+router.put("/:id", protect, authorize("ADMIN"), updateUser);
+
+// DELETE /api/users/:id →  seul l'ADMIN peut supprimer un utilisateur
+router.delete("/:id", protect, authorize("ADMIN"), deleteUser);
+
 module.exports = router;
