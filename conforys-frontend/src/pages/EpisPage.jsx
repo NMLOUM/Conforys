@@ -60,48 +60,47 @@ function EpisPage() {
     }
   };
 
-  const FieldError = ({ name }) =>
-    errors[name] ? <p className="mt-1 text-xs text-red-600">{errors[name].message}</p> : null;
-
   const inputCls = (name) =>
-    `w-full px-3 py-2 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-navy ${errors[name] ? "border-red-400" : "border-gray-300"}`;
+    `w-full px-3 py-2.5 text-sm border rounded-md bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition ${
+      errors[name] ? "border-[#DC2626]" : "border-[#E2E8F0]"
+    }`;
 
   return (
     <AppLayout titre="Equipements de Protection Individuelle">
       <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-gray-500">{epis.length} EPI(s) enregistré(s)</p>
+        <p className="text-sm text-[#64748B]">{epis.length} EPI(s) enregistré(s)</p>
         {can("ADMIN", "RESPONSABLE_QHSE") && (
           <button onClick={ouvrirModal}
-            className="px-4 py-2 text-sm font-medium text-white rounded bg-navy hover:opacity-90 transition">
+            className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 transition-colors">
             Nouveau
           </button>
         )}
       </div>
 
       {chargement ? (
-        <p className="text-sm text-gray-500">Chargement...</p>
+        <p className="text-sm text-[#64748B]">Chargement...</p>
       ) : (
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
+        <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
               <tr>
                 {["Désignation", "Type", "Quantité", "Seuil alerte", "Statut"].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">{h}</th>
+                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-[#F1F5F9]">
               {epis.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-10 text-center text-gray-400">Aucun EPI enregistré</td></tr>
+                <tr><td colSpan={5} className="px-4 py-12 text-center text-[#94A3B8]">Aucun EPI enregistré</td></tr>
               ) : (
                 epis.map((epi) => {
                   const enAlerte = epi.quantite <= epi.seuilAlerte;
                   return (
-                    <tr key={epi.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-800">{epi.designation}</td>
-                      <td className="px-4 py-3 text-gray-600">{epi.type || "-"}</td>
-                      <td className="px-4 py-3 text-gray-700">{epi.quantite}</td>
-                      <td className="px-4 py-3 text-gray-600">{epi.seuilAlerte}</td>
+                    <tr key={epi.id} className="hover:bg-[#F8FAFC] transition-colors">
+                      <td className="px-4 py-3 font-medium text-[#1E293B]">{epi.designation}</td>
+                      <td className="px-4 py-3 text-[#64748B]">{epi.type || "—"}</td>
+                      <td className="px-4 py-3 font-medium text-[#1E293B]">{epi.quantite}</td>
+                      <td className="px-4 py-3 text-[#64748B]">{epi.seuilAlerte}</td>
                       <td className="px-4 py-3"><Badge variant={enAlerte ? "ALERTE" : "STOCK_OK"} /></td>
                     </tr>
                   );
@@ -115,54 +114,57 @@ function EpisPage() {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
           onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
-          <div className="w-full max-w-md bg-white rounded-lg p-6 mx-4">
+          <div className="w-full max-w-md bg-white rounded-lg border border-[#E2E8F0] p-6 mx-4">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="font-semibold text-navy">Nouvel EPI</h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">&#x2715;</button>
+              <h2 className="text-base font-semibold text-[#1E293B]">Nouvel EPI</h2>
+              <button onClick={() => setShowModal(false)}
+                className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition text-base leading-none">
+                &#x2715;
+              </button>
             </div>
 
             {erreurForm && (
-              <div className="mb-4 p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded">{erreurForm}</div>
+              <div className="mb-4 p-3 text-sm text-[#DC2626] bg-red-50 border border-red-200 rounded-md">{erreurForm}</div>
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
-                <label className="block mb-1 text-xs font-medium text-gray-600">Désignation</label>
+                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Désignation</label>
                 <input type="text" {...register("designation")} placeholder="ex: Casque de chantier" className={inputCls("designation")} />
-                <FieldError name="designation" />
+                {errors.designation && <p className="mt-1 text-xs text-[#DC2626]">{errors.designation.message}</p>}
               </div>
               <div>
-                <label className="block mb-1 text-xs font-medium text-gray-600">Type</label>
+                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Type</label>
                 <input type="text" {...register("type")} placeholder="ex: Protection tête" className={inputCls("type")} />
-                <FieldError name="type" />
+                {errors.type && <p className="mt-1 text-xs text-[#DC2626]">{errors.type.message}</p>}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block mb-1 text-xs font-medium text-gray-600">Quantité</label>
+                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Quantité</label>
                   <input type="number" {...register("quantite")} min={0} className={inputCls("quantite")} />
-                  <FieldError name="quantite" />
+                  {errors.quantite && <p className="mt-1 text-xs text-[#DC2626]">{errors.quantite.message}</p>}
                 </div>
                 <div>
-                  <label className="block mb-1 text-xs font-medium text-gray-600">Seuil d'alerte</label>
+                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Seuil d'alerte</label>
                   <input type="number" {...register("seuilAlerte")} min={0} className={inputCls("seuilAlerte")} />
-                  <FieldError name="seuilAlerte" />
+                  {errors.seuilAlerte && <p className="mt-1 text-xs text-[#DC2626]">{errors.seuilAlerte.message}</p>}
                 </div>
               </div>
               <div>
-                <label className="block mb-1 text-xs font-medium text-gray-600">Site</label>
+                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Site</label>
                 <select {...register("siteId")} className={inputCls("siteId")}>
                   <option value="">— Sélectionner un site —</option>
                   {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
                 </select>
-                <FieldError name="siteId" />
+                {errors.siteId && <p className="mt-1 text-xs text-[#DC2626]">{errors.siteId.message}</p>}
               </div>
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="flex justify-end gap-3 pt-2 border-t border-[#F1F5F9]">
                 <button type="button" onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded hover:bg-gray-50">
+                  className="px-4 py-2 text-sm font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
                   Annuler
                 </button>
                 <button type="submit" disabled={isSubmitting}
-                  className="px-4 py-2 text-sm font-medium text-white rounded bg-navy hover:opacity-90 disabled:opacity-50 transition">
+                  className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
                   {isSubmitting ? "Enregistrement..." : "Enregistrer"}
                 </button>
               </div>

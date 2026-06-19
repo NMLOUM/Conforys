@@ -31,7 +31,7 @@ const VARIANTS = {
   // Rôles utilisateurs
   ADMIN:            { bg: "bg-red-50",     text: "text-red-700",     dot: "bg-red-500"     },
   RESPONSABLE_QHSE: { bg: "bg-blue-50",   text: "text-blue-800",    dot: "bg-blue-600"    },
-  MANAGER:          { bg: "bg-purple-50",  text: "text-purple-700",  dot: "bg-purple-500"  },
+  MANAGER:          { bg: "bg-slate-100",  text: "text-slate-600",  dot: "bg-slate-400"  },
   EMPLOYE:          { bg: "bg-gray-100",   text: "text-gray-600",    dot: "bg-gray-400"    },
   // Générique
   ACTIF_USER:  { bg: "bg-green-50",  text: "text-green-700",  dot: "bg-green-500"  },

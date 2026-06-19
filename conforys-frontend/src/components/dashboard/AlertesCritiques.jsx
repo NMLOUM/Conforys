@@ -35,7 +35,7 @@ function AlertesCritiques({ alertes = [] }) {
           </svg>
         </div>
         <p className="text-sm font-medium text-green-700">Aucune alerte active</p>
-        <p className="text-xs text-gray-400 mt-1">Tous les indicateurs sont dans les normes</p>
+        <p className="text-xs text-[#94A3B8] mt-1">Tous les indicateurs sont dans les normes</p>
       </div>
     );
   }
@@ -46,7 +46,7 @@ function AlertesCritiques({ alertes = [] }) {
   return (
     <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
       {/* Résumé */}
-      <div className="flex items-center gap-3 pb-2 border-b border-gray-100">
+      <div className="flex items-center gap-3 pb-2 border-b border-[#F1F5F9]">
         {critiques.length > 0 && (
           <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
             {critiques.length} critique{critiques.length > 1 ? "s" : ""}

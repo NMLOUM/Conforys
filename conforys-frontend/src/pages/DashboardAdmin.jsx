@@ -6,23 +6,21 @@ import GraviteChart from "../components/dashboard/GraviteChart";
 import AlertesCritiques from "../components/dashboard/AlertesCritiques";
 import Badge from "../components/ui/Badge";
 
-function KpiCard({ label, value, sub, subColor = "text-gray-500", icon, bgIcon }) {
+// â”€â”€ Carte KPI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function KpiCard({ label, value, sub, subColor = "text-[#64748B]", valueColor = "#0D2B4E" }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-5 flex items-start gap-4">
-      {icon && (
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${bgIcon}`}>
-          <span className="text-lg">{icon}</span>
-        </div>
-      )}
-      <div className="min-w-0">
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide truncate">{label}</p>
-        <p className="text-2xl font-bold text-navy mt-0.5">{value ?? "—"}</p>
-        {sub && <p className={`text-xs mt-0.5 ${subColor}`}>{sub}</p>}
-      </div>
+    <div
+      className="bg-white rounded-lg p-5 flex flex-col justify-between"
+      style={{ minHeight: "112px", border: "1px solid #E2E8F0" }}
+    >
+      <p className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{label}</p>
+      <p className="text-[36px] font-bold leading-none" style={{ color: valueColor }}>{value ?? "—"}</p>
+      <p className={`text-[12px] ${subColor}`}>{sub || " "}</p>
     </div>
   );
 }
 
+// â”€â”€ Accès rapides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const ACCES = [
   { label: "Utilisateurs",  to: "/users",      desc: "Gérer les comptes" },
   { label: "Incidents",     to: "/incidents",   desc: "Tous les incidents" },
@@ -33,8 +31,8 @@ const ACCES = [
 
 function DashboardAdmin() {
   const navigate = useNavigate();
-  const [stats, setStats]         = useState(null);
-  const [nbUsers, setNbUsers]     = useState(null);
+  const [stats,      setStats]      = useState(null);
+  const [nbUsers,    setNbUsers]    = useState(null);
   const [chargement, setChargement] = useState(true);
 
   useEffect(() => {
@@ -61,14 +59,18 @@ function DashboardAdmin() {
     charger();
   }, []);
 
-  const tauxCouleur =
-    stats?.tauxConformite >= 80 ? "text-vert" :
-    stats?.tauxConformite >= 50 ? "text-orange-500" : "text-red-500";
+  const taux = stats?.tauxConformite;
+  const tauxAccent =
+    taux >= 80 ? "#2E7D32" :
+    taux >= 50 ? "#EA580C" : "#DC2626";
 
   return (
     <AppLayout titre="Administration">
       {chargement ? (
-        <p className="text-sm text-gray-500">Chargement...</p>
+        <div className="flex items-center gap-2 text-sm text-[#64748B] py-8">
+          <div className="w-4 h-4 border-2 border-navy border-t-transparent rounded-full animate-spin" />
+          Chargement...
+        </div>
       ) : (
         <div className="space-y-6">
 
@@ -77,48 +79,44 @@ function DashboardAdmin() {
             <KpiCard
               label="Utilisateurs"
               value={nbUsers ?? "—"}
-              sub="Comptes actifs"
-              icon="👥"
-              bgIcon="bg-blue-50"
+              sub="Comptes enregistrés"
+              valueColor="#0D2B4E"
             />
             <KpiCard
               label="Total incidents"
               value={stats?.total ?? 0}
-              sub={`${stats?.critiques ?? 0} critique(s)`}
-              subColor={stats?.critiques > 0 ? "text-red-500" : "text-gray-400"}
-              icon="⚠"
-              bgIcon="bg-orange-50"
+              sub={`${stats?.critiques ?? 0} critique${stats?.critiques > 1 ? "s" : ""}`}
+              subColor={stats?.critiques > 0 ? "text-[#DC2626] font-medium" : "text-[#64748B]"}
+              valueColor={stats?.critiques > 0 ? "#DC2626" : stats?.total > 0 ? "#EA580C" : "#0D2B4E"}
             />
             <KpiCard
               label="Taux de conformité"
-              value={stats?.tauxConformite != null ? `${stats.tauxConformite}%` : "—"}
+              value={taux != null ? `${taux}%` : "—"}
               sub="EPI conformes"
-              subColor={tauxCouleur}
-              icon="✓"
-              bgIcon="bg-green-50"
+              subColor={taux >= 80 ? "text-[#2E7D32]" : taux >= 50 ? "text-[#EA580C]" : "text-[#DC2626]"}
+              valueColor={tauxAccent}
             />
             <KpiCard
               label="EPI en alerte"
               value={stats?.episEnAlerte ?? 0}
-              sub="Stock critique"
-              subColor={stats?.episEnAlerte > 0 ? "text-red-500" : "text-gray-400"}
-              icon="🛡"
-              bgIcon="bg-red-50"
+              sub="Stock sous le seuil"
+              subColor={stats?.episEnAlerte > 0 ? "text-[#DC2626] font-medium" : "text-[#64748B]"}
+              valueColor={stats?.episEnAlerte > 0 ? "#DC2626" : "#2E7D32"}
             />
           </div>
 
           {/* Accès rapides */}
-          <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Accès rapides</h2>
+          <div className="bg-white border border-[#E2E8F0] rounded-lg p-5">
+            <h2 className="text-sm font-semibold text-[#1E293B] mb-4">Accès rapides</h2>
             <div className="grid grid-cols-5 gap-3">
               {ACCES.map((a) => (
                 <button
                   key={a.to}
                   onClick={() => navigate(a.to)}
-                  className="flex flex-col items-start gap-1 p-3 border border-gray-200 rounded-lg hover:border-navy hover:bg-navy/5 transition text-left"
+                  className="flex flex-col items-start gap-1 p-3 border border-[#E2E8F0] rounded-lg hover:border-navy hover:bg-navy/5 transition text-left"
                 >
-                  <span className="text-sm font-medium text-navy">{a.label}</span>
-                  <span className="text-xs text-gray-500">{a.desc}</span>
+                  <span className="text-sm font-semibold text-navy">{a.label}</span>
+                  <span className="text-xs text-[#64748B]">{a.desc}</span>
                 </button>
               ))}
             </div>
@@ -126,8 +124,8 @@ function DashboardAdmin() {
 
           {/* Graphiques + Alertes */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white border border-gray-200 rounded-lg p-5">
-              <h2 className="text-sm font-semibold text-gray-700 mb-4">Incidents par gravité</h2>
+            <div className="bg-white border border-[#E2E8F0] rounded-lg p-5">
+              <h2 className="text-sm font-semibold text-[#1E293B] mb-4">Incidents par gravité</h2>
               <GraviteChart data={stats?.parGravite ?? []} />
             </div>
             <div className="col-span-2">
@@ -136,34 +134,34 @@ function DashboardAdmin() {
           </div>
 
           {/* Derniers incidents */}
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100">
-              <h2 className="text-sm font-semibold text-gray-700">Incidents récents</h2>
+          <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">
+            <div className="px-5 py-4 border-b border-[#E2E8F0]">
+              <h2 className="text-sm font-semibold text-[#1E293B]">Incidents récents</h2>
             </div>
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                 <tr>
                   {["Référence", "Type", "Site", "Déclaré par", "Gravité", "Statut"].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-[#F1F5F9]">
                 {(stats?.recents ?? []).length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                    <td colSpan={6} className="px-4 py-10 text-center text-[#94A3B8]">
                       Aucun incident enregistré
                     </td>
                   </tr>
                 ) : (
                   (stats?.recents ?? []).map((inc) => (
-                    <tr key={inc.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-navy">{inc.numeroReference}</td>
-                      <td className="px-4 py-3 text-gray-600">{inc.type}</td>
-                      <td className="px-4 py-3 text-gray-600">{inc.site?.nom ?? "—"}</td>
-                      <td className="px-4 py-3 text-gray-600">
+                    <tr key={inc.id} className="hover:bg-[#F8FAFC] transition-colors">
+                      <td className="px-4 py-3 font-semibold text-navy text-xs">{inc.numeroReference}</td>
+                      <td className="px-4 py-3 text-[#475569]">{inc.type}</td>
+                      <td className="px-4 py-3 text-[#475569]">{inc.site?.nom ?? "—"}</td>
+                      <td className="px-4 py-3 text-[#475569]">
                         {inc.declarePar ? `${inc.declarePar.prenom} ${inc.declarePar.nom}` : "—"}
                       </td>
                       <td className="px-4 py-3"><Badge variant={inc.gravite} /></td>
