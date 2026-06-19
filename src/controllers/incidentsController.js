@@ -1,6 +1,12 @@
 // Importation du service Incidents (la logique métier)
 const incidentService = require("../services/incidentService");
 
+// Utilitaire : centralise la gestion des erreurs métier (400/403) vs erreurs système (500)
+const handleErreur = (res, error) => {
+  const status = error.statusCode || 500;
+  res.status(status).json({ success: false, message: error.message });
+};
+
 // Récupère tous les incidents
 const getAllIncidents = async (req, res) => {
   try {
@@ -34,7 +40,7 @@ const createIncident = async (req, res) => {
     const incident = await incidentService.createIncident(req.body);
     res.status(201).json({ success: true, data: incident });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -58,6 +64,48 @@ const deleteIncident = async (req, res) => {
   }
 };
 
+// ── Workflow de statuts ────────────────────────────────────────────────────────
+
+// BROUILLON → OUVERT (le déclarant soumet son propre incident)
+const soumettre = async (req, res) => {
+  try {
+    const incident = await incidentService.soumettre(req.params.id, req.user.userId);
+    res.status(200).json({ success: true, data: incident });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+// OUVERT → EN_COURS (QHSE/ADMIN valide, pas le déclarant)
+const valider = async (req, res) => {
+  try {
+    const incident = await incidentService.valider(req.params.id, req.user.userId);
+    res.status(200).json({ success: true, data: incident });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+// OUVERT → REJETE (QHSE/ADMIN)
+const rejeter = async (req, res) => {
+  try {
+    const incident = await incidentService.rejeter(req.params.id);
+    res.status(200).json({ success: true, data: incident });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+// EN_COURS → CLOS (QHSE/ADMIN, remplit dateCloture)
+const cloturer = async (req, res) => {
+  try {
+    const incident = await incidentService.cloturer(req.params.id);
+    res.status(200).json({ success: true, data: incident });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
 // Export des fonctions du contrôleur
 module.exports = {
   getAllIncidents,
@@ -65,4 +113,8 @@ module.exports = {
   createIncident,
   updateIncident,
   deleteIncident,
+  soumettre,
+  valider,
+  rejeter,
+  cloturer,
 };
