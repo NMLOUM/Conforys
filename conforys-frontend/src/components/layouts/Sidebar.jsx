@@ -68,28 +68,14 @@ const ICONS = {
   "/users":           <IcUsers />,
 };
 
+const SectionLabel = ({ label }) => (
+  <p className="px-3 pt-4 pb-1.5 text-[10px] font-semibold text-white/30 uppercase tracking-widest select-none">
+    {label}
+  </p>
+);
+
 function Sidebar({ ouverte, onClose }) {
   const { isAdmin, isEmploye, isQhse } = useRole();
-
-  const lienDashboard = isAdmin
-    ? { to: "/dashboard-admin", label: "Administration" }
-    : isEmploye
-    ? { to: "/mon-espace",      label: "Mon espace" }
-    : { to: "/dashboard",       label: "Tableau de bord" };
-
-  const liensModules = [
-    // Incidents : tous les rôles (ADMIN lecture, QHSE workflow, EMPLOYE déclaration)
-    { to: "/incidents",  label: "Incidents",                                       visible: true },
-    // Actions : QHSE (plein accès) + EMPLOYE (mes actions) — ADMIN exclu (métier QHSE)
-    { to: "/actions",    label: isEmploye ? "Mes actions" : "Actions correctives", visible: !isAdmin },
-    // Modules QHSE exclusifs — RESPONSABLE_QHSE uniquement
-    { to: "/epis",       label: "EPI",                                             visible: isQhse },
-    { to: "/audits",     label: "Audits",                                          visible: isQhse },
-    // Formations : QHSE + EMPLOYE (consultation) — ADMIN exclu
-    { to: "/formations", label: "Formations",                                      visible: !isAdmin },
-    // Utilisateurs : ADMIN (CRUD) + QHSE (lecture pour assigner des actions)
-    { to: "/users",      label: "Utilisateurs",                                    visible: !isEmploye },
-  ].filter((l) => l.visible);
 
   const navCls = ({ isActive }) =>
     `flex items-center gap-2.5 px-3 py-2 text-[13px] rounded-md transition-colors ${
@@ -97,6 +83,13 @@ function Sidebar({ ouverte, onClose }) {
         ? "bg-white/12 text-white font-medium"
         : "text-white/60 hover:bg-white/6 hover:text-white/90"
     }`;
+
+  const Lien = ({ to, label }) => (
+    <NavLink to={to} className={navCls} onClick={onClose}>
+      <span className="shrink-0">{ICONS[to]}</span>
+      {label}
+    </NavLink>
+  );
 
   return (
     <aside
@@ -124,25 +117,48 @@ function Sidebar({ ouverte, onClose }) {
       </div>
 
       {/* Navigation principale */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 overflow-y-auto">
 
-        {/* Dashboard */}
-        <NavLink to={lienDashboard.to} className={navCls} onClick={onClose}>
-          <span className="shrink-0">{ICONS[lienDashboard.to]}</span>
-          {lienDashboard.label}
-        </NavLink>
+        {/* ── ADMIN ────────────────────────────────────────────────────── */}
+        {isAdmin && (
+          <>
+            <SectionLabel label="Administration" />
+            <Lien to="/dashboard-admin" label="Tableau de bord" />
+            <Lien to="/users"           label="Utilisateurs" />
 
-        {/* Séparateur Modules */}
-        <p className="px-3 pt-4 pb-1.5 text-[10px] font-semibold text-white/30 uppercase tracking-widest">
-          Modules
-        </p>
+            <SectionLabel label="Consultation" />
+            <Lien to="/incidents" label="Incidents" />
+          </>
+        )}
 
-        {liensModules.map((lien) => (
-          <NavLink key={lien.to} to={lien.to} className={navCls} onClick={onClose}>
-            <span className="shrink-0">{ICONS[lien.to]}</span>
-            {lien.label}
-          </NavLink>
-        ))}
+        {/* ── RESPONSABLE QHSE ─────────────────────────────────────────── */}
+        {isQhse && (
+          <>
+            <SectionLabel label="Tableau de bord" />
+            <Lien to="/dashboard" label="Vue d'ensemble" />
+
+            <SectionLabel label="Modules" />
+            <Lien to="/incidents" label="Incidents" />
+            <Lien to="/actions"   label="Actions correctives" />
+            <Lien to="/epis"      label="EPI" />
+            <Lien to="/audits"    label="Audits" />
+            <Lien to="/formations" label="Formations" />
+            <Lien to="/users"     label="Utilisateurs" />
+          </>
+        )}
+
+        {/* ── EMPLOYÉ ──────────────────────────────────────────────────── */}
+        {isEmploye && (
+          <>
+            <SectionLabel label="Mon espace" />
+            <Lien to="/mon-espace"  label="Mon espace" />
+
+            <SectionLabel label="Modules" />
+            <Lien to="/incidents"  label="Incidents" />
+            <Lien to="/actions"    label="Mes actions" />
+            <Lien to="/formations" label="Formations" />
+          </>
+        )}
       </nav>
 
       {/* Footer sidebar */}
