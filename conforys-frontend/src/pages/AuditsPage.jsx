@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import toast from "react-hot-toast";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import { useAuthStore } from "../store/authStore";
@@ -66,10 +67,13 @@ function AuditsPage() {
     setErreurForm("");
     try {
       await api.post("/audits", data);
+      toast.success("Audit enregistré avec succès");
       setShowModal(false);
       charger();
     } catch (err) {
-      setErreurForm(err.response?.data?.message || "Erreur lors de l'enregistrement.");
+      const msg = err.response?.data?.message || "Erreur lors de l'enregistrement.";
+      setErreurForm(msg);
+      toast.error(msg);
     }
   };
 
@@ -82,7 +86,7 @@ function AuditsPage() {
     <AppLayout titre="Audits internes">
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-[#64748B]">{audits.length} audit(s)</p>
-        {can("ADMIN", "RESPONSABLE_QHSE") && (
+        {can("RESPONSABLE_QHSE") && (
           <button onClick={ouvrirModal}
             className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 transition-colors">
             Nouveau
@@ -94,7 +98,8 @@ function AuditsPage() {
         <p className="text-sm text-[#64748B]">Chargement...</p>
       ) : (
         <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
             <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
               <tr>
                 {["Référence", "Titre", "Type", "Date prévue", "Statut"].map((h) => (
@@ -120,6 +125,7 @@ function AuditsPage() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

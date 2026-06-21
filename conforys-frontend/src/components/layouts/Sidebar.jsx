@@ -49,20 +49,27 @@ const IcGrid = () => (
     <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
   </svg>
 );
+const IcCheckSquare = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="9 11 12 14 22 4"/>
+    <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+  </svg>
+);
 
 const ICONS = {
   "/dashboard-admin": <IcGrid />,
   "/dashboard":       <IcGrid />,
   "/mon-espace":      <IcUser />,
   "/incidents":       <IcAlert />,
+  "/actions":         <IcCheckSquare />,
   "/epis":            <IcShield />,
   "/audits":          <IcClipboard />,
   "/formations":      <IcBook />,
   "/users":           <IcUsers />,
 };
 
-function Sidebar() {
-  const { isAdmin, isEmploye } = useRole();
+function Sidebar({ ouverte, onClose }) {
+  const { isAdmin, isEmploye, isQhse } = useRole();
 
   const lienDashboard = isAdmin
     ? { to: "/dashboard-admin", label: "Administration" }
@@ -71,40 +78,56 @@ function Sidebar() {
     : { to: "/dashboard",       label: "Tableau de bord" };
 
   const liensModules = [
-    { to: "/incidents",  label: "Incidents",     visible: true },
-    { to: "/epis",       label: "EPI",           visible: !isEmploye },
-    { to: "/audits",     label: "Audits",         visible: !isEmploye },
-    { to: "/formations", label: "Formations",    visible: true },
-    { to: "/users",      label: "Utilisateurs",  visible: !isEmploye },
+    // Incidents : tous les rôles (ADMIN lecture, QHSE workflow, EMPLOYE déclaration)
+    { to: "/incidents",  label: "Incidents",                                       visible: true },
+    // Actions : QHSE (plein accès) + EMPLOYE (mes actions) — ADMIN exclu (métier QHSE)
+    { to: "/actions",    label: isEmploye ? "Mes actions" : "Actions correctives", visible: !isAdmin },
+    // Modules QHSE exclusifs — RESPONSABLE_QHSE uniquement
+    { to: "/epis",       label: "EPI",                                             visible: isQhse },
+    { to: "/audits",     label: "Audits",                                          visible: isQhse },
+    // Formations : QHSE + EMPLOYE (consultation) — ADMIN exclu
+    { to: "/formations", label: "Formations",                                      visible: !isAdmin },
+    // Utilisateurs : ADMIN (CRUD) + QHSE (lecture pour assigner des actions)
+    { to: "/users",      label: "Utilisateurs",                                    visible: !isEmploye },
   ].filter((l) => l.visible);
 
-  return (
-    <aside className="fixed top-0 left-0 w-56 h-screen bg-navy flex flex-col">
+  const navCls = ({ isActive }) =>
+    `flex items-center gap-2.5 px-3 py-2 text-[13px] rounded-md transition-colors ${
+      isActive
+        ? "bg-white/12 text-white font-medium"
+        : "text-white/60 hover:bg-white/6 hover:text-white/90"
+    }`;
 
-      {/* Logo */}
-      <div className="px-5 py-5 border-b border-white/10">
-        <span className="text-[15px] font-bold text-white tracking-wide" translate="no">
-          CONFORYS
-        </span>
-        <span className="ml-1.5 text-[10px] font-semibold text-vert bg-vert/20 px-1.5 py-0.5 rounded uppercase tracking-wider">
-          QHSE
-        </span>
+  return (
+    <aside
+      className={`fixed top-0 left-0 w-56 h-screen bg-navy flex flex-col z-40
+        transition-transform duration-200 ease-in-out
+        ${ouverte ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+    >
+      {/* Logo + bouton fermer (mobile) */}
+      <div className="px-5 py-5 border-b border-white/10 flex items-center justify-between">
+        <div>
+          <span className="text-[15px] font-bold text-white tracking-wide" translate="no">
+            CONFORYS
+          </span>
+          <span className="ml-1.5 text-[10px] font-semibold text-vert bg-vert/20 px-1.5 py-0.5 rounded uppercase tracking-wider">
+            QHSE
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="lg:hidden w-7 h-7 flex items-center justify-center rounded text-white/50 hover:text-white hover:bg-white/10 transition"
+        >
+          &#x2715;
+        </button>
       </div>
 
       {/* Navigation principale */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
 
         {/* Dashboard */}
-        <NavLink
-          to={lienDashboard.to}
-          className={({ isActive }) =>
-            `flex items-center gap-2.5 px-3 py-2 text-[13px] rounded-md transition-colors ${
-              isActive
-                ? "bg-white/12 text-white font-medium"
-                : "text-white/60 hover:bg-white/6 hover:text-white/90"
-            }`
-          }
-        >
+        <NavLink to={lienDashboard.to} className={navCls} onClick={onClose}>
           <span className="shrink-0">{ICONS[lienDashboard.to]}</span>
           {lienDashboard.label}
         </NavLink>
@@ -115,17 +138,7 @@ function Sidebar() {
         </p>
 
         {liensModules.map((lien) => (
-          <NavLink
-            key={lien.to}
-            to={lien.to}
-            className={({ isActive }) =>
-              `flex items-center gap-2.5 px-3 py-2 text-[13px] rounded-md transition-colors ${
-                isActive
-                  ? "bg-white/12 text-white font-medium"
-                  : "text-white/60 hover:bg-white/6 hover:text-white/90"
-              }`
-            }
-          >
+          <NavLink key={lien.to} to={lien.to} className={navCls} onClick={onClose}>
             <span className="shrink-0">{ICONS[lien.to]}</span>
             {lien.label}
           </NavLink>

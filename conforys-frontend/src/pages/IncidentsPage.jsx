@@ -1,6 +1,8 @@
 import { useState, useEffect, Fragment } from "react";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import toast from "react-hot-toast";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import { useAuthStore } from "../store/authStore";
@@ -473,10 +475,11 @@ function Etape4({ valeurs, sites, media }) {
 
 // ── Wizard principal ──────────────────────────────────────────────────────────
 
-function IncidentWizard({ sites, user, onSuccess, onClose }) {
+function IncidentWizard({ sites, onSuccess, onClose }) {
   const [etape, setEtape] = useState(1);
   const [media, setMedia] = useState({ photoUrl: "", latitude: "", longitude: "" });
   const [erreurSoumission, setErreurSoumission] = useState("");
+  const [confirmerVisible, setConfirmerVisible] = useState(false);
 
   const form = useForm({
     resolver: zodResolver(incidentSchema),
@@ -485,7 +488,6 @@ function IncidentWizard({ sites, user, onSuccess, onClose }) {
       gravite:        "FAIBLE",
       description:    "",
       dateIncident:   "",
-      declareParId:   user?.id ?? "",
       siteId:         "",
       adresseLisible: "",
     },
@@ -520,11 +522,13 @@ function IncidentWizard({ sites, user, onSuccess, onClose }) {
         ...(media.longitude && { longitude: parseFloat(media.longitude) }),
       };
       await api.post("/incidents", payload);
+      setConfirmerVisible(false);
+      toast.success("Incident déclaré avec succès");
       onSuccess();
     } catch (err) {
-      setErreurSoumission(
-        err.response?.data?.message || "Erreur lors de la déclaration."
-      );
+      const msg = err.response?.data?.message || "Erreur lors de la déclaration.";
+      setErreurSoumission(msg);
+      toast.error(msg);
     }
   };
 
@@ -534,7 +538,7 @@ function IncidentWizard({ sites, user, onSuccess, onClose }) {
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
-        className="w-full max-w-2xl bg-white rounded-lg border border-[#E2E8F0] mx-4 flex flex-col"
+        className="w-full max-w-2xl bg-white rounded-lg border border-[#E2E8F0] mx-4 flex flex-col relative"
         style={{ maxHeight: "90vh" }}
       >
         {/* En-tête */}
@@ -562,7 +566,6 @@ function IncidentWizard({ sites, user, onSuccess, onClose }) {
         {/* Contenu scrollable */}
         <div className="px-6 overflow-y-auto flex-1 pb-4">
           <form id="incident-wizard-form" onSubmit={handleSubmit(onSubmit)}>
-            <input type="hidden" {...register("declareParId")} />
             {etape === 1 && (
               <Etape1 valeurs={valeurs} setValue={setValue} errors={errors} />
             )}
@@ -582,9 +585,56 @@ function IncidentWizard({ sites, user, onSuccess, onClose }) {
           </form>
         </div>
 
+        {/* Modale de confirmation de déclaration */}
+        {confirmerVisible && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 rounded-lg">
+            <div className="bg-white rounded-lg border border-[#E2E8F0] shadow-xl mx-6 p-6 w-full max-w-sm">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-9 h-9 rounded-full bg-[#2E7D32]/10 flex items-center justify-center shrink-0">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-[#1E293B]">Confirmer la déclaration</h3>
+                  <p className="text-xs text-[#64748B] mt-1">
+                    Une fois soumis, l'incident sera transmis au Responsable QHSE pour validation. Cette action est irréversible.
+                  </p>
+                </div>
+              </div>
+              {erreurSoumission && (
+                <p className="text-xs text-[#DC2626] mb-3 bg-[#FEF2F2] border border-[#FECACA] rounded px-3 py-2">{erreurSoumission}</p>
+              )}
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => { setConfirmerVisible(false); setErreurSoumission(""); }}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 text-sm font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors disabled:opacity-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={handleSubmit(onSubmit)}
+                  className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-[#2E7D32] hover:bg-[#2E7D32]/90 disabled:opacity-50 transition-colors"
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Envoi en cours…
+                    </span>
+                  ) : "Confirmer"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Pied de page — navigation */}
         <div className="px-6 py-4 border-t border-[#F1F5F9] shrink-0">
-          {erreurSoumission && (
+          {!confirmerVisible && erreurSoumission && (
             <p className="text-xs text-[#DC2626] mb-3">{erreurSoumission}</p>
           )}
           <div className="flex items-center justify-between">
@@ -610,12 +660,12 @@ function IncidentWizard({ sites, user, onSuccess, onClose }) {
                 </button>
               ) : (
                 <button
-                  type="submit"
-                  form="incident-wizard-form"
+                  type="button"
                   disabled={isSubmitting}
+                  onClick={() => setConfirmerVisible(true)}
                   className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-[#2E7D32] hover:bg-[#2E7D32]/90 disabled:opacity-50 transition-colors"
                 >
-                  {isSubmitting ? "Envoi en cours…" : "Déclarer l'incident"}
+                  Déclarer l'incident
                 </button>
               )}
             </div>
@@ -626,9 +676,77 @@ function IncidentWizard({ sites, user, onSuccess, onClose }) {
   );
 }
 
+// ── Modale de rejet (motif obligatoire) ──────────────────────────────────────
+
+function ModalRejeter({ incident, onConfirm, onClose }) {
+  const [motif, setMotif] = useState("");
+  const [erreur, setErreur] = useState("");
+  const [envoi, setEnvoi] = useState(false);
+
+  const confirmer = async () => {
+    if (!motif.trim() || motif.trim().length < 5) {
+      setErreur("Le motif doit faire au moins 5 caractères.");
+      return;
+    }
+    setErreur("");
+    setEnvoi(true);
+    try {
+      await onConfirm(motif.trim());
+    } finally {
+      setEnvoi(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="w-full max-w-md bg-white rounded-lg border border-[#E2E8F0] mx-4">
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#F1F5F9]">
+          <h3 className="text-base font-semibold text-[#1E293B]">Rejeter l'incident</h3>
+          <button type="button" onClick={onClose}
+            className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition">
+            &#x2715;
+          </button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div className="p-3 rounded-md bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#475569]">
+            {incident.numeroReference} — {incident.description?.slice(0, 80)}…
+          </div>
+          {erreur && (
+            <p className="text-xs text-[#DC2626] p-3 bg-red-50 border border-red-200 rounded-md">{erreur}</p>
+          )}
+          <div>
+            <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+              Motif de rejet *
+            </label>
+            <textarea
+              value={motif}
+              onChange={(e) => setMotif(e.target.value)}
+              rows={4}
+              placeholder="Expliquez pourquoi cet incident est rejeté…"
+              className="w-full px-3 py-2.5 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#DC2626]/30 focus:border-[#DC2626] transition resize-none"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#F1F5F9]">
+          <button type="button" onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
+            Annuler
+          </button>
+          <button type="button" onClick={confirmer} disabled={envoi}
+            className="px-4 py-2 text-sm font-semibold text-white rounded-md disabled:opacity-50 transition-colors"
+            style={{ backgroundColor: "#DC2626" }}>
+            {envoi ? "Rejet en cours…" : "Confirmer le rejet"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Boutons d'action workflow ─────────────────────────────────────────────────
 
-function BoutonsAction({ incident, user, isQhseOuAdmin, enCours, onAction }) {
+function BoutonsAction({ incident, user, isQhse, enCours, onAction, onRejeter }) {
   const estDeclarant = user?.id === incident.declarePar?.id;
 
   if (incident.statut === "BROUILLON" && estDeclarant) {
@@ -644,7 +762,7 @@ function BoutonsAction({ incident, user, isQhseOuAdmin, enCours, onAction }) {
     );
   }
 
-  if (incident.statut === "OUVERT" && isQhseOuAdmin) {
+  if (incident.statut === "OUVERT" && isQhse) {
     return (
       <div className="flex items-center gap-1.5">
         <button
@@ -656,7 +774,7 @@ function BoutonsAction({ incident, user, isQhseOuAdmin, enCours, onAction }) {
           {enCours ? "…" : "Valider"}
         </button>
         <button
-          onClick={() => onAction(incident.id, "rejeter")}
+          onClick={() => onRejeter(incident)}
           disabled={enCours}
           className="px-2.5 py-1 text-xs font-semibold rounded-md border transition-colors disabled:opacity-50 hover:bg-red-50"
           style={{ borderColor: "#DC2626", color: "#DC2626" }}
@@ -667,7 +785,7 @@ function BoutonsAction({ incident, user, isQhseOuAdmin, enCours, onAction }) {
     );
   }
 
-  if (incident.statut === "EN_COURS" && isQhseOuAdmin) {
+  if (incident.statut === "EN_COURS" && isQhse) {
     return (
       <button
         onClick={() => onAction(incident.id, "cloturer")}
@@ -687,25 +805,43 @@ function BoutonsAction({ incident, user, isQhseOuAdmin, enCours, onAction }) {
 
 function IncidentsPage() {
   const user = useAuthStore((s) => s.user);
-  const { can } = useRole();
-  const isQhseOuAdmin = can("ADMIN", "RESPONSABLE_QHSE");
+  const { isQhse } = useRole();
 
-  const [incidents,    setIncidents]    = useState([]);
-  const [sites,        setSites]        = useState([]);
-  const [chargement,   setChargement]   = useState(true);
-  const [showWizard,   setShowWizard]   = useState(false);
-  const [erreurAction, setErreurAction] = useState("");
-  const [actionEnCours, setActionEnCours] = useState(null);
+  const [incidents,      setIncidents]      = useState([]);
+  const [sites,          setSites]          = useState([]);
+  const [chargement,     setChargement]     = useState(true);
+  const [showWizard,     setShowWizard]     = useState(false);
+  const [erreurAction,   setErreurAction]   = useState("");
+  const [actionEnCours,  setActionEnCours]  = useState(null);
+  const [incidentRejet,  setIncidentRejet]  = useState(null);
+
+  // Filtres
+  const [filtreStatut,  setFiltreStatut]  = useState("");
+  const [filtreType,    setFiltreType]    = useState("");
+  const [filtreGravite, setFiltreGravite] = useState("");
+
+  // Pagination
+  const [page,       setPage]       = useState(1);
+  const [total,      setTotal]      = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     document.title = "CONFORYS — Incidents";
     return () => { document.title = "CONFORYS"; };
   }, []);
 
-  const charger = async () => {
+  // charger accepte des overrides pour éviter les décalages liés aux mises à jour asynchrones de l'état React
+  const charger = async ({ statut = filtreStatut, type = filtreType, gravite = filtreGravite, pg = page } = {}) => {
+    setChargement(true);
     try {
-      const res = await api.get("/incidents");
-      setIncidents(res.data.data || []);
+      const params = { page: pg, limit: 20 };
+      if (statut)  params.statut  = statut;
+      if (type)    params.type    = type;
+      if (gravite) params.gravite = gravite;
+      const res = await api.get("/incidents", { params });
+      setIncidents(res.data.data       || []);
+      setTotal(res.data.total          || 0);
+      setTotalPages(res.data.totalPages || 1);
     } catch (e) {
       console.error("Erreur chargement incidents:", e);
     } finally {
@@ -718,26 +854,74 @@ function IncidentsPage() {
     api.get("/sites").then((r) => setSites(r.data.data || [])).catch(() => {});
   }, []);
 
-  const effectuerAction = async (incidentId, action) => {
+  // ── Gestionnaires de filtres ───────────────────────────────────────────────
+
+  const changerFiltre = (clé, val, setFn) => {
+    setFn(val);
+    setPage(1);
+    charger({
+      statut:  clé === "statut"  ? val : filtreStatut,
+      type:    clé === "type"    ? val : filtreType,
+      gravite: clé === "gravite" ? val : filtreGravite,
+      pg: 1,
+    });
+  };
+
+  const reinitialiserFiltres = () => {
+    setFiltreStatut(""); setFiltreType(""); setFiltreGravite("");
+    setPage(1);
+    charger({ statut: "", type: "", gravite: "", pg: 1 });
+  };
+
+  const changerPage = (pg) => {
+    setPage(pg);
+    charger({ pg });
+  };
+
+  // ── Actions workflow ───────────────────────────────────────────────────────
+
+  const LIBELLES_ACTION = {
+    soumettre: "Incident soumis pour validation",
+    valider:   "Incident validé",
+    rejeter:   "Incident rejeté",
+    cloturer:  "Incident clôturé",
+  };
+
+  const effectuerAction = async (incidentId, action, body = {}) => {
     setErreurAction("");
     setActionEnCours({ id: incidentId, action });
     try {
-      await api.put(`/incidents/${incidentId}/${action}`);
+      await api.put(`/incidents/${incidentId}/${action}`, body);
+      toast.success(LIBELLES_ACTION[action] ?? "Action effectuée");
       await charger();
     } catch (err) {
-      setErreurAction(
-        err.response?.data?.message || `Erreur lors de l'action "${action}".`
-      );
+      const msg = err.response?.data?.message || `Erreur lors de l'action "${action}".`;
+      setErreurAction(msg);
+      toast.error(msg);
     } finally {
       setActionEnCours(null);
     }
   };
 
+  const confirmerRejet = async (motifRejet) => {
+    if (!incidentRejet) return;
+    await effectuerAction(incidentRejet.id, "rejeter", { motifRejet });
+    setIncidentRejet(null);
+  };
+
+  const selectCls =
+    "px-3 py-2 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#1E293B]" +
+    " focus:outline-none focus:ring-2 focus:ring-[#0D2B4E]/30 focus:border-[#0D2B4E] transition";
+
+  const filtresActifs = filtreStatut || filtreType || filtreGravite;
+
   return (
     <AppLayout titre="Incidents">
-      {/* Barre supérieure */}
-      <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-[#64748B]">{incidents.length} incident(s)</p>
+      {/* ── Barre supérieure ── */}
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-[#64748B]">
+          {chargement ? "Chargement…" : `${total} incident(s)`}
+        </p>
         <button
           onClick={() => setShowWizard(true)}
           className="px-4 py-2 text-sm font-semibold text-white rounded-md transition-colors"
@@ -747,7 +931,56 @@ function IncidentsPage() {
         </button>
       </div>
 
-      {/* Bandeau d'erreur action workflow */}
+      {/* ── Barre de filtres ── */}
+      <div className="flex flex-wrap items-center gap-3 mb-5 p-4 bg-white border border-[#E2E8F0] rounded-lg">
+        <select
+          value={filtreStatut}
+          onChange={(e) => changerFiltre("statut", e.target.value, setFiltreStatut)}
+          className={selectCls}
+        >
+          <option value="">Tous les statuts</option>
+          <option value="BROUILLON">Brouillon</option>
+          <option value="OUVERT">Ouvert</option>
+          <option value="EN_COURS">En cours</option>
+          <option value="CLOS">Clos</option>
+          <option value="REJETE">Rejeté</option>
+        </select>
+
+        <select
+          value={filtreType}
+          onChange={(e) => changerFiltre("type", e.target.value, setFiltreType)}
+          className={selectCls}
+        >
+          <option value="">Tous les types</option>
+          <option value="ACCIDENT">Accident</option>
+          <option value="PRESQU_ACCIDENT">Presqu'accident</option>
+          <option value="SITUATION_DANGEREUSE">Situation dangereuse</option>
+          <option value="INCIDENT_ENVIRONNEMENTAL">Incident environnemental</option>
+        </select>
+
+        <select
+          value={filtreGravite}
+          onChange={(e) => changerFiltre("gravite", e.target.value, setFiltreGravite)}
+          className={selectCls}
+        >
+          <option value="">Toutes les gravités</option>
+          <option value="FAIBLE">Faible</option>
+          <option value="MOYEN">Moyen</option>
+          <option value="GRAVE">Grave</option>
+          <option value="CRITIQUE">Critique</option>
+        </select>
+
+        {filtresActifs && (
+          <button
+            onClick={reinitialiserFiltres}
+            className="text-xs text-[#64748B] hover:text-[#1E293B] underline transition-colors"
+          >
+            Réinitialiser les filtres
+          </button>
+        )}
+      </div>
+
+      {/* ── Bandeau d'erreur workflow ── */}
       {erreurAction && (
         <div className="mb-4 p-3 text-sm text-[#DC2626] bg-red-50 border border-red-200 rounded-md flex items-center justify-between">
           <span>{erreurAction}</span>
@@ -760,12 +993,13 @@ function IncidentsPage() {
         </div>
       )}
 
-      {/* Tableau */}
+      {/* ── Tableau ── */}
       {chargement ? (
         <p className="text-sm text-[#64748B]">Chargement…</p>
       ) : (
         <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[700px] text-sm">
             <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
               <tr>
                 {["Référence", "Type", "Gravité", "Statut", "Date", "Lieu", "Actions"].map((h) => (
@@ -782,7 +1016,9 @@ function IncidentsPage() {
               {incidents.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-12 text-center text-[#94A3B8]">
-                    Aucun incident enregistré
+                    {filtresActifs
+                      ? "Aucun incident ne correspond aux filtres sélectionnés."
+                      : "Aucun incident enregistré."}
                   </td>
                 </tr>
               ) : (
@@ -792,8 +1028,13 @@ function IncidentsPage() {
                     : null;
                   return (
                     <tr key={inc.id} className="hover:bg-[#F8FAFC] transition-colors">
-                      <td className="px-4 py-3 font-semibold text-[#0D2B4E] text-xs whitespace-nowrap">
-                        {inc.numeroReference}
+                      <td className="px-4 py-3 text-xs whitespace-nowrap">
+                        <Link
+                          to={`/incidents/${inc.id}`}
+                          className="font-semibold text-[#0D2B4E] hover:underline"
+                        >
+                          {inc.numeroReference}
+                        </Link>
                       </td>
                       <td className="px-4 py-3 text-[#475569]">
                         {LABELS_TYPE[inc.type] ?? inc.type}
@@ -816,9 +1057,10 @@ function IncidentsPage() {
                         <BoutonsAction
                           incident={inc}
                           user={user}
-                          isQhseOuAdmin={isQhseOuAdmin}
+                          isQhse={isQhse}
                           enCours={!!boutonEnCours}
                           onAction={effectuerAction}
+                          onRejeter={setIncidentRejet}
                         />
                       </td>
                     </tr>
@@ -827,14 +1069,48 @@ function IncidentsPage() {
               )}
             </tbody>
           </table>
+          </div>
+
+          {/* ── Pagination ── */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-[#E2E8F0] bg-[#F8FAFC]">
+              <p className="text-xs text-[#64748B]">
+                Page {page} / {totalPages} — {total} résultat(s)
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => changerPage(page - 1)}
+                  disabled={page === 1}
+                  className="px-3 py-1.5 text-xs font-medium border border-[#E2E8F0] rounded-md text-[#475569] hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  ← Précédent
+                </button>
+                <button
+                  onClick={() => changerPage(page + 1)}
+                  disabled={page === totalPages}
+                  className="px-3 py-1.5 text-xs font-medium border border-[#E2E8F0] rounded-md text-[#475569] hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Suivant →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
+      )}
+
+      {/* Modale de rejet */}
+      {incidentRejet && (
+        <ModalRejeter
+          incident={incidentRejet}
+          onConfirm={confirmerRejet}
+          onClose={() => setIncidentRejet(null)}
+        />
       )}
 
       {/* Wizard de déclaration */}
       {showWizard && (
         <IncidentWizard
           sites={sites}
-          user={user}
           onSuccess={() => { setShowWizard(false); charger(); }}
           onClose={() => setShowWizard(false)}
         />

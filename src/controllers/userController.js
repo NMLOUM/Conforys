@@ -1,7 +1,6 @@
-// Importation de l'instance Prisma partagée (connexion à la base)
-const prisma = require("../config/prisma");
-// Importation de bcrypt pour hacher les mots de passe
-const bcrypt = require("bcrypt");
+const prisma  = require("../config/prisma");
+const bcrypt  = require("bcrypt");
+const { handleErreur } = require("../utils/handleErreur");
 
 // Fonction qui récupère TOUS les utilisateurs
 const getAllUsers = async (req, res) => {
@@ -16,7 +15,7 @@ const getAllUsers = async (req, res) => {
     res.status(200).json({ success: true, data: users });
   } catch (error) {
     // En cas d'erreur, réponse d'erreur serveur (500)
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -41,7 +40,7 @@ const createUser = async (req, res) => {
     res.status(201).json({ success: true, data: userSansPassword });
   } catch (error) {
     // En cas d'erreur, réponse d'erreur serveur (500)
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -51,14 +50,15 @@ const updateUser = async (req, res) => {
     // Récupération de l'identifiant depuis l'URL (/api/users/:id)
     const { id } = req.params;
     // Extraction des champs modifiables envoyés dans le corps
-    const { nom, prenom, email, password, role } = req.body;
+    const { nom, prenom, email, password, role, actif } = req.body;
 
     // Construction de l'objet de mise à jour (uniquement les champs fournis)
     const dataToUpdate = {};
-    if (nom !== undefined) dataToUpdate.nom = nom;
+    if (nom !== undefined)   dataToUpdate.nom   = nom;
     if (prenom !== undefined) dataToUpdate.prenom = prenom;
-    if (email !== undefined) dataToUpdate.email = email;
-    if (role !== undefined) dataToUpdate.role = role;
+    if (email !== undefined)  dataToUpdate.email  = email;
+    if (role !== undefined)   dataToUpdate.role   = role;
+    if (actif !== undefined)  dataToUpdate.actif  = actif;
 
     // Si un nouveau mot de passe est fourni, on le hache avant de le stocker
     if (password !== undefined) {
@@ -79,7 +79,7 @@ const updateUser = async (req, res) => {
     if (error.code === "P2025") {
       return res.status(404).json({ success: false, message: "Utilisateur introuvable." });
     }
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -99,7 +99,7 @@ const deleteUser = async (req, res) => {
     if (error.code === "P2025") {
       return res.status(404).json({ success: false, message: "Utilisateur introuvable." });
     }
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 

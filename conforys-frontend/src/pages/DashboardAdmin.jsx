@@ -19,14 +19,10 @@ function KpiCard({ label, value, sub, subColor = "text-[#64748B]", valueColor = 
     </div>
   );
 }
-
-// â”€â”€ Accès rapides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// L'ADMIN gère uniquement les utilisateurs et peut consulter les incidents (lecture)
 const ACCES = [
-  { label: "Utilisateurs",  to: "/users",      desc: "Gérer les comptes" },
-  { label: "Incidents",     to: "/incidents",   desc: "Tous les incidents" },
-  { label: "Audits",        to: "/audits",      desc: "Planification & suivi" },
-  { label: "EPI",           to: "/epis",        desc: "Stocks & alertes" },
-  { label: "Formations",    to: "/formations",  desc: "Sessions planifiées" },
+  { label: "Utilisateurs",  to: "/users",     desc: "Gérer les comptes" },
+  { label: "Incidents",     to: "/incidents", desc: "Consulter (lecture)" },
 ];
 
 function DashboardAdmin() {
@@ -75,7 +71,7 @@ function DashboardAdmin() {
         <div className="space-y-6">
 
           {/* KPIs */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiCard
               label="Utilisateurs"
               value={nbUsers ?? "—"}
@@ -108,7 +104,7 @@ function DashboardAdmin() {
           {/* Accès rapides */}
           <div className="bg-white border border-[#E2E8F0] rounded-lg p-5">
             <h2 className="text-sm font-semibold text-[#1E293B] mb-4">Accès rapides</h2>
-            <div className="grid grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {ACCES.map((a) => (
                 <button
                   key={a.to}
@@ -123,12 +119,12 @@ function DashboardAdmin() {
           </div>
 
           {/* Graphiques + Alertes */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white border border-[#E2E8F0] rounded-lg p-5">
               <h2 className="text-sm font-semibold text-[#1E293B] mb-4">Incidents par gravité</h2>
               <GraviteChart data={stats?.parGravite ?? []} />
             </div>
-            <div className="col-span-2">
+            <div className="md:col-span-2">
               <AlertesCritiques alertes={stats?.alertes ?? []} />
             </div>
           </div>
@@ -138,7 +134,8 @@ function DashboardAdmin() {
             <div className="px-5 py-4 border-b border-[#E2E8F0]">
               <h2 className="text-sm font-semibold text-[#1E293B]">Incidents récents</h2>
             </div>
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[600px] text-sm">
               <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                 <tr>
                   {["Référence", "Type", "Site", "Déclaré par", "Gravité", "Statut"].map((h) => (
@@ -171,6 +168,7 @@ function DashboardAdmin() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
 
         </div>
