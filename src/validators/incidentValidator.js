@@ -14,10 +14,10 @@ const incidentSchema = z.object({
     .min(10, "La description doit faire au moins 10 caractères."),
   dateIncident: z
     .string({ required_error: "La date de l'incident est obligatoire." })
-    .min(1, "La date de l'incident est obligatoire."),
-  declareParId: z
-    .string({ required_error: "Le déclarant est obligatoire." })
-    .uuid("Identifiant déclarant invalide."),
+    .min(1, "La date de l'incident est obligatoire.")
+    .refine((val) => !isNaN(Date.parse(val)), {
+      message: "La date de l'incident est invalide.",
+    }),
   siteId: z
     .string({ required_error: "Sélectionnez un site." })
     .uuid("Sélectionnez un site valide."),

@@ -15,9 +15,9 @@ router.get("/alertes", protect, getEpisEnAlerte);
 router.get("/",        protect, getAllEpis);
 router.get("/:id",     protect, getEpiById);
 
-// Écritures  →  ADMIN et RESPONSABLE_QHSE
-router.post("/",      protect, authorize("ADMIN", "RESPONSABLE_QHSE"), validate(epiSchema), createEpi);
-router.put("/:id",    protect, authorize("ADMIN", "RESPONSABLE_QHSE"), updateEpi);
-router.delete("/:id", protect, authorize("ADMIN", "RESPONSABLE_QHSE"), deleteEpi);
+// Écritures  →  RESPONSABLE_QHSE uniquement (l'ADMIN gère les utilisateurs/sites, pas le métier QHSE)
+router.post("/",      protect, authorize("RESPONSABLE_QHSE"), validate(epiSchema), createEpi);
+router.put("/:id",    protect, authorize("RESPONSABLE_QHSE"), updateEpi);
+router.delete("/:id", protect, authorize("RESPONSABLE_QHSE"), deleteEpi);
 
 module.exports = router;

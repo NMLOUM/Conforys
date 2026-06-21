@@ -13,9 +13,9 @@ router.get("/expirantes", protect, getHabilitationsExpirantes);
 router.get("/",           protect, getAllHabilitations);
 router.get("/:id",        protect, getHabilitationById);
 
-// Écritures  →  ADMIN et RESPONSABLE_QHSE
-router.post("/",      protect, authorize("ADMIN", "RESPONSABLE_QHSE"), createHabilitation);
-router.put("/:id",    protect, authorize("ADMIN", "RESPONSABLE_QHSE"), updateHabilitation);
-router.delete("/:id", protect, authorize("ADMIN", "RESPONSABLE_QHSE"), deleteHabilitation);
+// Écritures  →  RESPONSABLE_QHSE uniquement
+router.post("/",      protect, authorize("RESPONSABLE_QHSE"), createHabilitation);
+router.put("/:id",    protect, authorize("RESPONSABLE_QHSE"), updateHabilitation);
+router.delete("/:id", protect, authorize("RESPONSABLE_QHSE"), deleteHabilitation);
 
 module.exports = router;

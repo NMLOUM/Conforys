@@ -13,9 +13,9 @@ const { auditSchema } = require("../validators/auditValidator");
 router.get("/",    protect, getAllAudits);
 router.get("/:id", protect, getAuditById);
 
-// Écritures  →  ADMIN et RESPONSABLE_QHSE
-router.post("/",      protect, authorize("ADMIN", "RESPONSABLE_QHSE"), validate(auditSchema), createAudit);
-router.put("/:id",    protect, authorize("ADMIN", "RESPONSABLE_QHSE"), updateAudit);
-router.delete("/:id", protect, authorize("ADMIN", "RESPONSABLE_QHSE"), deleteAudit);
+// Écritures  →  RESPONSABLE_QHSE uniquement
+router.post("/",      protect, authorize("RESPONSABLE_QHSE"), validate(auditSchema), createAudit);
+router.put("/:id",    protect, authorize("RESPONSABLE_QHSE"), updateAudit);
+router.delete("/:id", protect, authorize("RESPONSABLE_QHSE"), deleteAudit);
 
 module.exports = router;

@@ -51,14 +51,16 @@ model User {
   entrepriseId String
 
   // Relation : incidents déclarés par cet utilisateur (employé déclarant)
-  incidentsDeclares Incident[]     @relation("IncidentsDeclares")
+  incidentsDeclares Incident[]        @relation("IncidentsDeclares")
   // Relation : incidents validés par cet utilisateur (responsable QHSE)
-  incidentsValides  Incident[]     @relation("IncidentsValides")
+  incidentsValides  Incident[]        @relation("IncidentsValides")
   audits            Audit[]
   // Relation many-to-many : formations auxquelles l'utilisateur participe
-  formations        Formation[]    @relation("ParticipantsFormation")
+  formations        Formation[]       @relation("ParticipantsFormation")
   // Relation : habilitations détenues par cet utilisateur
   habilitations     Habilitation[]
+  // Relation : actions correctives assignées à cet utilisateur
+  actionsAssignees  ActionCorrective[] @relation("ActionsAssignees")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -126,6 +128,7 @@ model Incident {
   dateIncident    DateTime        @map("date_incident")
   dateDeclaration DateTime        @default(now()) @map("date_declaration")
   dateCloture     DateTime?       @map("date_cloture")
+  motifRejet      String?         @map("motif_rejet")
 
   declarePar   User    @relation("IncidentsDeclares", fields: [declareParId], references: [id])
   declareParId String  @map("declare_par_id")
@@ -136,10 +139,80 @@ model Incident {
   site         Site    @relation(fields: [siteId], references: [id])
   siteId       String  @map("site_id")
 
+  // Relation : actions correctives liées à cet incident
+  actionsCorrectives ActionCorrective[]
+  // Relation : pièces jointes liées à cet incident
+  piecesJointes      PieceJointe[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("incidents")
+}
+
+// ─────────────────────────────────────────────
+//  MODULE 2b : ACTIONS CORRECTIVES (CAPA)
+// ─────────────────────────────────────────────
+
+enum PrioriteAction {
+  FAIBLE
+  MOYEN
+  ELEVE
+  CRITIQUE
+}
+
+enum StatutAction {
+  A_FAIRE
+  EN_COURS
+  TERMINE
+  ANNULE
+}
+
+model ActionCorrective {
+  id                 String         @id @default(uuid())
+  description        String
+  priorite           PrioriteAction @default(MOYEN)
+  statut             StatutAction   @default(A_FAIRE)
+  dateLimite         DateTime?      @map("date_limite")
+  dateCloture        DateTime?      @map("date_cloture")
+  commentaireCloture String?        @map("commentaire_cloture")
+
+  // Relation : liée à un incident (suppression en cascade)
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  incidentId String   @map("incident_id")
+
+  // Relation : responsable assigné
+  responsable   User   @relation("ActionsAssignees", fields: [responsableId], references: [id])
+  responsableId String @map("responsable_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@map("actions_correctives")
+}
+
+// ─────────────────────────────────────────────
+//  MODULE 2c : PIÈCES JOINTES DES INCIDENTS
+// ─────────────────────────────────────────────
+
+enum TypePieceJointe {
+  IMAGE
+  DOCUMENT
+}
+
+model PieceJointe {
+  id       String          @id @default(uuid())
+  url      String                              // URL hébergée sur ImgBB
+  nom      String?                             // Nom original du fichier
+  type     TypePieceJointe @default(IMAGE)
+
+  // Relation : liée à un incident (suppression en cascade)
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  incidentId String   @map("incident_id")
+
+  dateAjout DateTime @default(now()) @map("date_ajout")
+
+  @@map("pieces_jointes")
 }
 
 // ─────────────────────────────────────────────

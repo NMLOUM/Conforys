@@ -1,19 +1,20 @@
-// Importation du service Incidents (la logique métier)
 const incidentService = require("../services/incidentService");
+const { handleErreur } = require("../utils/handleErreur");
 
-// Utilitaire : centralise la gestion des erreurs métier (400/403) vs erreurs système (500)
-const handleErreur = (res, error) => {
-  const status = error.statusCode || 500;
-  res.status(status).json({ success: false, message: error.message });
-};
-
-// Récupère tous les incidents
+// Récupère les incidents avec filtres (?statut=&type=&gravite=) et pagination (?page=&limit=)
 const getAllIncidents = async (req, res) => {
   try {
-    const incidents = await incidentService.getAllIncidents();
-    res.status(200).json({ success: true, data: incidents });
+    const { userId, role, entrepriseId } = req.user;
+    const { statut, type, gravite } = req.query;
+    const page  = parseInt(req.query.page,  10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const result = await incidentService.getAllIncidents(
+      userId, role, entrepriseId,
+      { statut, type, gravite, page, limit }
+    );
+    res.status(200).json({ success: true, ...result });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -21,23 +22,19 @@ const getAllIncidents = async (req, res) => {
 const getIncidentById = async (req, res) => {
   try {
     const incident = await incidentService.getIncidentById(req.params.id);
-    // Si aucun incident trouvé avec cet id
     if (!incident) {
-      return res.status(404).json({
-        success: false,
-        message: "Incident introuvable.",
-      });
+      return res.status(404).json({ success: false, message: "Incident introuvable." });
     }
     res.status(200).json({ success: true, data: incident });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
-// Crée un nouvel incident
+// Crée un nouvel incident — le déclarant est tiré du token, jamais du corps
 const createIncident = async (req, res) => {
   try {
-    const incident = await incidentService.createIncident(req.body);
+    const incident = await incidentService.createIncident(req.body, req.user.userId);
     res.status(201).json({ success: true, data: incident });
   } catch (error) {
     handleErreur(res, error);
@@ -50,7 +47,7 @@ const updateIncident = async (req, res) => {
     const incident = await incidentService.updateIncident(req.params.id, req.body);
     res.status(200).json({ success: true, data: incident });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -60,7 +57,7 @@ const deleteIncident = async (req, res) => {
     await incidentService.deleteIncident(req.params.id);
     res.status(200).json({ success: true, message: "Incident supprimé." });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -86,10 +83,10 @@ const valider = async (req, res) => {
   }
 };
 
-// OUVERT → REJETE (QHSE/ADMIN)
+// OUVERT → REJETE (QHSE/ADMIN) — motif obligatoire dans le corps
 const rejeter = async (req, res) => {
   try {
-    const incident = await incidentService.rejeter(req.params.id);
+    const incident = await incidentService.rejeter(req.params.id, req.body.motifRejet);
     res.status(200).json({ success: true, data: incident });
   } catch (error) {
     handleErreur(res, error);

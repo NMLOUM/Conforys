@@ -9,31 +9,51 @@ class ErreurMetier extends Error {
   }
 }
 
-// Génère un numéro de référence unique : INC-2026-0001
-const genererReference = async () => {
+// Génère un numéro de référence unique à l'intérieur d'une transaction
+// (tx = client Prisma normal ou transactionnel)
+const genererReference = async (tx) => {
   const annee = new Date().getFullYear();
-  // Cherche la référence la plus haute de l'année en cours
-  // (résistant aux suppressions : on ne compte pas, on lit le max réel)
-  const dernier = await prisma.incident.findFirst({
+  const dernier = await tx.incident.findFirst({
     where: { numeroReference: { startsWith: `INC-${annee}-` } },
     orderBy: { numeroReference: "desc" },
   });
-  // Extrait le compteur depuis "INC-2026-0003" → 3, ou démarre à 0
   const dernierNumero = dernier
     ? parseInt(dernier.numeroReference.split("-")[2], 10)
     : 0;
   return `INC-${annee}-${String(dernierNumero + 1).padStart(4, "0")}`;
 };
 
-// Récupère tous les incidents (avec déclarant et site)
-const getAllIncidents = async () => {
-  return await prisma.incident.findMany({
-    include: {
-      declarePar: { select: { id: true, nom: true, prenom: true, email: true } },
-      site: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+// Récupère les incidents avec filtrage par rôle, filtres optionnels et pagination
+const getAllIncidents = async (userId, role, entrepriseId, { statut, type, gravite, page = 1, limit = 20 } = {}) => {
+  const scopeWhere =
+    role === "EMPLOYE"
+      ? { declareParId: userId }
+      : { declarePar: { entrepriseId } };
+
+  const where = {
+    ...scopeWhere,
+    ...(statut  && { statut }),
+    ...(type    && { type }),
+    ...(gravite && { gravite }),
+  };
+
+  const skip = (page - 1) * limit;
+
+  const [incidents, total] = await Promise.all([
+    prisma.incident.findMany({
+      where,
+      include: {
+        declarePar: { select: { id: true, nom: true, prenom: true, email: true } },
+        site: true,
+      },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    }),
+    prisma.incident.count({ where }),
+  ]);
+
+  return { data: incidents, total, page, totalPages: Math.ceil(total / limit) || 1 };
 };
 
 // Récupère un incident par son id
@@ -48,30 +68,41 @@ const getIncidentById = async (id) => {
   });
 };
 
-// Crée un nouvel incident
-const createIncident = async (data) => {
-  // La date de l'incident ne peut pas être dans le futur
+// Crée un nouvel incident dans une transaction atomique avec retry anti-collision.
+// La génération de la référence et l'insertion sont dans le même $transaction :
+// si deux requêtes simultanées génèrent la même référence, la contrainte @unique
+// déclenche une erreur P2002 sur la seconde — on réessaie jusqu'à 3 fois.
+const createIncident = async (data, userId) => {
   if (new Date(data.dateIncident) > new Date()) {
     throw new ErreurMetier("La date de l'incident ne peut pas être dans le futur.");
   }
 
-  const numeroReference = await genererReference();
-
-  return await prisma.incident.create({
-    data: {
-      numeroReference,
-      type: data.type,
-      description: data.description,
-      gravite: data.gravite,
-      latitude: data.latitude,
-      longitude: data.longitude,
-      adresseLisible: data.adresseLisible,
-      photoUrl: data.photoUrl,
-      dateIncident: new Date(data.dateIncident),
-      declareParId: data.declareParId,
-      siteId: data.siteId,
-    },
-  });
+  for (let tentative = 0; tentative < 3; tentative++) {
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const numeroReference = await genererReference(tx);
+        return await tx.incident.create({
+          data: {
+            numeroReference,
+            type:           data.type,
+            description:    data.description,
+            gravite:        data.gravite,
+            latitude:       data.latitude,
+            longitude:      data.longitude,
+            adresseLisible: data.adresseLisible,
+            photoUrl:       data.photoUrl,
+            dateIncident:   new Date(data.dateIncident),
+            declareParId:   userId,
+            siteId:         data.siteId,
+          },
+        });
+      });
+    } catch (err) {
+      // P2002 = violation contrainte unique sur numeroReference (collision simultanée)
+      if (err.code === "P2002" && tentative < 2) continue;
+      throw err;
+    }
+  }
 };
 
 // Met à jour un incident
@@ -123,8 +154,11 @@ const valider = async (id, userId) => {
   });
 };
 
-// OUVERT → REJETE : un responsable QHSE/ADMIN rejette l'incident
-const rejeter = async (id) => {
+// OUVERT → REJETE : un responsable QHSE/ADMIN rejette l'incident avec un motif obligatoire
+const rejeter = async (id, motifRejet) => {
+  if (!motifRejet || motifRejet.trim().length < 5)
+    throw new ErreurMetier("Le motif de rejet est obligatoire (min. 5 caractères).");
+
   const incident = await getIncidentById(id);
   if (!incident) throw new ErreurMetier("Incident introuvable.", 404);
   if (incident.statut !== "OUVERT")
@@ -132,7 +166,7 @@ const rejeter = async (id) => {
 
   return await prisma.incident.update({
     where: { id },
-    data: { statut: "REJETE" },
+    data: { statut: "REJETE", motifRejet: motifRejet.trim() },
     include: { declarePar: { select: { id: true, nom: true, prenom: true, email: true } }, site: true },
   });
 };

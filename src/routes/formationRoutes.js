@@ -13,9 +13,9 @@ const { formationSchema } = require("../validators/formationValidator");
 router.get("/",    protect, getAllFormations);
 router.get("/:id", protect, getFormationById);
 
-// Écritures  →  ADMIN et RESPONSABLE_QHSE
-router.post("/",      protect, authorize("ADMIN", "RESPONSABLE_QHSE"), validate(formationSchema), createFormation);
-router.put("/:id",    protect, authorize("ADMIN", "RESPONSABLE_QHSE"), updateFormation);
-router.delete("/:id", protect, authorize("ADMIN", "RESPONSABLE_QHSE"), deleteFormation);
+// Écritures  →  RESPONSABLE_QHSE uniquement
+router.post("/",      protect, authorize("RESPONSABLE_QHSE"), validate(formationSchema), createFormation);
+router.put("/:id",    protect, authorize("RESPONSABLE_QHSE"), updateFormation);
+router.delete("/:id", protect, authorize("RESPONSABLE_QHSE"), deleteFormation);
 
 module.exports = router;
