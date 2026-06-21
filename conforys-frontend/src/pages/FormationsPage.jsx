@@ -6,6 +6,7 @@ import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import Badge from "../components/ui/Badge";
 import { useRole } from "../hooks/useRole";
+import { useTable } from "../hooks/useTable";
 import { formationSchema } from "../validators/formationSchema";
 
 const STATUTS = ["PLANIFIEE", "EN_COURS", "TERMINEE", "ANNULEE"];
@@ -24,6 +25,9 @@ function FormationsPage() {
     resolver: zodResolver(formationSchema),
     defaultValues: FORM_DEFAUT,
   });
+
+  const { recherche, setRecherche, page, setPage, totalPages, filtres, affiches } =
+    useTable(formations, ["titre", "formateur"]);
 
   useEffect(() => {
     document.title = "CONFORYS — Formations";
@@ -73,11 +77,16 @@ function FormationsPage() {
 
   return (
     <AppLayout titre="Formations">
-      <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-[#64748B]">{formations.length} formation(s)</p>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative flex-1 max-w-xs">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="Rechercher par titre, formateur…" value={recherche} onChange={(e) => setRecherche(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition" />
+        </div>
+        <span className="text-sm text-[#64748B] shrink-0">{filtres.length} résultat{filtres.length !== 1 ? "s" : ""}</span>
         {can("RESPONSABLE_QHSE") && (
           <button onClick={ouvrirModal}
-            className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 transition-colors">
+            className="ml-auto px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 transition-colors">
             Nouveau
           </button>
         )}
@@ -97,10 +106,12 @@ function FormationsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F1F5F9]">
-              {formations.length === 0 ? (
-                <tr><td colSpan={4} className="px-4 py-12 text-center text-[#94A3B8]">Aucune formation enregistrée</td></tr>
+              {affiches.length === 0 ? (
+                <tr><td colSpan={4} className="px-4 py-12 text-center text-[#94A3B8]">
+                  {recherche ? "Aucune formation ne correspond à la recherche." : "Aucune formation enregistrée"}
+                </td></tr>
               ) : (
-                formations.map((f) => (
+                affiches.map((f) => (
                   <tr key={f.id} className="hover:bg-[#F8FAFC] transition-colors">
                     <td className="px-4 py-3 font-medium text-[#1E293B]">{f.titre}</td>
                     <td className="px-4 py-3 text-[#64748B]">{f.formateur || "—"}</td>
@@ -114,6 +125,19 @@ function FormationsPage() {
             </tbody>
           </table>
           </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-[#E2E8F0] bg-[#F8FAFC]">
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                className="px-3 py-1.5 text-xs font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
+                ← Précédent
+              </button>
+              <span className="text-xs text-[#64748B]">Page {page} / {totalPages}</span>
+              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                className="px-3 py-1.5 text-xs font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
+                Suivant →
+              </button>
+            </div>
+          )}
         </div>
       )}
 
