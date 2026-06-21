@@ -482,6 +482,7 @@ function IncidentWizard({ sites, onSuccess, onClose }) {
   const [confirmerVisible, setConfirmerVisible] = useState(false);
 
   const form = useForm({
+    mode: "onBlur",
     resolver: zodResolver(incidentSchema),
     defaultValues: {
       type:           "",

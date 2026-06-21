@@ -20,6 +20,7 @@ function FormationsPage() {
   const [erreurForm, setErreurForm] = useState("");
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
+    mode: "onBlur",
     resolver: zodResolver(formationSchema),
     defaultValues: FORM_DEFAUT,
   });

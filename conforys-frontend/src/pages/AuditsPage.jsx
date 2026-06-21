@@ -29,6 +29,7 @@ function AuditsPage() {
   const [erreurForm, setErreurForm] = useState("");
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
+    mode: "onBlur",
     resolver: zodResolver(auditSchema),
     defaultValues: {
       titre: "", type: "SECURITE", statut: "PLANIFIE",

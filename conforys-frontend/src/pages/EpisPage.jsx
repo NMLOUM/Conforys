@@ -19,6 +19,7 @@ function EpisPage() {
   const [erreurForm, setErreurForm] = useState("");
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
+    mode: "onBlur",
     resolver: zodResolver(epiSchema),
     defaultValues: FORM_DEFAUT,
   });
