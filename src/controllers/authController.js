@@ -1,9 +1,7 @@
-// Importation de l'instance Prisma partagée (connexion à la base)
 const prisma = require("../config/prisma");
-// Importation de bcrypt pour comparer les mots de passe
 const bcrypt = require("bcrypt");
-// Importation de jsonwebtoken pour générer le token de connexion
-const jwt = require("jsonwebtoken");
+const jwt    = require("jsonwebtoken");
+const { handleErreur } = require("../utils/handleErreur");
 
 // Fonction de connexion (login)
 const login = async (req, res) => {
@@ -43,10 +41,9 @@ const login = async (req, res) => {
       });
     }
 
-    // Génération du token JWT (la "carte d'accès" de l'utilisateur connecté)
-    // Il contient l'id et le rôle, est signé avec la clé secrète, et expire en 24h
+    // Génération du token JWT — contient id, rôle et entreprise pour le filtrage côté API
     const token = jwt.sign(
-      { userId: user.id, role: user.role },
+      { userId: user.id, role: user.role, entrepriseId: user.entrepriseId },
       process.env.JWT_SECRET,
       { expiresIn: "24h" }
     );
@@ -62,11 +59,11 @@ const login = async (req, res) => {
         prenom: user.prenom,
         email: user.email,
         role: user.role,
+        entrepriseId: user.entrepriseId,
       },
     });
   } catch (error) {
-    // En cas d'erreur serveur, on renvoie une erreur 500
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 

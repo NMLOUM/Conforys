@@ -1,5 +1,5 @@
-// Importation du service Habilitations (la logique métier)
 const habilitationService = require("../services/habilitationService");
+const { handleErreur } = require("../utils/handleErreur");
 
 // Récupère toutes les habilitations
 const getAllHabilitations = async (req, res) => {
@@ -7,7 +7,7 @@ const getAllHabilitations = async (req, res) => {
     const habilitations = await habilitationService.getAllHabilitations();
     res.status(200).json({ success: true, data: habilitations });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -17,7 +17,7 @@ const getHabilitationsExpirantes = async (req, res) => {
     const habilitations = await habilitationService.getHabilitationsExpirantes();
     res.status(200).json({ success: true, data: habilitations });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -30,7 +30,7 @@ const getHabilitationById = async (req, res) => {
     }
     res.status(200).json({ success: true, data: habilitation });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -40,7 +40,7 @@ const createHabilitation = async (req, res) => {
     const habilitation = await habilitationService.createHabilitation(req.body);
     res.status(201).json({ success: true, data: habilitation });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -53,7 +53,7 @@ const updateHabilitation = async (req, res) => {
     if (error.code === "P2025") {
       return res.status(404).json({ success: false, message: "Habilitation introuvable." });
     }
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -66,7 +66,7 @@ const deleteHabilitation = async (req, res) => {
     if (error.code === "P2025") {
       return res.status(404).json({ success: false, message: "Habilitation introuvable." });
     }
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 

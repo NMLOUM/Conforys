@@ -1,5 +1,5 @@
-// Importation du service Formations (la logique métier)
 const formationService = require("../services/formationService");
+const { handleErreur } = require("../utils/handleErreur");
 
 // Récupère toutes les formations
 const getAllFormations = async (req, res) => {
@@ -7,7 +7,7 @@ const getAllFormations = async (req, res) => {
     const formations = await formationService.getAllFormations();
     res.status(200).json({ success: true, data: formations });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -20,7 +20,7 @@ const getFormationById = async (req, res) => {
     }
     res.status(200).json({ success: true, data: formation });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -30,7 +30,7 @@ const createFormation = async (req, res) => {
     const formation = await formationService.createFormation(req.body);
     res.status(201).json({ success: true, data: formation });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -43,7 +43,7 @@ const updateFormation = async (req, res) => {
     if (error.code === "P2025") {
       return res.status(404).json({ success: false, message: "Formation introuvable." });
     }
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -56,7 +56,7 @@ const deleteFormation = async (req, res) => {
     if (error.code === "P2025") {
       return res.status(404).json({ success: false, message: "Formation introuvable." });
     }
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 

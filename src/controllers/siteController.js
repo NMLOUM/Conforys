@@ -1,11 +1,12 @@
 const siteService = require("../services/siteService");
+const { handleErreur } = require("../utils/handleErreur");
 
 const getAllSites = async (req, res) => {
   try {
     const sites = await siteService.getAllSites();
     res.json({ success: true, data: sites });
-  } catch (e) {
-    res.status(500).json({ success: false, message: e.message });
+  } catch (error) {
+    handleErreur(res, error);
   }
 };
 

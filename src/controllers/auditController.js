@@ -1,5 +1,5 @@
-// Importation du service Audits (la logique métier)
 const auditService = require("../services/auditService");
+const { handleErreur } = require("../utils/handleErreur");
 
 // Récupère tous les audits
 const getAllAudits = async (req, res) => {
@@ -7,7 +7,7 @@ const getAllAudits = async (req, res) => {
     const audits = await auditService.getAllAudits();
     res.status(200).json({ success: true, data: audits });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -23,7 +23,7 @@ const getAuditById = async (req, res) => {
     }
     res.status(200).json({ success: true, data: audit });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -33,7 +33,7 @@ const createAudit = async (req, res) => {
     const audit = await auditService.createAudit(req.body);
     res.status(201).json({ success: true, data: audit });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -43,7 +43,7 @@ const updateAudit = async (req, res) => {
     const audit = await auditService.updateAudit(req.params.id, req.body);
     res.status(200).json({ success: true, data: audit });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -53,7 +53,7 @@ const deleteAudit = async (req, res) => {
     await auditService.deleteAudit(req.params.id);
     res.status(200).json({ success: true, message: "Audit supprimé." });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 

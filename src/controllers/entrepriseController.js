@@ -1,5 +1,5 @@
-// Importation de l'instance Prisma partagée (connexion à la base)
 const prisma = require("../config/prisma");
+const { handleErreur } = require("../utils/handleErreur");
 
 // Fonction qui récupère TOUTES les entreprises
 const getAllEntreprises = async (req, res) => {
@@ -11,7 +11,7 @@ const getAllEntreprises = async (req, res) => {
     // Réponse de succès (200) avec la liste des entreprises
     res.status(200).json({ success: true, data: entreprises });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -35,7 +35,7 @@ const getEntrepriseById = async (req, res) => {
     // Réponse de succès avec l'entreprise trouvée
     res.status(200).json({ success: true, data: entreprise });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -53,7 +53,7 @@ const createEntreprise = async (req, res) => {
     // Réponse de succès (201 = ressource créée)
     res.status(201).json({ success: true, data: newEntreprise });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -86,7 +86,7 @@ const updateEntreprise = async (req, res) => {
     if (error.code === "P2025") {
       return res.status(404).json({ success: false, message: "Entreprise introuvable." });
     }
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
@@ -113,7 +113,7 @@ const deleteEntreprise = async (req, res) => {
         message: "Impossible de supprimer cette entreprise : elle contient des utilisateurs.",
       });
     }
-    res.status(500).json({ success: false, message: error.message });
+    handleErreur(res, error);
   }
 };
 
