@@ -86,7 +86,7 @@ const valider = async (req, res) => {
 // OUVERT → REJETE (QHSE/ADMIN) — motif obligatoire dans le corps
 const rejeter = async (req, res) => {
   try {
-    const incident = await incidentService.rejeter(req.params.id, req.body.motifRejet);
+    const incident = await incidentService.rejeter(req.params.id, req.body.motifRejet, req.user.userId);
     res.status(200).json({ success: true, data: incident });
   } catch (error) {
     handleErreur(res, error);
@@ -96,7 +96,7 @@ const rejeter = async (req, res) => {
 // EN_COURS → CLOS (QHSE/ADMIN, remplit dateCloture)
 const cloturer = async (req, res) => {
   try {
-    const incident = await incidentService.cloturer(req.params.id);
+    const incident = await incidentService.cloturer(req.params.id, req.user.userId);
     res.status(200).json({ success: true, data: incident });
   } catch (error) {
     handleErreur(res, error);

@@ -1,5 +1,15 @@
 // Importation de l'instance Prisma partagée (connexion à la base)
 const prisma = require("../config/prisma");
+const { enregistrer } = require("./historiqueService");
+
+// Labels lisibles pour les statuts (utilisés dans les messages d'historique)
+const LABEL_STATUT = {
+  BROUILLON: "Brouillon",
+  OUVERT:    "Ouvert",
+  EN_COURS:  "En cours",
+  CLOS:      "Clôturé",
+  REJETE:    "Rejeté",
+};
 
 // Erreur métier avec code HTTP — permet aux contrôleurs de renvoyer 400/403 au lieu de 500
 class ErreurMetier extends Error {
@@ -79,7 +89,7 @@ const createIncident = async (data, userId) => {
 
   for (let tentative = 0; tentative < 3; tentative++) {
     try {
-      return await prisma.$transaction(async (tx) => {
+      const incident = await prisma.$transaction(async (tx) => {
         const numeroReference = await genererReference(tx);
         return await tx.incident.create({
           data: {
@@ -97,6 +107,9 @@ const createIncident = async (data, userId) => {
           },
         });
       });
+      // Piste d'audit — après la transaction pour ne pas l'inclure dans le rollback éventuel
+      await enregistrer(incident.id, userId, "Incident déclaré", `Référence : ${incident.numeroReference}`);
+      return incident;
     } catch (err) {
       // P2002 = violation contrainte unique sur numeroReference (collision simultanée)
       if (err.code === "P2002" && tentative < 2) continue;
@@ -131,11 +144,13 @@ const soumettre = async (id, userId) => {
   if (incident.declareParId !== userId)
     throw new ErreurMetier("Seul le déclarant peut soumettre cet incident.", 403);
 
-  return await prisma.incident.update({
+  const incident = await prisma.incident.update({
     where: { id },
     data: { statut: "OUVERT" },
     include: { declarePar: { select: { id: true, nom: true, prenom: true, email: true } }, site: true },
   });
+  await enregistrer(id, userId, `Statut changé : ${LABEL_STATUT.BROUILLON} → ${LABEL_STATUT.OUVERT}`);
+  return incident;
 };
 
 // OUVERT → EN_COURS : un responsable QHSE/ADMIN valide (pas le déclarant)
@@ -147,15 +162,17 @@ const valider = async (id, userId) => {
   if (incident.declareParId === userId)
     throw new ErreurMetier("Un responsable ne peut pas valider son propre incident.", 403);
 
-  return await prisma.incident.update({
+  const incident = await prisma.incident.update({
     where: { id },
     data: { statut: "EN_COURS", valideParId: userId },
     include: { declarePar: { select: { id: true, nom: true, prenom: true, email: true } }, site: true },
   });
+  await enregistrer(id, userId, `Statut changé : ${LABEL_STATUT.OUVERT} → ${LABEL_STATUT.EN_COURS}`);
+  return incident;
 };
 
 // OUVERT → REJETE : un responsable QHSE/ADMIN rejette l'incident avec un motif obligatoire
-const rejeter = async (id, motifRejet) => {
+const rejeter = async (id, motifRejet, userId) => {
   if (!motifRejet || motifRejet.trim().length < 5)
     throw new ErreurMetier("Le motif de rejet est obligatoire (min. 5 caractères).");
 
@@ -164,25 +181,29 @@ const rejeter = async (id, motifRejet) => {
   if (incident.statut !== "OUVERT")
     throw new ErreurMetier(`Impossible de rejeter un incident en statut "${incident.statut}". Statut attendu : OUVERT.`);
 
-  return await prisma.incident.update({
+  const mis_a_jour = await prisma.incident.update({
     where: { id },
     data: { statut: "REJETE", motifRejet: motifRejet.trim() },
     include: { declarePar: { select: { id: true, nom: true, prenom: true, email: true } }, site: true },
   });
+  await enregistrer(id, userId, `Statut changé : ${LABEL_STATUT.OUVERT} → ${LABEL_STATUT.REJETE}`, `Motif : ${motifRejet.trim()}`);
+  return mis_a_jour;
 };
 
 // EN_COURS → CLOS : un responsable QHSE/ADMIN clôture l'incident
-const cloturer = async (id) => {
+const cloturer = async (id, userId) => {
   const incident = await getIncidentById(id);
   if (!incident) throw new ErreurMetier("Incident introuvable.", 404);
   if (incident.statut !== "EN_COURS")
     throw new ErreurMetier(`Impossible de clôturer un incident en statut "${incident.statut}". Statut attendu : EN_COURS.`);
 
-  return await prisma.incident.update({
+  const mis_a_jour = await prisma.incident.update({
     where: { id },
     data: { statut: "CLOS", dateCloture: new Date() },
     include: { declarePar: { select: { id: true, nom: true, prenom: true, email: true } }, site: true },
   });
+  await enregistrer(id, userId, `Statut changé : ${LABEL_STATUT.EN_COURS} → ${LABEL_STATUT.CLOS}`);
+  return mis_a_jour;
 };
 
 // Export de toutes les fonctions du service

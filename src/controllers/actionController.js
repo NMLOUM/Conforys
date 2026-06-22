@@ -36,7 +36,7 @@ const getActionsByIncident = async (req, res) => {
 // POST /api/incidents/:id/actions
 const createAction = async (req, res) => {
   try {
-    const action = await actionService.createAction(req.params.id, req.body);
+    const action = await actionService.createAction(req.params.id, req.body, req.user.userId);
     res.status(201).json({ success: true, data: action });
   } catch (error) {
     handleErreur(res, error);

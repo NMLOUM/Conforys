@@ -13,6 +13,7 @@ const { getActionsByIncident, createAction } = require("../controllers/actionCon
 const { actionSchema } = require("../validators/actionValidator");
 const { getPiecesByIncident, addPieceJointe } = require("../controllers/pieceJointeController");
 const { pieceJointeSchema } = require("../validators/pieceJointeValidator");
+const { getHistorique } = require("../controllers/historiqueController");
 
 // Lecture  →  tous les rôles authentifiés
 router.get("/",    protect, getAllIncidents);
@@ -52,6 +53,9 @@ router.post(
   validate(actionSchema),
   createAction
 );
+
+// ── Piste d'audit (lecture seule — pas de PUT/DELETE) ─────────────────────────
+router.get("/:id/historique", protect, getHistorique);
 
 // ── Pièces jointes ────────────────────────────────────────────────────────────
 // GET  /api/incidents/:id/pieces-jointes → liste des pièces jointes d'un incident

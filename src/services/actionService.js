@@ -1,4 +1,5 @@
 const prisma = require("../config/prisma");
+const { enregistrer } = require("./historiqueService");
 
 // Erreur métier avec code HTTP (400/403/404) — évite de renvoyer 500 sur des cas attendus
 class ErreurMetier extends Error {
@@ -24,11 +25,11 @@ const getActionsByIncident = async (incidentId) => {
 };
 
 // Crée une nouvelle action corrective liée à un incident
-const createAction = async (incidentId, data) => {
+const createAction = async (incidentId, data, auteurId) => {
   const incident = await prisma.incident.findUnique({ where: { id: incidentId } });
   if (!incident) throw new ErreurMetier("Incident introuvable.", 404);
 
-  return await prisma.actionCorrective.create({
+  const action = await prisma.actionCorrective.create({
     data: {
       description:  data.description,
       priorite:     data.priorite  ?? "MOYEN",
@@ -38,6 +39,8 @@ const createAction = async (incidentId, data) => {
     },
     include: INCLUDE_ACTION,
   });
+  await enregistrer(incidentId, auteurId, "Action corrective ajoutée", action.description.slice(0, 120));
+  return action;
 };
 
 // Met à jour une action (description, priorité, statut, date limite, responsable)

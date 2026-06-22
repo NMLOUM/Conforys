@@ -1,4 +1,5 @@
 const prisma = require("../config/prisma");
+const { enregistrer } = require("./historiqueService");
 
 // Erreur métier avec code HTTP (400/404) — évite de renvoyer 500 sur des cas attendus
 class ErreurMetier extends Error {
@@ -17,11 +18,11 @@ const getPiecesByIncident = async (incidentId) => {
 };
 
 // Enregistre une pièce jointe (l'URL ImgBB est fournie déjà uploadée depuis le frontend)
-const addPieceJointe = async (incidentId, data) => {
+const addPieceJointe = async (incidentId, data, auteurId) => {
   const incident = await prisma.incident.findUnique({ where: { id: incidentId } });
   if (!incident) throw new ErreurMetier("Incident introuvable.", 404);
 
-  return await prisma.pieceJointe.create({
+  const piece = await prisma.pieceJointe.create({
     data: {
       url:       data.url,
       nom:       data.nom  || null,
@@ -29,6 +30,8 @@ const addPieceJointe = async (incidentId, data) => {
       incidentId,
     },
   });
+  await enregistrer(incidentId, auteurId, "Photo ajoutée", data.nom || "sans nom");
+  return piece;
 };
 
 // Supprime une pièce jointe (le fichier distant sur ImgBB n'est pas supprimé —

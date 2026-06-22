@@ -61,6 +61,8 @@ model User {
   habilitations     Habilitation[]
   // Relation : actions correctives assignées à cet utilisateur
   actionsAssignees  ActionCorrective[] @relation("ActionsAssignees")
+  // Relation : entrées d'historique dont cet utilisateur est l'auteur
+  historiqueActions HistoriqueIncident[] @relation("HistoriqueAuteur")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -143,11 +145,35 @@ model Incident {
   actionsCorrectives ActionCorrective[]
   // Relation : pièces jointes liées à cet incident
   piecesJointes      PieceJointe[]
+  // Relation : piste d'audit (suppression en cascade avec l'incident)
+  historique         HistoriqueIncident[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("incidents")
+}
+
+// ─────────────────────────────────────────────
+//  MODULE 2a-bis : PISTE D'AUDIT (HISTORIQUE)
+// ─────────────────────────────────────────────
+
+model HistoriqueIncident {
+  id      String  @id @default(uuid())
+  action  String                          // Ex: "Incident déclaré", "Statut changé : OUVERT → EN_COURS"
+  details String?                         // Précision optionnelle (motif rejet, nom photo, etc.)
+
+  // Suppression en cascade : si l'incident est supprimé, son historique disparaît aussi
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  incidentId String   @map("incident_id")
+
+  // Auteur de l'action (lecture seule, jamais supprimé côté historique)
+  auteur   User   @relation("HistoriqueAuteur", fields: [auteurId], references: [id])
+  auteurId String @map("auteur_id")
+
+  dateAction DateTime @default(now()) @map("date_action")
+
+  @@map("historique_incidents")
 }
 
 // ─────────────────────────────────────────────

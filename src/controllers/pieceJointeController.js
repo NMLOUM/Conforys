@@ -14,7 +14,7 @@ const getPiecesByIncident = async (req, res) => {
 // POST /api/incidents/:id/pieces-jointes
 const addPieceJointe = async (req, res) => {
   try {
-    const piece = await pieceJointeService.addPieceJointe(req.params.id, req.body);
+    const piece = await pieceJointeService.addPieceJointe(req.params.id, req.body, req.user.userId);
     res.status(201).json({ success: true, data: piece });
   } catch (error) {
     handleErreur(res, error);
