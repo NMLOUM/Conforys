@@ -66,6 +66,16 @@ const cloturerAction = async (req, res) => {
   }
 };
 
+// PUT /api/actions/:id/progresser — responsable uniquement (tous rôles), A_FAIRE → EN_COURS
+const progresserAction = async (req, res) => {
+  try {
+    const action = await actionService.progresserAction(req.params.id, req.user.userId);
+    res.status(200).json({ success: true, data: action });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
 // DELETE /api/actions/:id
 const deleteAction = async (req, res) => {
   try {
@@ -83,5 +93,6 @@ module.exports = {
   createAction,
   updateAction,
   cloturerAction,
+  progresserAction,
   deleteAction,
 };

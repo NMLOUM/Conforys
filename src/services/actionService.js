@@ -91,6 +91,22 @@ const cloturerAction = async (id, commentaireCloture) => {
   });
 };
 
+// Permet au responsable assigné de démarrer son action (A_FAIRE → EN_COURS)
+const progresserAction = async (id, userId) => {
+  const action = await prisma.actionCorrective.findUnique({ where: { id } });
+  if (!action) throw new ErreurMetier("Action introuvable.", 404);
+  if (action.responsableId !== userId)
+    throw new ErreurMetier("Vous n'êtes pas responsable de cette action.", 403);
+  if (action.statut !== "A_FAIRE")
+    throw new ErreurMetier("Seules les actions « À faire » peuvent être démarrées.");
+
+  return await prisma.actionCorrective.update({
+    where: { id },
+    data:  { statut: "EN_COURS" },
+    include: INCLUDE_ACTION,
+  });
+};
+
 // Supprime définitivement une action (ADMIN uniquement)
 const deleteAction = async (id) => {
   const action = await prisma.actionCorrective.findUnique({ where: { id } });
@@ -129,6 +145,7 @@ module.exports = {
   createAction,
   updateAction,
   cloturerAction,
+  progresserAction,
   deleteAction,
   getAllActions,
   getMesActions,

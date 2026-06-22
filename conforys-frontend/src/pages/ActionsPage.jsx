@@ -238,6 +238,19 @@ function ModalModifierAction({ action, users, onSuccess, onClose }) {
 
 // ── Page principale ───────────────────────────────────────────────────────────
 
+const LABELS_STATUT = {
+  A_FAIRE:  "À faire",
+  EN_COURS: "En cours",
+  TERMINE:  "Terminé",
+  ANNULE:   "Annulé",
+};
+const LABELS_PRIORITE = {
+  FAIBLE:   "Faible",
+  MOYEN:    "Moyen",
+  ELEVE:    "Élevé",
+  CRITIQUE: "Critique",
+};
+
 function ActionsPage() {
   const { isEmploye, isQhse } = useRole();
 
@@ -248,10 +261,21 @@ function ActionsPage() {
 
   const [actionCloture, setActionCloture] = useState(null);
   const [actionModif,   setActionModif]   = useState(null);
+  const [suppressionIds, setSuppIds]      = useState(new Set());
+  const [progressIds,    setProgressIds]  = useState(new Set());
+
+  // Filtres locaux statut + priorité (appliqués avant useTable)
+  const [filtreStatut,   setFiltreStatut]   = useState("");
+  const [filtrePriorite, setFiltrePriorite] = useState("");
+
+  const actionsFiltrees = useMemo(() => {
+    return actions
+      .filter((a) => !filtreStatut   || a.statut   === filtreStatut)
+      .filter((a) => !filtrePriorite || a.priorite === filtrePriorite);
+  }, [actions, filtreStatut, filtrePriorite]);
 
   const { recherche, setRecherche, page, setPage, totalPages, filtres, affiches } =
-    useTable(actions, ["description"]);
-  const [suppressionIds, setSuppIds]      = useState(new Set());
+    useTable(actionsFiltrees, ["description"]);
 
   useEffect(() => {
     document.title = isEmploye ? "CONFORYS — Mes actions" : "CONFORYS — Actions correctives";
@@ -282,6 +306,19 @@ function ActionsPage() {
       toast.error(err.response?.data?.message || "Erreur lors de la suppression.");
     } finally {
       setSuppIds((prev) => { const s = new Set(prev); s.delete(actionId); return s; });
+    }
+  };
+
+  const progresser = async (actionId) => {
+    setProgressIds((prev) => new Set([...prev, actionId]));
+    try {
+      await api.put(`/actions/${actionId}/progresser`);
+      toast.success("Action marquée EN COURS");
+      setActions((prev) => prev.map((a) => a.id === actionId ? { ...a, statut: "EN_COURS" } : a));
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Impossible de démarrer cette action.");
+    } finally {
+      setProgressIds((prev) => { const s = new Set(prev); s.delete(actionId); return s; });
     }
   };
 
@@ -318,13 +355,29 @@ function ActionsPage() {
       )}
 
       {!chargement && !erreur && (
-        <div className="flex items-center gap-3 mb-4">
-          <div className="relative flex-1 max-w-xs">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <div className="relative flex-1 min-w-[160px] max-w-xs">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" placeholder="Rechercher une action…" value={recherche} onChange={(e) => setRecherche(e.target.value)}
               className="w-full pl-9 pr-3 py-2 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition" />
           </div>
-          <span className="text-sm text-[#64748B] shrink-0">{filtres.length} résultat{filtres.length !== 1 ? "s" : ""}</span>
+          <select value={filtreStatut} onChange={(e) => setFiltreStatut(e.target.value)}
+            className="py-2 pl-3 pr-7 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#475569] focus:outline-none focus:ring-2 focus:ring-navy/30 transition">
+            <option value="">Tous les statuts</option>
+            {Object.entries(LABELS_STATUT).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          <select value={filtrePriorite} onChange={(e) => setFiltrePriorite(e.target.value)}
+            className="py-2 pl-3 pr-7 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#475569] focus:outline-none focus:ring-2 focus:ring-navy/30 transition">
+            <option value="">Toutes priorités</option>
+            {Object.entries(LABELS_PRIORITE).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          {(filtreStatut || filtrePriorite || recherche) && (
+            <button onClick={() => { setFiltreStatut(""); setFiltrePriorite(""); setRecherche(""); }}
+              className="text-xs text-[#64748B] hover:text-[#0D2B4E] underline shrink-0">
+              Réinitialiser
+            </button>
+          )}
+          <span className="text-sm text-[#64748B] shrink-0 ml-auto">{filtres.length} résultat{filtres.length !== 1 ? "s" : ""}</span>
         </div>
       )}
 
@@ -343,13 +396,7 @@ function ActionsPage() {
               <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                 <tr>
                   {/* 5 colonnes : Priorité visible via la bordure gauche colorée */}
-                  {[
-                    "Action",
-                    "Statut",
-                    "Responsable",
-                    "Échéance",
-                    isQhse ? "Actions" : null,
-                  ].filter(Boolean).map((h) => (
+                  {["Action", "Priorité", "Statut", "Responsable", "Échéance", ""].map((h) => (
                     <th key={h}
                       className="px-5 py-3.5 text-left text-xs font-semibold text-[#64748B] uppercase tracking-wide whitespace-nowrap">
                       {h}
@@ -360,7 +407,7 @@ function ActionsPage() {
               <tbody className="divide-y divide-[#F1F5F9]">
                 {affiches.length === 0 ? (
                   <tr>
-                    <td colSpan={isQhse ? 5 : 4} className="px-5 py-16 text-center">
+                    <td colSpan={6} className="px-5 py-16 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <span className="text-3xl">✓</span>
                         <p className="text-sm text-[#94A3B8]">
@@ -375,10 +422,12 @@ function ActionsPage() {
                   </tr>
                 ) : (
                   affiches.map((action) => {
-                    const enRetard      = estEnRetard(action);
-                    const peutAgir      = isQhse && action.statut !== "TERMINE" && action.statut !== "ANNULE";
-                    const enSuppression = suppressionIds.has(action.id);
-                    const delai         = delaiRelatif(action.dateLimite);
+                    const enRetard        = estEnRetard(action);
+                    const peutAgir        = isQhse && action.statut !== "TERMINE" && action.statut !== "ANNULE";
+                    const peutCommencer   = isEmploye && action.statut === "A_FAIRE";
+                    const enSuppression   = suppressionIds.has(action.id);
+                    const enProgression   = progressIds.has(action.id);
+                    const delai           = delaiRelatif(action.dateLimite);
 
                     const accentBord = enRetard
                       ? "#DC2626"
@@ -389,17 +438,27 @@ function ActionsPage() {
                         style={{ borderLeft: `3px solid ${accentBord}` }}
                         className="hover:bg-[#F8FAFC] transition-colors">
 
-                        {/* Action — description + référence incident */}
+                        {/* Action — description + commentaire clôture + lien incident */}
                         <td className="px-5 py-4 max-w-sm">
                           <p className="text-sm font-medium text-[#1E293B] line-clamp-2 leading-snug">
                             {action.description}
                           </p>
+                          {action.commentaireCloture && (
+                            <p className="mt-1 text-xs text-[#64748B] italic line-clamp-1">
+                              Clôture : {action.commentaireCloture}
+                            </p>
+                          )}
                           {action.incident && (
                             <Link to={`/incidents/${action.incident.id}`}
                               className="mt-1 inline-flex items-center gap-1 text-xs font-mono text-[#0D2B4E] hover:underline opacity-70">
                               {action.incident.numeroReference}
                             </Link>
                           )}
+                        </td>
+
+                        {/* Priorité — badge */}
+                        <td className="px-5 py-4 whitespace-nowrap">
+                          <Badge variant={action.priorite} />
                         </td>
 
                         {/* Statut — badge + EN_RETARD si applicable */}
@@ -445,31 +504,38 @@ function ActionsPage() {
                           )}
                         </td>
 
-                        {/* Boutons — QHSE uniquement */}
-                        {isQhse && (
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-2">
-                              {peutAgir && (
-                                <>
-                                  <button onClick={() => setActionCloture(action)}
-                                    className="px-3 py-1.5 text-xs font-semibold text-white rounded-md transition-colors"
-                                    style={{ backgroundColor: "#2E7D32" }}>
-                                    Clôturer
-                                  </button>
-                                  <button onClick={() => setActionModif(action)}
-                                    className="px-3 py-1.5 text-xs font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F1F5F9] transition-colors">
-                                    Modifier
-                                  </button>
-                                </>
-                              )}
+                        {/* Boutons — QHSE : clôturer/modifier/supprimer | EMPLOYÉ : commencer */}
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2">
+                            {peutAgir && (
+                              <>
+                                <button onClick={() => setActionCloture(action)}
+                                  className="px-3 py-1.5 text-xs font-semibold text-white rounded-md transition-colors"
+                                  style={{ backgroundColor: "#2E7D32" }}>
+                                  Clôturer
+                                </button>
+                                <button onClick={() => setActionModif(action)}
+                                  className="px-3 py-1.5 text-xs font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F1F5F9] transition-colors">
+                                  Modifier
+                                </button>
+                              </>
+                            )}
+                            {peutCommencer && (
+                              <button onClick={() => progresser(action.id)} disabled={enProgression}
+                                className="px-3 py-1.5 text-xs font-semibold text-white rounded-md disabled:opacity-50 transition-colors"
+                                style={{ backgroundColor: "#0D2B4E" }}>
+                                {enProgression ? "…" : "Commencer"}
+                              </button>
+                            )}
+                            {isQhse && (
                               <button onClick={() => supprimer(action.id)} disabled={enSuppression}
                                 title="Supprimer"
                                 className="w-7 h-7 flex items-center justify-center rounded text-[#DC2626] hover:bg-red-50 transition-colors disabled:opacity-40">
                                 {enSuppression ? <Spinner size={3} /> : "✕"}
                               </button>
-                            </div>
-                          </td>
-                        )}
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     );
                   })

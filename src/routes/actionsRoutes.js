@@ -5,6 +5,7 @@ const {
   getMesActions,
   updateAction,
   cloturerAction,
+  progresserAction,
   deleteAction,
 } = require("../controllers/actionController");
 const { protect }   = require("../middlewares/authMiddleware");
@@ -18,6 +19,9 @@ router.get("/mes-actions", protect, getMesActions);
 
 // GET /api/actions — vue globale (RESPONSABLE_QHSE uniquement, scopée par entreprise)
 router.get("/", protect, authorize("RESPONSABLE_QHSE"), getAllActions);
+
+// Démarrer une action (responsable uniquement) — tous rôles, guard dans le service
+router.put("/:id/progresser", protect, progresserAction);
 
 // Clôture AVANT /:id (bonne pratique de précédence)
 router.put(
