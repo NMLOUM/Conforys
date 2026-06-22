@@ -459,6 +459,8 @@ function IncidentDetailPage() {
   const [uploads,         setUploads]         = useState([]);
   // IDs de pièces en cours de suppression
   const [suppressionIds,  setSuppIds]         = useState(new Set());
+  // Section historique repliée par défaut
+  const [showHistorique,  setShowHistorique]  = useState(false);
 
   useEffect(() => {
     document.title = "CONFORYS — Détail incident";
@@ -982,46 +984,70 @@ function IncidentDetailPage() {
 
       {/* ── Piste d'audit ─────────────────────────────────────────────────── */}
       <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden mb-5">
-        <div className="px-5 py-4 border-b border-[#E2E8F0]">
-          <h2 className="text-sm font-semibold text-[#1E293B]">Historique</h2>
-          <p className="text-xs text-[#64748B] mt-0.5">Piste d'audit — lecture seule</p>
-        </div>
+        {/* En-tête cliquable — ouvre/ferme la section */}
+        <button
+          type="button"
+          onClick={() => setShowHistorique((v) => !v)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#F8FAFC] transition-colors"
+        >
+          <div className="text-left">
+            <h2 className="text-sm font-semibold text-[#1E293B]">
+              Historique
+              {historique.length > 0 && (
+                <span className="ml-2 text-[11px] font-normal text-[#94A3B8]">
+                  {historique.length} entrée{historique.length > 1 ? "s" : ""}
+                </span>
+              )}
+            </h2>
+            <p className="text-xs text-[#64748B] mt-0.5">Piste d'audit — lecture seule</p>
+          </div>
+          {/* Chevron animé */}
+          <svg
+            className={`w-4 h-4 text-[#94A3B8] shrink-0 transition-transform duration-200 ${showHistorique ? "rotate-180" : ""}`}
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
 
-        {historique.length === 0 ? (
-          <p className="px-5 py-8 text-sm text-[#94A3B8] text-center">Aucune entrée d'historique.</p>
-        ) : (
-          <ol className="px-5 py-4 space-y-0">
-            {historique.map((entree, i) => {
-              const isLast = i === historique.length - 1;
-              return (
-                <li key={entree.id} className="flex gap-4">
-                  {/* Ligne + point de timeline */}
-                  <div className="flex flex-col items-center shrink-0">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#0D2B4E] border-2 border-white ring-1 ring-[#CBD5E1] mt-1 shrink-0" />
-                    {!isLast && <div className="w-px flex-1 bg-[#E2E8F0] my-1" />}
-                  </div>
-
-                  {/* Contenu */}
-                  <div className={`pb-4 ${isLast ? "" : ""}`}>
-                    <p className="text-sm font-medium text-[#1E293B] leading-snug">{entree.action}</p>
-                    {entree.details && (
-                      <p className="text-xs text-[#64748B] mt-0.5 italic">{entree.details}</p>
-                    )}
-                    <p className="text-xs text-[#94A3B8] mt-1">
-                      {entree.auteur
-                        ? `${entree.auteur.prenom} ${entree.auteur.nom}`
-                        : "Système"}
-                      {" · "}
-                      {new Date(entree.dateAction).toLocaleString("fr-FR", {
-                        day: "2-digit", month: "short", year: "numeric",
-                        hour: "2-digit", minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
+        {/* Corps — visible seulement si showHistorique */}
+        {showHistorique && (
+          <>
+            <div className="border-t border-[#E2E8F0]" />
+            {historique.length === 0 ? (
+              <p className="px-5 py-8 text-sm text-[#94A3B8] text-center">Aucune entrée d'historique.</p>
+            ) : (
+              <ol className="px-5 py-4">
+                {historique.map((entree, i) => {
+                  const isLast = i === historique.length - 1;
+                  return (
+                    <li key={entree.id} className="flex gap-4">
+                      {/* Point + ligne verticale */}
+                      <div className="flex flex-col items-center shrink-0">
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#0D2B4E] border-2 border-white ring-1 ring-[#CBD5E1] mt-1 shrink-0" />
+                        {!isLast && <div className="w-px flex-1 bg-[#E2E8F0] my-1" />}
+                      </div>
+                      {/* Contenu */}
+                      <div className="pb-4">
+                        <p className="text-sm font-medium text-[#1E293B] leading-snug">{entree.action}</p>
+                        {entree.details && (
+                          <p className="text-xs text-[#64748B] mt-0.5 italic">{entree.details}</p>
+                        )}
+                        <p className="text-xs text-[#94A3B8] mt-1">
+                          {entree.auteur ? `${entree.auteur.prenom} ${entree.auteur.nom}` : "Système"}
+                          {" · "}
+                          {new Date(entree.dateAction).toLocaleString("fr-FR", {
+                            day: "2-digit", month: "short", year: "numeric",
+                            hour: "2-digit", minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </>
         )}
       </div>
 
