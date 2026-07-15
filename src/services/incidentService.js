@@ -144,13 +144,13 @@ const soumettre = async (id, userId) => {
   if (incident.declareParId !== userId)
     throw new ErreurMetier("Seul le déclarant peut soumettre cet incident.", 403);
 
-  const incident = await prisma.incident.update({
+  const mis_a_jour = await prisma.incident.update({
     where: { id },
     data: { statut: "OUVERT" },
     include: { declarePar: { select: { id: true, nom: true, prenom: true, email: true } }, site: true },
   });
   await enregistrer(id, userId, `Statut changé : ${LABEL_STATUT.BROUILLON} → ${LABEL_STATUT.OUVERT}`);
-  return incident;
+  return mis_a_jour;
 };
 
 // OUVERT → EN_COURS : un responsable QHSE/ADMIN valide (pas le déclarant)
@@ -162,13 +162,13 @@ const valider = async (id, userId) => {
   if (incident.declareParId === userId)
     throw new ErreurMetier("Un responsable ne peut pas valider son propre incident.", 403);
 
-  const incident = await prisma.incident.update({
+  const mis_a_jour = await prisma.incident.update({
     where: { id },
     data: { statut: "EN_COURS", valideParId: userId },
     include: { declarePar: { select: { id: true, nom: true, prenom: true, email: true } }, site: true },
   });
   await enregistrer(id, userId, `Statut changé : ${LABEL_STATUT.OUVERT} → ${LABEL_STATUT.EN_COURS}`);
-  return incident;
+  return mis_a_jour;
 };
 
 // OUVERT → REJETE : un responsable QHSE/ADMIN rejette l'incident avec un motif obligatoire
