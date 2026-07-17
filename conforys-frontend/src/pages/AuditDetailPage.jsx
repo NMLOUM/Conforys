@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import Badge from "../components/ui/Badge";
+import { useRole } from "../hooks/useRole";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -245,12 +246,155 @@ function LigneQuestion({ question, onReponse }) {
   );
 }
 
+// ── Modale de clôture d'une action corrective ────────────────────────────────
+
+function ModalCloturerCapa({ action, onSuccess, onClose }) {
+  const [commentaire, setCommentaire] = useState("");
+  const [erreur,      setErreur]      = useState("");
+  const [envoi,       setEnvoi]       = useState(false);
+
+  const soumettre = async () => {
+    if (commentaire.trim().length < 5) {
+      setErreur("Le commentaire doit faire au moins 5 caractères.");
+      return;
+    }
+    setErreur("");
+    setEnvoi(true);
+    try {
+      await api.put(`/actions/${action.id}/cloturer`, { commentaireCloture: commentaire });
+      toast.success("Action clôturée avec succès");
+      onSuccess();
+    } catch (err) {
+      const msg = err.response?.data?.message || "Erreur lors de la clôture.";
+      setErreur(msg);
+      toast.error(msg);
+    } finally {
+      setEnvoi(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="w-full max-w-md bg-white rounded-lg border border-[#E2E8F0] mx-4">
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#F1F5F9]">
+          <h3 className="text-base font-semibold text-[#1E293B]">Clôturer l'action</h3>
+          <button type="button" onClick={onClose}
+            className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition">
+            &#x2715;
+          </button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div className="p-3 rounded-md bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#475569] line-clamp-2">
+            {action.description}
+          </div>
+          {erreur && <p className="text-xs text-[#DC2626] p-3 bg-red-50 border border-red-200 rounded-md">{erreur}</p>}
+          <div>
+            <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+              Commentaire de clôture *
+            </label>
+            <textarea value={commentaire} onChange={(e) => setCommentaire(e.target.value)}
+              rows={3} placeholder="Décrivez comment l'action a été réalisée…"
+              className="w-full px-3 py-2.5 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#2E7D32]/30 focus:border-[#2E7D32] transition resize-none" />
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#F1F5F9]">
+          <button type="button" onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
+            Annuler
+          </button>
+          <button type="button" onClick={soumettre} disabled={envoi}
+            className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-[#2E7D32] hover:bg-[#2E7D32]/90 disabled:opacity-50 transition-colors">
+            {envoi ? "Clôture en cours…" : "Confirmer la clôture"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Section "Plan d'actions correctives" ─────────────────────────────────────
+
+function SectionCapa({ auditId, nombreNonConformes, auditComplet, can, actions, onGenerer, onCloturer, genererEnCours }) {
+  if (!can("RESPONSABLE_QHSE")) return null;
+
+  return (
+    <div className="p-5 border border-[#E2E8F0] rounded-lg bg-white">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-semibold text-[#1E293B]">Plan d'actions correctives</p>
+        {auditComplet && nombreNonConformes > 0 && (
+          <button
+            type="button"
+            onClick={onGenerer}
+            disabled={genererEnCours}
+            className="px-3 py-1.5 text-xs font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors"
+          >
+            {genererEnCours ? "Génération…" : "Générer le plan d'actions correctives"}
+          </button>
+        )}
+      </div>
+
+      {!auditComplet && (
+        <p className="text-xs text-[#94A3B8]">
+          Répondez à toutes les questions de la checklist pour pouvoir générer le plan d'actions.
+        </p>
+      )}
+      {auditComplet && nombreNonConformes === 0 && (
+        <p className="text-xs text-[#2E7D32]">Aucune non-conformité — aucun plan d'action nécessaire.</p>
+      )}
+
+      {actions.length > 0 && (
+        <div className="mt-3 border border-[#F1F5F9] rounded-md overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
+              <tr>
+                {["Description", "Priorité", "Statut", "Responsable", ""].map((h) => (
+                  <th key={h} className="px-3 py-2 text-left text-[10px] font-semibold text-[#64748B] uppercase tracking-wide">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#F1F5F9]">
+              {actions.map((a) => {
+                const peutCloturer = a.statut !== "TERMINE" && a.statut !== "ANNULE";
+                return (
+                  <tr key={a.id}>
+                    <td className="px-3 py-2.5 text-[#1E293B] max-w-xs">
+                      <p className="line-clamp-2">{a.description}</p>
+                    </td>
+                    <td className="px-3 py-2.5"><Badge variant={a.priorite} /></td>
+                    <td className="px-3 py-2.5"><Badge variant={a.statut} /></td>
+                    <td className="px-3 py-2.5 text-[#475569] whitespace-nowrap">
+                      {a.responsable ? `${a.responsable.prenom} ${a.responsable.nom}` : "—"}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {peutCloturer && (
+                        <button onClick={() => onCloturer(a)}
+                          className="px-2.5 py-1 text-xs font-semibold rounded-md text-white transition-colors bg-[#2E7D32] hover:bg-[#2E7D32]/90">
+                          Clôturer
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Page principale ───────────────────────────────────────────────────────────
 
 function AuditDetailPage() {
   const { id } = useParams();
+  const { can } = useRole();
   const [audit,      setAudit]      = useState(null);
   const [chargement, setChargement] = useState(true);
+  const [capaActions,     setCapaActions]     = useState([]);
+  const [genererEnCours,  setGenererEnCours]  = useState(false);
+  const [capaACloturer,   setCapaACloturer]   = useState(null);
 
   useEffect(() => {
     document.title = "CONFORYS — Audit";
@@ -268,7 +412,16 @@ function AuditDetailPage() {
     }
   };
 
-  useEffect(() => { charger(); }, [id]);
+  const chargerCapa = async () => {
+    try {
+      const res = await api.get(`/audits/${id}/actions`);
+      setCapaActions(res.data.data || []);
+    } catch (e) {
+      console.error("Erreur chargement actions correctives:", e);
+    }
+  };
+
+  useEffect(() => { charger(); chargerCapa(); }, [id]);
 
   const repondre = async (questionId, payload) => {
     try {
@@ -279,6 +432,24 @@ function AuditDetailPage() {
       toast.error(msg);
       throw err;
     }
+  };
+
+  const genererCapa = async () => {
+    setGenererEnCours(true);
+    try {
+      const res = await api.post(`/audits/${id}/generer-actions`);
+      setCapaActions(res.data.data || []);
+      toast.success("Plan d'actions correctives généré");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de la génération du plan d'actions.");
+    } finally {
+      setGenererEnCours(false);
+    }
+  };
+
+  const cloturerCapa = async () => {
+    setCapaACloturer(null);
+    await chargerCapa();
   };
 
   if (chargement) {
@@ -375,6 +546,28 @@ function AuditDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Plan d'actions correctives (CAPA) ── */}
+      <div className="mt-5">
+        <SectionCapa
+          auditId={id}
+          nombreNonConformes={repartition.NON_CONFORME}
+          auditComplet={questions.length > 0 && repondues === questions.length}
+          can={can}
+          actions={capaActions}
+          onGenerer={genererCapa}
+          onCloturer={setCapaACloturer}
+          genererEnCours={genererEnCours}
+        />
+      </div>
+
+      {capaACloturer && (
+        <ModalCloturerCapa
+          action={capaACloturer}
+          onSuccess={cloturerCapa}
+          onClose={() => setCapaACloturer(null)}
+        />
+      )}
     </AppLayout>
   );
 }

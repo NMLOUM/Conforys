@@ -454,6 +454,12 @@ function ActionsPage() {
                               {action.incident.numeroReference}
                             </Link>
                           )}
+                          {action.audit && (
+                            <Link to={`/audits/${action.audit.id}`}
+                              className="mt-1 inline-flex items-center gap-1 text-xs font-mono text-[#0D2B4E] hover:underline opacity-70">
+                              {action.audit.reference}
+                            </Link>
+                          )}
                         </td>
 
                         {/* Priorité — badge */}

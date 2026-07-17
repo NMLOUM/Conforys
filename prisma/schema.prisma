@@ -203,9 +203,14 @@ model ActionCorrective {
   dateCloture        DateTime?      @map("date_cloture")
   commentaireCloture String?        @map("commentaire_cloture")
 
-  // Relation : liée à un incident (suppression en cascade)
-  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
-  incidentId String   @map("incident_id")
+  // Relation : liée à un incident (optionnelle — une action peut venir d'un
+  // incident OU d'un audit, jamais des deux ; contrôlé au niveau service)
+  incident   Incident? @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  incidentId String?   @map("incident_id")
+
+  // Relation : liée à un audit (générée automatiquement depuis une non-conformité)
+  audit   Audit?  @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  auditId String? @map("audit_id")
 
   // Relation : responsable assigné
   responsable   User   @relation("ActionsAssignees", fields: [responsableId], references: [id])
@@ -313,6 +318,9 @@ model Audit {
   // Relation : questions de la checklist (générées depuis un template à la création)
   questions QuestionAudit[]
 
+  // Relation : actions correctives générées depuis les non-conformités de l'audit
+  actionsCorrectives ActionCorrective[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -341,6 +349,10 @@ model QuestionAudit {
   reponse     ReponseAudit      @default(NON_REPONDU)
   commentaire String?
   photoUrl    String?           @map("photo_url")
+  // Position dans le template d'origine — createdAt seul n'est pas fiable
+  // pour l'ordre : toutes les questions d'un même audit sont créées dans la
+  // même transaction et partagent donc un horodatage identique.
+  ordre       Int               @default(0)
 
   // Suppression en cascade : les questions n'ont pas de sens sans leur audit parent
   audit   Audit  @relation(fields: [auditId], references: [id], onDelete: Cascade)

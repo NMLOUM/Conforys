@@ -47,7 +47,7 @@ const getAuditById = async (id) => {
     include: {
       auditeur: { select: { id: true, nom: true, prenom: true } },
       site: true,
-      questions: { orderBy: { createdAt: "asc" } },
+      questions: { orderBy: { ordre: "asc" } },
     },
   });
 };
@@ -77,10 +77,11 @@ const createAudit = async (data) => {
     });
 
     await tx.questionAudit.createMany({
-      data: template.questions.map((q) => ({
+      data: template.questions.map((q, index) => ({
         libelle: q.libelle,
         criticite: q.criticite,
         auditId: audit.id,
+        ordre: index,
       })),
     });
 
@@ -89,7 +90,7 @@ const createAudit = async (data) => {
       include: {
         auditeur: { select: { id: true, nom: true, prenom: true } },
         site: true,
-        questions: { orderBy: { createdAt: "asc" } },
+        questions: { orderBy: { ordre: "asc" } },
       },
     });
   });
@@ -143,6 +144,40 @@ const calculerScore = async (auditId) => {
   return score;
 };
 
+// Historique des scores des audits terminés, pour tracer leur évolution dans
+// le temps (courbe). Filtres optionnels par site et par type.
+const getHistoriqueScores = async ({ siteId, type } = {}) => {
+  const where = {
+    statut: "TERMINE",
+    scoreConformite: { not: null },
+    ...(siteId && { siteId }),
+    ...(type && { type }),
+  };
+
+  const audits = await prisma.audit.findMany({
+    where,
+    select: {
+      id: true,
+      reference: true,
+      type: true,
+      scoreConformite: true,
+      dateRealisee: true,
+      datePrevue: true,
+      site: { select: { id: true, nom: true } },
+    },
+    orderBy: [{ dateRealisee: "asc" }, { datePrevue: "asc" }],
+  });
+
+  return audits.map((a) => ({
+    id: a.id,
+    reference: a.reference,
+    type: a.type,
+    score: a.scoreConformite,
+    date: a.dateRealisee ?? a.datePrevue,
+    site: a.site,
+  }));
+};
+
 // Enregistre la réponse à une question et recalcule le score de l'audit
 const repondreQuestion = async (auditId, questionId, data) => {
   const question = await prisma.questionAudit.findUnique({ where: { id: questionId } });
@@ -174,4 +209,5 @@ module.exports = {
   deleteAudit,
   calculerScore,
   repondreQuestion,
+  getHistoriqueScores,
 };

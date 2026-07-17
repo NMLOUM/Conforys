@@ -11,6 +11,17 @@ const getTemplates = async (req, res) => {
   }
 };
 
+// Historique des scores des audits terminés (filtres optionnels : siteId, type)
+const getHistoriqueScores = async (req, res) => {
+  try {
+    const { siteId, type } = req.query;
+    const historique = await auditService.getHistoriqueScores({ siteId, type });
+    res.status(200).json({ success: true, data: historique });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
 // Récupère tous les audits
 const getAllAudits = async (req, res) => {
   try {
@@ -84,6 +95,7 @@ const repondreQuestion = async (req, res) => {
 // Export des fonctions du contrôleur
 module.exports = {
   getTemplates,
+  getHistoriqueScores,
   getAllAudits,
   getAuditById,
   createAudit,

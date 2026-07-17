@@ -86,6 +86,26 @@ const deleteAction = async (req, res) => {
   }
 };
 
+// GET /api/audits/:id/actions
+const getActionsByAudit = async (req, res) => {
+  try {
+    const actions = await actionService.getActionsByAudit(req.params.id);
+    res.status(200).json({ success: true, data: actions });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+// POST /api/audits/:id/generer-actions — QHSE uniquement
+const genererActionsDepuisAudit = async (req, res) => {
+  try {
+    const actions = await actionService.genererActionsDepuisAudit(req.params.id);
+    res.status(201).json({ success: true, data: actions });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
 module.exports = {
   getAllActions,
   getMesActions,
@@ -95,4 +115,6 @@ module.exports = {
   cloturerAction,
   progresserAction,
   deleteAction,
+  getActionsByAudit,
+  genererActionsDepuisAudit,
 };

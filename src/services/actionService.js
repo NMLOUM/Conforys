@@ -9,10 +9,14 @@ class ErreurMetier extends Error {
   }
 }
 
-// Include partagé : responsable + incident (pour toutes les réponses)
+// Poids de chaque niveau de criticité converti en priorité d'action corrective
+const PRIORITE_PAR_CRITICITE = { CRITIQUE: "CRITIQUE", MAJEUR: "ELEVE", MINEUR: "MOYEN" };
+
+// Include partagé : responsable + incident + audit (une action n'a jamais les deux à la fois)
 const INCLUDE_ACTION = {
   responsable: { select: { id: true, nom: true, prenom: true, email: true } },
   incident:    { select: { id: true, numeroReference: true } },
+  audit:       { select: { id: true, reference: true } },
 };
 
 // Récupère toutes les actions d'un incident, triées du plus récent au plus ancien
@@ -118,11 +122,14 @@ const deleteAction = async (id) => {
 };
 
 // Vue globale de toutes les actions d'une entreprise (QHSE/ADMIN)
-// Scopée par entreprise via l'incident déclaré : on ne voit que les actions
-// liées aux incidents de l'entreprise du connecté.
+// Scopée par entreprise via l'incident déclaré OU l'auditeur de l'audit
+// (une action n'a jamais les deux relations à la fois).
 const getAllActions = async (entrepriseId, { statut, priorite, responsableId } = {}) => {
   const where = {
-    incident: { declarePar: { entrepriseId } },
+    OR: [
+      { incident: { declarePar: { entrepriseId } } },
+      { audit: { auditeur: { entrepriseId } } },
+    ],
     ...(statut        && { statut }),
     ...(priorite      && { priorite }),
     ...(responsableId && { responsableId }),
@@ -132,6 +139,54 @@ const getAllActions = async (entrepriseId, { statut, priorite, responsableId } =
     include: INCLUDE_ACTION,
     orderBy: [{ dateLimite: "asc" }, { createdAt: "desc" }],
   });
+};
+
+// Récupère toutes les actions correctives d'un audit, triées du plus récent au plus ancien
+const getActionsByAudit = async (auditId) => {
+  return await prisma.actionCorrective.findMany({
+    where: { auditId },
+    include: INCLUDE_ACTION,
+    orderBy: { createdAt: "desc" },
+  });
+};
+
+// Génère automatiquement une action corrective pour chaque question NON_CONFORME
+// de l'audit. Idempotent : si on régénère, les questions déjà couvertes par une
+// action existante (même description, donc même libellé) ne sont pas dupliquées.
+// Le responsable par défaut est l'auditeur — aucune saisie manuelle n'est possible
+// sur cet endpoint de génération en masse.
+const genererActionsDepuisAudit = async (auditId) => {
+  const audit = await prisma.audit.findUnique({
+    where: { id: auditId },
+    include: { questions: true },
+  });
+  if (!audit) throw new ErreurMetier("Audit introuvable.", 404);
+
+  const nonConformes = audit.questions.filter((q) => q.reponse === "NON_CONFORME");
+
+  if (nonConformes.length > 0) {
+    const existantes = await prisma.actionCorrective.findMany({
+      where: { auditId },
+      select: { description: true },
+    });
+    const descriptionsExistantes = new Set(existantes.map((a) => a.description));
+
+    const aCreer = nonConformes
+      .map((q) => ({
+        description:   `Corriger la non-conformité : ${q.libelle}`,
+        priorite:      PRIORITE_PAR_CRITICITE[q.criticite],
+        statut:        "A_FAIRE",
+        auditId,
+        responsableId: audit.auditeurId,
+      }))
+      .filter((a) => !descriptionsExistantes.has(a.description));
+
+    if (aCreer.length > 0) {
+      await prisma.actionCorrective.createMany({ data: aCreer });
+    }
+  }
+
+  return await getActionsByAudit(auditId);
 };
 
 // Actions assignées à l'utilisateur connecté — tous rôles (vue "Mes actions")
@@ -152,4 +207,6 @@ module.exports = {
   deleteAction,
   getAllActions,
   getMesActions,
+  getActionsByAudit,
+  genererActionsDepuisAudit,
 };

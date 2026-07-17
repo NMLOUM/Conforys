@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import Chart from "react-apexcharts";
 import toast from "react-hot-toast";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
@@ -90,12 +91,60 @@ function CarteScoreGlobal({ audits }) {
   );
 }
 
+// ── Évolution du score de conformité dans le temps (audits terminés) ────────
+
+function GraphiqueEvolutionScore({ historique }) {
+  if (historique.length === 0) {
+    return (
+      <div className="p-5 rounded-lg border border-[#E2E8F0] bg-white">
+        <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-2">
+          Évolution du score de conformité
+        </p>
+        <p className="text-sm text-[#94A3B8]">Aucun audit terminé pour l'instant.</p>
+      </div>
+    );
+  }
+
+  const categories = historique.map((h) =>
+    new Date(h.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })
+  );
+
+  const options = {
+    chart: { type: "line", toolbar: { show: false }, animations: { enabled: false } },
+    colors: ["#0D2B4E"],
+    stroke: { width: 2, curve: "smooth" },
+    markers: { size: 4, colors: ["#0D2B4E"], strokeWidth: 0 },
+    xaxis: {
+      categories,
+      labels: { style: { colors: "#64748B", fontSize: "11px" } },
+      axisBorder: { color: "#E2E8F0" },
+    },
+    yaxis: {
+      min: 0, max: 100,
+      labels: { style: { colors: "#64748B", fontSize: "11px" }, formatter: (v) => `${Math.round(v)}%` },
+    },
+    grid: { borderColor: "#F1F5F9" },
+    dataLabels: { enabled: false },
+    tooltip: { y: { formatter: (v) => `${v}%` } },
+  };
+
+  return (
+    <div className="p-5 rounded-lg border border-[#E2E8F0] bg-white">
+      <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-3">
+        Évolution du score de conformité
+      </p>
+      <Chart type="line" options={options} series={[{ name: "Score", data: historique.map((h) => h.score) }]} height={220} />
+    </div>
+  );
+}
+
 function AuditsPage() {
   const user = useAuthStore((s) => s.user);
   const { can } = useRole();
   const [audits,     setAudits]     = useState([]);
   const [sites,      setSites]      = useState([]);
   const [templates,  setTemplates]  = useState([]);
+  const [historique, setHistorique] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [showModal,  setShowModal]  = useState(false);
   const [erreurForm, setErreurForm] = useState("");
@@ -133,6 +182,7 @@ function AuditsPage() {
     charger();
     api.get("/sites").then((r) => setSites(r.data.data || [])).catch(() => {});
     api.get("/audits/templates").then((r) => setTemplates(r.data.data || [])).catch(() => {});
+    api.get("/audits/historique-scores").then((r) => setHistorique(r.data.data || [])).catch(() => {});
   }, []);
 
   // Cliquer une carte de la bibliothèque ouvre directement le formulaire,
@@ -177,6 +227,11 @@ function AuditsPage() {
           </p>
         </div>
         <CarteScoreGlobal audits={audits} />
+      </div>
+
+      {/* ── Évolution du score de conformité ── */}
+      <div className="mb-6">
+        <GraphiqueEvolutionScore historique={historique} />
       </div>
 
       {/* ── Bibliothèque de templates ── */}
