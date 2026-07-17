@@ -411,6 +411,7 @@ function AuditDetailPage() {
   const [genererEnCours,  setGenererEnCours]  = useState(false);
   const [capaACloturer,   setCapaACloturer]   = useState(null);
   const [transitionEnCours, setTransitionEnCours] = useState(false);
+  const [telechargementPdf, setTelechargementPdf] = useState(false);
 
   useEffect(() => {
     document.title = "CONFORYS — Audit";
@@ -466,6 +467,25 @@ function AuditDetailPage() {
   const cloturerCapa = async () => {
     setCapaACloturer(null);
     await chargerCapa();
+  };
+
+  const telechargerRapportPdf = async () => {
+    setTelechargementPdf(true);
+    try {
+      const res = await api.get(`/audits/${id}/rapport-pdf`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const lien = document.createElement("a");
+      lien.href = url;
+      lien.download = `rapport-${audit.reference}.pdf`;
+      document.body.appendChild(lien);
+      lien.click();
+      lien.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error("Erreur lors du téléchargement du rapport PDF.");
+    } finally {
+      setTelechargementPdf(false);
+    }
   };
 
   const demarrer = async () => {
@@ -545,6 +565,10 @@ function AuditDetailPage() {
                   {transitionEnCours ? "…" : "Finaliser"}
                 </button>
               )}
+              <button type="button" onClick={telechargerRapportPdf} disabled={telechargementPdf}
+                className="px-3 py-1.5 text-xs font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
+                {telechargementPdf ? "Génération…" : "Télécharger le rapport PDF"}
+              </button>
             </div>
           )}
         </div>

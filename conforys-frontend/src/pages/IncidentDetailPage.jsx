@@ -431,7 +431,7 @@ function ModalRejeter({ onConfirm, onClose }) {
 function IncidentDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isQhse } = useRole();
+  const { isQhse, isAdmin } = useRole();
   const user = useAuthStore((s) => s.user);
 
   // Données
@@ -441,6 +441,7 @@ function IncidentDetailPage() {
   const [historique, setHistorique] = useState([]);
   const [users,      setUsers]      = useState([]);
   const [chargement, setChargement] = useState(true);
+  const [telechargementPdf, setTelechargementPdf] = useState(false);
   const [erreurPage, setErreurPage] = useState("");
 
   // Modales actions correctives
@@ -540,6 +541,27 @@ function IncidentDetailPage() {
   const confirmerRejet = async (motifRejet) => {
     await changerStatut("rejeter", { motifRejet });
     setShowModalRejet(false);
+  };
+
+  // ── Téléchargement du rapport PDF ──────────────────────────────────────────
+
+  const telechargerRapportPdf = async () => {
+    setTelechargementPdf(true);
+    try {
+      const res = await api.get(`/incidents/${id}/rapport-pdf`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const lien = document.createElement("a");
+      lien.href = url;
+      lien.download = `rapport-${incident.numeroReference}.pdf`;
+      document.body.appendChild(lien);
+      lien.click();
+      lien.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error("Erreur lors du téléchargement du rapport PDF.");
+    } finally {
+      setTelechargementPdf(false);
+    }
   };
 
   // ── Upload de pièces jointes ───────────────────────────────────────────────
@@ -668,6 +690,13 @@ function IncidentDetailPage() {
         <div className="flex items-center gap-2">
           <Badge variant={incident.gravite} />
           <Badge variant={incident.statut} />
+          {(isQhse || isAdmin) && (
+            <button onClick={telechargerRapportPdf} disabled={telechargementPdf}
+              className="px-3 py-1.5 text-xs font-semibold text-white rounded-md disabled:opacity-50 transition-colors"
+              style={{ backgroundColor: "#0D2B4E" }}>
+              {telechargementPdf ? "Génération…" : "Télécharger le rapport PDF"}
+            </button>
+          )}
         </div>
       </div>
 

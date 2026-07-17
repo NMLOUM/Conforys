@@ -1,4 +1,5 @@
 const auditService = require("../services/auditService");
+const { genererRapportAudit } = require("../services/auditPdfService");
 const { handleErreur } = require("../utils/handleErreur");
 
 // Liste des templates de checklist disponibles (cartes de sélection à la création)
@@ -124,6 +125,20 @@ const annuler = async (req, res) => {
   }
 };
 
+// Génère et télécharge le rapport PDF de l'audit (PDF généré à la volée,
+// jamais stocké sur le serveur)
+const genererRapportPdf = async (req, res) => {
+  try {
+    const { doc, filename } = await genererRapportAudit(req.params.id);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    doc.pipe(res);
+    doc.end();
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
 // Export des fonctions du contrôleur
 module.exports = {
   getTemplates,
@@ -137,4 +152,5 @@ module.exports = {
   demarrer,
   finaliser,
   annuler,
+  genererRapportPdf,
 };

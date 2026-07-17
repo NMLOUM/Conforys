@@ -4,6 +4,7 @@ const {
   getAllIncidents, getIncidentById,
   createIncident, updateIncident, deleteIncident,
   soumettre, valider, rejeter, cloturer,
+  genererRapportPdf,
 } = require("../controllers/incidentsController");
 const { protect }   = require("../middlewares/authMiddleware");
 const { authorize } = require("../middlewares/roleMiddleware");
@@ -18,6 +19,9 @@ const { getHistorique } = require("../controllers/historiqueController");
 // Lecture  →  tous les rôles authentifiés
 router.get("/",    protect, getAllIncidents);
 router.get("/:id", protect, getIncidentById);
+
+// Rapport PDF  →  RESPONSABLE_QHSE et ADMIN uniquement
+router.get("/:id/rapport-pdf", protect, authorize("RESPONSABLE_QHSE", "ADMIN"), genererRapportPdf);
 
 // Déclaration  →  tous les rôles authentifiés
 router.post("/", protect, validate(incidentSchema), createIncident);

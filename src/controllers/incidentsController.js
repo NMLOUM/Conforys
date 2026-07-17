@@ -1,4 +1,5 @@
 const incidentService = require("../services/incidentService");
+const { genererRapportIncident } = require("../services/incidentPdfService");
 const { handleErreur } = require("../utils/handleErreur");
 
 // Récupère les incidents avec filtres (?statut=&type=&gravite=) et pagination (?page=&limit=)
@@ -103,6 +104,20 @@ const cloturer = async (req, res) => {
   }
 };
 
+// Génère et télécharge le rapport PDF de l'incident (PDF généré à la volée,
+// jamais stocké sur le serveur)
+const genererRapportPdf = async (req, res) => {
+  try {
+    const { doc, filename } = await genererRapportIncident(req.params.id);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    doc.pipe(res);
+    doc.end();
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
 // Export des fonctions du contrôleur
 module.exports = {
   getAllIncidents,
@@ -114,4 +129,5 @@ module.exports = {
   valider,
   rejeter,
   cloturer,
+  genererRapportPdf,
 };
