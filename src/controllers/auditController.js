@@ -92,6 +92,38 @@ const repondreQuestion = async (req, res) => {
   }
 };
 
+// ── Workflow de statuts ────────────────────────────────────────────────────────
+
+// PLANIFIE → EN_COURS
+const demarrer = async (req, res) => {
+  try {
+    const audit = await auditService.demarrer(req.params.id);
+    res.status(200).json({ success: true, data: audit });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+// EN_COURS → TERMINE
+const finaliser = async (req, res) => {
+  try {
+    const audit = await auditService.finaliser(req.params.id);
+    res.status(200).json({ success: true, data: audit });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+// * → ANNULE
+const annuler = async (req, res) => {
+  try {
+    const audit = await auditService.annuler(req.params.id);
+    res.status(200).json({ success: true, data: audit });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
 // Export des fonctions du contrôleur
 module.exports = {
   getTemplates,
@@ -102,4 +134,7 @@ module.exports = {
   updateAudit,
   deleteAudit,
   repondreQuestion,
+  demarrer,
+  finaliser,
+  annuler,
 };

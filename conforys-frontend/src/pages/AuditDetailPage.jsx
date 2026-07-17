@@ -71,7 +71,7 @@ function JaugeConformite({ score }) {
 
 // ── Une ligne de question ─────────────────────────────────────────────────────
 
-function LigneQuestion({ question, onReponse }) {
+function LigneQuestion({ question, onReponse, disabled }) {
   const [afficherFormNC, setAfficherFormNC] = useState(question.reponse === "NON_CONFORME");
   const [commentaire,    setCommentaire]    = useState(question.commentaire || "");
   const [photoUrl,       setPhotoUrl]       = useState(question.photoUrl || "");
@@ -163,7 +163,7 @@ function LigneQuestion({ question, onReponse }) {
       <div className="flex gap-2">
         <button
           type="button"
-          disabled={envoi}
+          disabled={envoi || disabled}
           onClick={() => repondreDirect("CONFORME")}
           className={boutonCls(reponseActuelle === "CONFORME")}
           style={reponseActuelle === "CONFORME"
@@ -174,7 +174,7 @@ function LigneQuestion({ question, onReponse }) {
         </button>
         <button
           type="button"
-          disabled={envoi}
+          disabled={envoi || disabled}
           onClick={handleNonConforme}
           className={boutonCls(reponseActuelle === "NON_CONFORME")}
           style={reponseActuelle === "NON_CONFORME"
@@ -185,7 +185,7 @@ function LigneQuestion({ question, onReponse }) {
         </button>
         <button
           type="button"
-          disabled={envoi}
+          disabled={envoi || disabled}
           onClick={() => repondreDirect("NON_APPLICABLE")}
           className={boutonCls(reponseActuelle === "NON_APPLICABLE")}
           style={reponseActuelle === "NON_APPLICABLE"
@@ -196,7 +196,7 @@ function LigneQuestion({ question, onReponse }) {
         </button>
       </div>
 
-      {afficherFormNC && (
+      {afficherFormNC && !disabled && (
         <div className="mt-3 pt-3 border-t border-[#F1F5F9] space-y-3">
           <div>
             <label className="block mb-1.5 text-[11px] font-semibold text-[#475569] uppercase tracking-wide">
@@ -240,6 +240,21 @@ function LigneQuestion({ question, onReponse }) {
               {envoi ? "Enregistrement…" : "Enregistrer la non-conformité"}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Lecture seule : justification déjà enregistrée, audit non modifiable */}
+      {disabled && reponseActuelle === "NON_CONFORME" && (commentaire || photoUrl) && (
+        <div className="mt-3 pt-3 border-t border-[#F1F5F9] space-y-2">
+          {commentaire && (
+            <p className="text-xs text-[#475569]">
+              <span className="font-semibold uppercase tracking-wide text-[10px] text-[#94A3B8]">Commentaire </span>
+              {commentaire}
+            </p>
+          )}
+          {photoUrl && (
+            <img src={photoUrl} alt="Photo de la non-conformité" className="h-20 rounded-md object-cover border border-[#E2E8F0]" />
+          )}
         </div>
       )}
     </div>
@@ -315,14 +330,14 @@ function ModalCloturerCapa({ action, onSuccess, onClose }) {
 
 // ── Section "Plan d'actions correctives" ─────────────────────────────────────
 
-function SectionCapa({ auditId, nombreNonConformes, auditComplet, can, actions, onGenerer, onCloturer, genererEnCours }) {
+function SectionCapa({ auditId, nombreNonConformes, auditTermine, can, actions, onGenerer, onCloturer, genererEnCours }) {
   if (!can("RESPONSABLE_QHSE")) return null;
 
   return (
     <div className="p-5 border border-[#E2E8F0] rounded-lg bg-white">
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm font-semibold text-[#1E293B]">Plan d'actions correctives</p>
-        {auditComplet && nombreNonConformes > 0 && (
+        {auditTermine && nombreNonConformes > 0 && (
           <button
             type="button"
             onClick={onGenerer}
@@ -334,12 +349,12 @@ function SectionCapa({ auditId, nombreNonConformes, auditComplet, can, actions, 
         )}
       </div>
 
-      {!auditComplet && (
+      {!auditTermine && (
         <p className="text-xs text-[#94A3B8]">
-          Répondez à toutes les questions de la checklist pour pouvoir générer le plan d'actions.
+          Finalisez l'audit (toutes les questions répondues) pour pouvoir générer le plan d'actions.
         </p>
       )}
-      {auditComplet && nombreNonConformes === 0 && (
+      {auditTermine && nombreNonConformes === 0 && (
         <p className="text-xs text-[#2E7D32]">Aucune non-conformité — aucun plan d'action nécessaire.</p>
       )}
 
@@ -395,6 +410,7 @@ function AuditDetailPage() {
   const [capaActions,     setCapaActions]     = useState([]);
   const [genererEnCours,  setGenererEnCours]  = useState(false);
   const [capaACloturer,   setCapaACloturer]   = useState(null);
+  const [transitionEnCours, setTransitionEnCours] = useState(false);
 
   useEffect(() => {
     document.title = "CONFORYS — Audit";
@@ -452,6 +468,32 @@ function AuditDetailPage() {
     await chargerCapa();
   };
 
+  const demarrer = async () => {
+    setTransitionEnCours(true);
+    try {
+      const res = await api.put(`/audits/${id}/demarrer`);
+      setAudit(res.data.data);
+      toast.success("Audit démarré");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors du démarrage.");
+    } finally {
+      setTransitionEnCours(false);
+    }
+  };
+
+  const finaliser = async () => {
+    setTransitionEnCours(true);
+    try {
+      const res = await api.put(`/audits/${id}/finaliser`);
+      setAudit(res.data.data);
+      toast.success("Audit finalisé");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de la finalisation.");
+    } finally {
+      setTransitionEnCours(false);
+    }
+  };
+
   if (chargement) {
     return (
       <AppLayout titre="Audit">
@@ -483,16 +525,41 @@ function AuditDetailPage() {
         <Link to="/audits" className="text-xs text-[#64748B] hover:text-navy transition-colors">
           ← Retour aux audits
         </Link>
-        <div className="flex flex-wrap items-center gap-2 mt-2">
-          <h1 className="text-lg font-semibold text-navy">{audit.reference}</h1>
-          <Badge variant={audit.statut} />
-          <span className="text-sm text-[#64748B]">{LABELS_TYPE[audit.type] ?? audit.type}</span>
+        <div className="flex flex-wrap items-center justify-between gap-3 mt-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-lg font-semibold text-navy">{audit.reference}</h1>
+            <Badge variant={audit.statut} />
+            <span className="text-sm text-[#64748B]">{LABELS_TYPE[audit.type] ?? audit.type}</span>
+          </div>
+          {can("RESPONSABLE_QHSE") && (
+            <div className="flex items-center gap-2">
+              {audit.statut === "PLANIFIE" && (
+                <button type="button" onClick={demarrer} disabled={transitionEnCours}
+                  className="px-3 py-1.5 text-xs font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
+                  {transitionEnCours ? "…" : "Démarrer"}
+                </button>
+              )}
+              {audit.statut === "EN_COURS" && (
+                <button type="button" onClick={finaliser} disabled={transitionEnCours}
+                  className="px-3 py-1.5 text-xs font-semibold text-white rounded-md bg-[#2E7D32] hover:bg-[#2E7D32]/90 disabled:opacity-50 transition-colors">
+                  {transitionEnCours ? "…" : "Finaliser"}
+                </button>
+              )}
+            </div>
+          )}
         </div>
         <p className="text-sm text-[#475569] mt-1">{audit.titre}</p>
         <p className="text-xs text-[#94A3B8] mt-1">
           Site : {audit.site?.nom ?? "—"} · Auditeur : {audit.auditeur?.prenom} {audit.auditeur?.nom} · Prévu le{" "}
           {audit.datePrevue ? new Date(audit.datePrevue).toLocaleDateString("fr-FR") : "—"}
         </p>
+        {audit.statut !== "EN_COURS" && (
+          <p className="mt-2 text-xs text-[#94A3B8] italic">
+            {audit.statut === "PLANIFIE" && "Cliquez sur « Démarrer » pour commencer à répondre à la checklist."}
+            {audit.statut === "TERMINE" && "Audit finalisé — les réponses sont en lecture seule."}
+            {audit.statut === "ANNULE" && "Audit annulé — les réponses sont en lecture seule."}
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -502,7 +569,7 @@ function AuditDetailPage() {
             <p className="text-sm text-[#94A3B8]">Aucune question dans cette checklist.</p>
           ) : (
             questions.map((q) => (
-              <LigneQuestion key={q.id} question={q} onReponse={repondre} />
+              <LigneQuestion key={q.id} question={q} onReponse={repondre} disabled={audit.statut !== "EN_COURS"} />
             ))
           )}
         </div>
@@ -552,7 +619,7 @@ function AuditDetailPage() {
         <SectionCapa
           auditId={id}
           nombreNonConformes={repartition.NON_CONFORME}
-          auditComplet={questions.length > 0 && repondues === questions.length}
+          auditTermine={audit.statut === "TERMINE"}
           can={can}
           actions={capaActions}
           onGenerer={genererCapa}

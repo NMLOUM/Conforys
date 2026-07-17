@@ -3,13 +3,13 @@ const router = express.Router();
 const {
   getTemplates, getHistoriqueScores, getAllAudits, getAuditById,
   createAudit, updateAudit, deleteAudit,
-  repondreQuestion,
+  repondreQuestion, demarrer, finaliser, annuler,
 } = require("../controllers/auditController");
 const { getActionsByAudit, genererActionsDepuisAudit } = require("../controllers/actionController");
 const { protect }   = require("../middlewares/authMiddleware");
 const { authorize } = require("../middlewares/roleMiddleware");
 const { validate }    = require("../middlewares/validate");
-const { auditSchema, repondreQuestionSchema } = require("../validators/auditValidator");
+const { auditSchema, updateAuditSchema, repondreQuestionSchema } = require("../validators/auditValidator");
 
 // ⚠️ Routes spécifiques placées avant /:id pour éviter le conflit
 // Lecture  →  tous les rôles
@@ -20,10 +20,15 @@ router.get("/:id",               protect, getAuditById);
 
 // Écritures  →  RESPONSABLE_QHSE uniquement
 router.post("/",      protect, authorize("RESPONSABLE_QHSE"), validate(auditSchema), createAudit);
-router.put("/:id",    protect, authorize("RESPONSABLE_QHSE"), updateAudit);
+router.put("/:id",    protect, authorize("RESPONSABLE_QHSE"), validate(updateAuditSchema), updateAudit);
 router.delete("/:id", protect, authorize("RESPONSABLE_QHSE"), deleteAudit);
 
-// Réalisation de l'audit : répondre à une question de la checklist
+// ── Workflow de statuts : PLANIFIE → EN_COURS → TERMINE (ou ANNULE) ──────────
+router.put("/:id/demarrer",  protect, authorize("RESPONSABLE_QHSE"), demarrer);
+router.put("/:id/finaliser", protect, authorize("RESPONSABLE_QHSE"), finaliser);
+router.put("/:id/annuler",   protect, authorize("RESPONSABLE_QHSE"), annuler);
+
+// Réalisation de l'audit : répondre à une question de la checklist (audit EN_COURS uniquement)
 router.put(
   "/:id/questions/:questionId",
   protect,

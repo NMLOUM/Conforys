@@ -111,6 +111,79 @@ const deleteAudit = async (id) => {
   });
 };
 
+// Include partagé pour les réponses des transitions de statut
+const INCLUDE_AUDIT = {
+  auditeur: { select: { id: true, nom: true, prenom: true } },
+  site: true,
+  questions: { orderBy: { ordre: "asc" } },
+};
+
+// ── Workflow de statuts ────────────────────────────────────────────────────────
+
+// PLANIFIE → EN_COURS : démarre la réalisation de l'audit sur le terrain
+const demarrer = async (id) => {
+  const audit = await prisma.audit.findUnique({ where: { id } });
+  if (!audit) throw new ErreurMetier("Audit introuvable.", 404);
+  if (audit.statut !== "PLANIFIE") {
+    throw new ErreurMetier(
+      `Impossible de démarrer un audit en statut "${audit.statut}". Statut attendu : PLANIFIE.`
+    );
+  }
+
+  return await prisma.audit.update({
+    where: { id },
+    data: { statut: "EN_COURS" },
+    include: INCLUDE_AUDIT,
+  });
+};
+
+// EN_COURS → TERMINE : clôture l'audit après vérification que toutes les
+// questions ont reçu une réponse. Le score (déjà tenu à jour à chaque
+// réponse) est conservé tel quel — c'est la valeur finale figée.
+const finaliser = async (id) => {
+  const audit = await prisma.audit.findUnique({
+    where: { id },
+    include: { questions: true },
+  });
+  if (!audit) throw new ErreurMetier("Audit introuvable.", 404);
+  if (audit.statut !== "EN_COURS") {
+    throw new ErreurMetier(
+      `Impossible de finaliser un audit en statut "${audit.statut}". Statut attendu : EN_COURS.`
+    );
+  }
+
+  const nonRepondues = audit.questions.filter((q) => q.reponse === "NON_REPONDU").length;
+  if (nonRepondues > 0) {
+    throw new ErreurMetier(
+      `Impossible de finaliser : ${nonRepondues} question(s) sans réponse. Répondez à toute la checklist avant de finaliser.`
+    );
+  }
+
+  return await prisma.audit.update({
+    where: { id },
+    data: { statut: "TERMINE", dateRealisee: new Date() },
+    include: INCLUDE_AUDIT,
+  });
+};
+
+// * → ANNULE (sauf audit déjà terminé ou déjà annulé)
+const annuler = async (id) => {
+  const audit = await prisma.audit.findUnique({ where: { id } });
+  if (!audit) throw new ErreurMetier("Audit introuvable.", 404);
+  if (audit.statut === "TERMINE") {
+    throw new ErreurMetier("Impossible d'annuler un audit déjà terminé.");
+  }
+  if (audit.statut === "ANNULE") {
+    throw new ErreurMetier("Cet audit est déjà annulé.");
+  }
+
+  return await prisma.audit.update({
+    where: { id },
+    data: { statut: "ANNULE" },
+    include: INCLUDE_AUDIT,
+  });
+};
+
 // ── Scoring pondéré ───────────────────────────────────────────────────────────
 //
 // Chaque question compte pour un nombre de points égal au poids de sa criticité
@@ -178,8 +251,18 @@ const getHistoriqueScores = async ({ siteId, type } = {}) => {
   }));
 };
 
-// Enregistre la réponse à une question et recalcule le score de l'audit
+// Enregistre la réponse à une question et recalcule le score de l'audit.
+// Réservé aux audits EN_COURS : un audit PLANIFIE n'a pas encore démarré,
+// et un audit TERMINE/ANNULE est figé en lecture seule.
 const repondreQuestion = async (auditId, questionId, data) => {
+  const audit = await prisma.audit.findUnique({ where: { id: auditId } });
+  if (!audit) throw new ErreurMetier("Audit introuvable.", 404);
+  if (audit.statut !== "EN_COURS") {
+    throw new ErreurMetier(
+      `Impossible de répondre : l'audit doit être « En cours » (statut actuel : "${audit.statut}").`
+    );
+  }
+
   const question = await prisma.questionAudit.findUnique({ where: { id: questionId } });
   if (!question || question.auditId !== auditId) {
     throw new ErreurMetier("Question introuvable pour cet audit.", 404);
@@ -210,4 +293,7 @@ module.exports = {
   calculerScore,
   repondreQuestion,
   getHistoriqueScores,
+  demarrer,
+  finaliser,
+  annuler,
 };

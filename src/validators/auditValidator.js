@@ -20,6 +20,22 @@ const auditSchema = z.object({
     .uuid("Sélectionnez un site valide."),
 });
 
+// Modification partielle (PUT /:id) — volontairement restreint aux champs
+// descriptifs. Le statut, la date de réalisation et le score ne peuvent être
+// modifiés que via les routes de transition dédiées (/demarrer, /finaliser,
+// /annuler) : sans cette restriction, ce PUT générique permettrait de
+// contourner les règles du workflow (ex: passer directement à TERMINE sans
+// vérifier que toutes les questions sont répondues).
+const updateAuditSchema = z.object({
+  titre: z
+    .string()
+    .min(3, "Le titre doit faire au moins 3 caractères.")
+    .optional(),
+  datePrevue: z.string().optional(),
+  siteId: z.string().uuid("Sélectionnez un site valide.").optional(),
+  observations: z.string().optional(),
+});
+
 // Réponse à une question de checklist — commentaire obligatoire si NON_CONFORME
 const repondreQuestionSchema = z
   .object({
@@ -40,4 +56,4 @@ const repondreQuestionSchema = z
     }
   });
 
-module.exports = { auditSchema, repondreQuestionSchema };
+module.exports = { auditSchema, updateAuditSchema, repondreQuestionSchema };
