@@ -114,9 +114,12 @@ const deleteAudit = async (id) => {
 //
 // Chaque question compte pour un nombre de points égal au poids de sa criticité
 // (CRITIQUE = 3, MAJEUR = 2, MINEUR = 1). Le score de conformité est le rapport
-// entre les points obtenus (questions CONFORME) et les points possibles
-// (toutes les questions sauf NON_APPLICABLE et NON_REPONDU, exclues du calcul
-// car elles ne renseignent aucune conformité), exprimé en pourcentage.
+// entre les points obtenus (questions CONFORME) et les points possibles.
+// Seule NON_APPLICABLE est exclue du dénominateur (elle ne renseigne aucune
+// conformité) ; NON_REPONDU compte comme un point non obtenu (0), pour que le
+// score reflète une vraie progression pendant l'audit — sinon les questions
+// non traitées seraient exclues du calcul et une seule réponse "Conforme"
+// ferait immédiatement afficher 100 %.
 const calculerScore = async (auditId) => {
   const questions = await prisma.questionAudit.findMany({ where: { auditId } });
 
@@ -124,7 +127,7 @@ const calculerScore = async (auditId) => {
   let pointsPossibles = 0;
 
   for (const q of questions) {
-    if (q.reponse === "NON_APPLICABLE" || q.reponse === "NON_REPONDU") continue;
+    if (q.reponse === "NON_APPLICABLE") continue;
     const poids = POIDS_CRITICITE[q.criticite];
     pointsPossibles += poids;
     if (q.reponse === "CONFORME") pointsObtenus += poids;

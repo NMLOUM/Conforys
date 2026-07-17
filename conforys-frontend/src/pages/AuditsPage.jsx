@@ -18,30 +18,75 @@ const LABELS_TYPE = {
   HYGIENE:       "Hygiène",
 };
 
-// ── Sélection du template — cartes cliquables ────────────────────────────────
+// ── Icônes des templates — traits simples, une seule couleur (navy) ──────────
 
-function CarteTemplate({ template, selectionne, onSelect }) {
+const TRACES_ICONES = {
+  "securite-chantier": "M12 2 4 5v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V5l-8-3Z M9 12l2 2 4-4",
+  "incendie":          "M12 2c1 3-2 4-2 7a4 4 0 0 0 8 0c0-2-1-3-1-3 1 4-1 5-2 5-2 0-3-2-1-4 1-1 1-3-2-5Z",
+  "epi":               "M12 2 4 5v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V5l-8-3Z",
+  "environnement":     "M5 20c8 0 14-6 14-14V4h-2C9 4 5 10 5 18v2Z M5 20c2-4 5-7 9-9",
+  "hygiene":           "M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11Z",
+  "electrique":        "M13 2 4 14h6l-1 8 9-12h-6l1-8Z",
+};
+
+function IconeTemplate({ id }) {
+  const trace = TRACES_ICONES[id];
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(template)}
-      className="text-left p-4 rounded-lg border-2 transition-all"
-      style={{
-        borderColor: selectionne ? "#0D2B4E" : "#E2E8F0",
-        backgroundColor: selectionne ? "rgba(13, 43, 78, 0.04)" : "white",
-      }}
+    <div
+      className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+      style={{ backgroundColor: "rgba(13, 43, 78, 0.06)" }}
     >
-      <p
-        className="text-sm font-semibold mb-1"
-        style={{ color: selectionne ? "#0D2B4E" : "#1E293B" }}
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0D2B4E" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d={trace} />
+      </svg>
+    </div>
+  );
+}
+
+// ── Carte de la bibliothèque de templates ────────────────────────────────────
+
+function CarteBibliotheque({ template, onDemarrer }) {
+  return (
+    <div className="p-4 rounded-lg border border-[#E2E8F0] bg-white hover:border-navy/40 transition-colors">
+      <div className="flex items-start justify-between mb-3">
+        <IconeTemplate id={template.id} />
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-slate-100 text-[#64748B]">
+          {LABELS_TYPE[template.type] ?? template.type}
+        </span>
+      </div>
+      <p className="text-sm font-semibold text-[#1E293B] mb-1">{template.nom}</p>
+      <p className="text-xs text-[#64748B] leading-relaxed mb-3">{template.description}</p>
+      <button
+        type="button"
+        onClick={() => onDemarrer(template)}
+        className="text-xs font-semibold text-navy hover:underline"
       >
-        {template.nom}
+        Démarrer l'audit →
+      </button>
+    </div>
+  );
+}
+
+// ── Carte "score de conformité global" ───────────────────────────────────────
+
+function CarteScoreGlobal({ audits }) {
+  const scores = audits.map((a) => a.scoreConformite).filter((s) => s != null);
+  const moyenne = scores.length === 0 ? null : Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  const valeur = moyenne ?? 0;
+
+  return (
+    <div className="p-5 rounded-lg text-white" style={{ backgroundColor: "#0D2B4E" }}>
+      <p className="text-xs font-semibold uppercase tracking-wide opacity-80 mb-2">
+        Score de conformité global
       </p>
-      <p className="text-xs text-[#64748B] leading-relaxed mb-2">{template.description}</p>
-      <p className="text-[11px] font-medium text-[#94A3B8]">
-        {template.nombreQuestions} questions
+      <p className="text-3xl font-bold mb-3">{moyenne != null ? `${moyenne}%` : "—"}</p>
+      <div className="h-1.5 rounded-full bg-white/20 overflow-hidden">
+        <div className="h-full rounded-full bg-white" style={{ width: `${valeur}%` }} />
+      </div>
+      <p className="text-[11px] opacity-70 mt-2">
+        {scores.length === 0 ? "Aucun audit noté pour l'instant" : `Moyenne sur ${scores.length} audit${scores.length > 1 ? "s" : ""} noté${scores.length > 1 ? "s" : ""}`}
       </p>
-    </button>
+    </div>
   );
 }
 
@@ -54,8 +99,9 @@ function AuditsPage() {
   const [chargement, setChargement] = useState(true);
   const [showModal,  setShowModal]  = useState(false);
   const [erreurForm, setErreurForm] = useState("");
+  const [templateChoisi, setTemplateChoisi] = useState(null);
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm({
     mode: "onBlur",
     resolver: zodResolver(auditSchema),
     defaultValues: {
@@ -63,8 +109,6 @@ function AuditsPage() {
       datePrevue: "", auditeurId: user?.id ?? "", siteId: "",
     },
   });
-
-  const templateId = watch("templateId");
 
   const { recherche, setRecherche, page, setPage, totalPages, filtres, affiches } =
     useTable(audits, ["titre", "reference"]);
@@ -91,22 +135,21 @@ function AuditsPage() {
     api.get("/audits/templates").then((r) => setTemplates(r.data.data || [])).catch(() => {});
   }, []);
 
-  const ouvrirModal = () => {
+  // Cliquer une carte de la bibliothèque ouvre directement le formulaire,
+  // le template est déjà fixé (badge en lecture seule dans le formulaire).
+  const demarrerAudit = (template) => {
     setErreurForm("");
-    reset({ titre: "", templateId: "", datePrevue: "", auditeurId: user?.id ?? "", siteId: "" });
+    setTemplateChoisi(template);
+    reset({ titre: template.nom, templateId: template.id, datePrevue: "", auditeurId: user?.id ?? "", siteId: "" });
+    setValue("templateId", template.id);
     setShowModal(true);
-  };
-
-  const selectionnerTemplate = (template) => {
-    setValue("templateId", template.id, { shouldValidate: true });
-    setValue("titre", template.nom, { shouldValidate: true });
   };
 
   const onSubmit = async (data) => {
     setErreurForm("");
     try {
       await api.post("/audits", data);
-      toast.success("Audit créé — checklist générée avec succès");
+      toast.success("Audit programmé — checklist générée avec succès");
       setShowModal(false);
       charger();
     } catch (err) {
@@ -123,6 +166,34 @@ function AuditsPage() {
 
   return (
     <AppLayout titre="Audits internes">
+      {/* ── Bannière d'intro + score global ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <div className="lg:col-span-2 p-5 rounded-lg border border-[#E2E8F0] bg-white">
+          <p className="text-sm font-semibold text-[#1E293B] mb-1">Audits ISO 45001</p>
+          <p className="text-xs text-[#64748B] leading-relaxed">
+            Démarrez un audit depuis un des templates ci-dessous. La checklist est générée
+            automatiquement et le score de conformité est calculé en fonction de la criticité
+            de chaque point de contrôle.
+          </p>
+        </div>
+        <CarteScoreGlobal audits={audits} />
+      </div>
+
+      {/* ── Bibliothèque de templates ── */}
+      {can("RESPONSABLE_QHSE") && (
+        <div className="mb-6">
+          <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-3">
+            Bibliothèque de templates
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {templates.map((t) => (
+              <CarteBibliotheque key={t.id} template={t} onDemarrer={demarrerAudit} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Liste des audits ── */}
       <div className="flex items-center gap-3 mb-4">
         <div className="relative flex-1 max-w-xs">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -130,12 +201,6 @@ function AuditsPage() {
             className="w-full pl-9 pr-3 py-2 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition" />
         </div>
         <span className="text-sm text-[#64748B] shrink-0">{filtres.length} résultat{filtres.length !== 1 ? "s" : ""}</span>
-        {can("RESPONSABLE_QHSE") && (
-          <button onClick={ouvrirModal}
-            className="ml-auto px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 transition-colors">
-            Nouveau
-          </button>
-        )}
       </div>
 
       {chargement ? (
@@ -195,12 +260,13 @@ function AuditsPage() {
         </div>
       )}
 
+      {/* ── Formulaire de programmation d'un audit ── */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
           onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
-          <div className="w-full max-w-2xl bg-white rounded-lg border border-[#E2E8F0] mx-4 flex flex-col" style={{ maxHeight: "90vh" }}>
+          <div className="w-full max-w-lg bg-white rounded-lg border border-[#E2E8F0] mx-4 flex flex-col" style={{ maxHeight: "90vh" }}>
             <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-[#F1F5F9] shrink-0">
-              <h2 className="text-base font-semibold text-[#1E293B]">Nouvel audit</h2>
+              <h2 className="text-base font-semibold text-[#1E293B]">Programmer une inspection</h2>
               <button onClick={() => setShowModal(false)}
                 className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition text-base leading-none">
                 &#x2715;
@@ -213,45 +279,51 @@ function AuditsPage() {
               )}
 
               <form id="audit-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+
+                {/* Section : informations générales */}
                 <div>
-                  <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-2">
-                    Template de checklist *
+                  <p className="text-xs font-semibold text-navy uppercase tracking-wide mb-3">
+                    Informations générales
                   </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {templates.map((t) => (
-                      <CarteTemplate
-                        key={t.id}
-                        template={t}
-                        selectionne={templateId === t.id}
-                        onSelect={selectionnerTemplate}
-                      />
-                    ))}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Template</label>
+                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-md border border-[#E2E8F0] bg-[#F8FAFC]">
+                        {templateChoisi && <IconeTemplate id={templateChoisi.id} />}
+                        <span className="text-sm font-medium text-[#1E293B]">{templateChoisi?.nom ?? "—"}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Titre</label>
+                      <input type="text" {...register("titre")} placeholder="ex: Audit sécurité Q2 2026" className={inputCls("titre")} />
+                      {errors.titre && <p className="mt-1 text-xs text-[#DC2626]">{errors.titre.message}</p>}
+                    </div>
                   </div>
-                  {errors.templateId && <p className="mt-2 text-xs text-[#DC2626]">{errors.templateId.message}</p>}
                 </div>
 
+                {/* Section : planification */}
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Titre</label>
-                  <input type="text" {...register("titre")} placeholder="ex: Audit sécurité Q2 2026" className={inputCls("titre")} />
-                  {errors.titre && <p className="mt-1 text-xs text-[#DC2626]">{errors.titre.message}</p>}
+                  <p className="text-xs font-semibold text-navy uppercase tracking-wide mb-3">
+                    Planification
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Date prévue</label>
+                      <input type="date" {...register("datePrevue")} className={inputCls("datePrevue")} />
+                      {errors.datePrevue && <p className="mt-1 text-xs text-[#DC2626]">{errors.datePrevue.message}</p>}
+                    </div>
+                    <div>
+                      <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Site</label>
+                      <select {...register("siteId")} className={inputCls("siteId")}>
+                        <option value="">— Sélectionner un site —</option>
+                        {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
+                      </select>
+                      {errors.siteId && <p className="mt-1 text-xs text-[#DC2626]">{errors.siteId.message}</p>}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Date prévue</label>
-                    <input type="date" {...register("datePrevue")} className={inputCls("datePrevue")} />
-                    {errors.datePrevue && <p className="mt-1 text-xs text-[#DC2626]">{errors.datePrevue.message}</p>}
-                  </div>
-                  <div>
-                    <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Site</label>
-                    <select {...register("siteId")} className={inputCls("siteId")}>
-                      <option value="">— Sélectionner un site —</option>
-                      {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
-                    </select>
-                    {errors.siteId && <p className="mt-1 text-xs text-[#DC2626]">{errors.siteId.message}</p>}
-                  </div>
-                </div>
-
+                <input type="hidden" {...register("templateId")} />
                 <input type="hidden" {...register("auditeurId")} />
               </form>
             </div>
@@ -263,7 +335,7 @@ function AuditsPage() {
               </button>
               <button type="submit" form="audit-form" disabled={isSubmitting}
                 className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
-                {isSubmitting ? "Création..." : "Créer l'audit"}
+                {isSubmitting ? "Programmation..." : "Programmer l'audit"}
               </button>
             </div>
           </div>
