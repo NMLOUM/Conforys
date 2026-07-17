@@ -9,6 +9,7 @@ import IncidentsPage from "./pages/IncidentsPage";
 import IncidentDetailPage from "./pages/IncidentDetailPage";
 import EpisPage from "./pages/EpisPage";
 import AuditsPage from "./pages/AuditsPage";
+import AuditDetailPage from "./pages/AuditDetailPage";
 import FormationsPage from "./pages/FormationsPage";
 import UsersPage from "./pages/UsersPage";
 import ActionsPage from "./pages/ActionsPage";
@@ -84,6 +85,7 @@ function App() {
         {/* Modules QHSE exclusifs */}
         <Route path="/epis"       element={<ProtectedRoute element={<EpisPage />}       rolesAutorises={["RESPONSABLE_QHSE"]} />} />
         <Route path="/audits"     element={<ProtectedRoute element={<AuditsPage />}     rolesAutorises={["RESPONSABLE_QHSE"]} />} />
+        <Route path="/audits/:id" element={<ProtectedRoute element={<AuditDetailPage />} rolesAutorises={["RESPONSABLE_QHSE"]} />} />
         <Route path="/formations" element={<ProtectedRoute element={<FormationsPage />} rolesAutorises={["RESPONSABLE_QHSE", "EMPLOYE"]} />} />
         {/* Utilisateurs : ADMIN (CRUD) + QHSE (lecture pour assigner des actions) */}
         <Route path="/users"      element={<ProtectedRoute element={<UsersPage />}      rolesAutorises={["ADMIN", "RESPONSABLE_QHSE"]} />} />

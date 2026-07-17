@@ -310,10 +310,46 @@ model Audit {
   site   Site   @relation(fields: [siteId], references: [id])
   siteId String @map("site_id")
 
+  // Relation : questions de la checklist (générées depuis un template à la création)
+  questions QuestionAudit[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("audits")
+}
+
+// ── Checklist d'audit : questions et scoring pondéré ──────────────────────────
+
+enum CriticiteQuestion {
+  CRITIQUE // Poids 3 dans le calcul du score
+  MAJEUR   // Poids 2
+  MINEUR   // Poids 1
+}
+
+enum ReponseAudit {
+  CONFORME       // Compte pour le score
+  NON_CONFORME   // Compte pour le score, commentaire obligatoire
+  NON_APPLICABLE // Exclue du dénominateur du score
+  NON_REPONDU    // Exclue du dénominateur du score (valeur initiale)
+}
+
+model QuestionAudit {
+  id          String            @id @default(uuid())
+  libelle     String
+  criticite   CriticiteQuestion @default(MAJEUR)
+  reponse     ReponseAudit      @default(NON_REPONDU)
+  commentaire String?
+  photoUrl    String?           @map("photo_url")
+
+  // Suppression en cascade : les questions n'ont pas de sens sans leur audit parent
+  audit   Audit  @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  auditId String @map("audit_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@map("questions_audit")
 }
 
 // ─────────────────────────────────────────────

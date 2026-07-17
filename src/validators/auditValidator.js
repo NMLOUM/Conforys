@@ -1,17 +1,14 @@
 const { z } = require("zod");
 
+// Création d'un audit à partir d'un template — le type et les questions
+// sont dérivés du template côté service, pas saisis manuellement.
 const auditSchema = z.object({
   titre: z
     .string({ required_error: "Le titre est obligatoire." })
     .min(3, "Le titre doit faire au moins 3 caractères."),
-  type: z.enum(
-    ["SECURITE", "QUALITE", "ENVIRONNEMENT", "HYGIENE"],
-    { errorMap: () => ({ message: "Type d'audit invalide." }) }
-  ),
-  statut: z.enum(
-    ["PLANIFIE", "EN_COURS", "TERMINE", "ANNULE"],
-    { errorMap: () => ({ message: "Statut invalide." }) }
-  ),
+  templateId: z
+    .string({ required_error: "Sélectionnez un template d'audit." })
+    .min(1, "Sélectionnez un template d'audit."),
   datePrevue: z
     .string({ required_error: "La date prévue est obligatoire." })
     .min(1, "La date prévue est obligatoire."),
@@ -21,9 +18,26 @@ const auditSchema = z.object({
   siteId: z
     .string({ required_error: "Sélectionnez un site." })
     .uuid("Sélectionnez un site valide."),
-  dateRealisee:    z.string().optional().or(z.null()),
-  scoreConformite: z.coerce.number().min(0).max(100).optional().or(z.null()),
-  observations:    z.string().optional(),
 });
 
-module.exports = { auditSchema };
+// Réponse à une question de checklist — commentaire obligatoire si NON_CONFORME
+const repondreQuestionSchema = z
+  .object({
+    reponse: z.enum(
+      ["CONFORME", "NON_CONFORME", "NON_APPLICABLE", "NON_REPONDU"],
+      { errorMap: () => ({ message: "Réponse invalide." }) }
+    ),
+    commentaire: z.string().optional().or(z.literal("")),
+    photoUrl: z.string().url().optional().or(z.literal("")),
+  })
+  .superRefine((data, ctx) => {
+    if (data.reponse === "NON_CONFORME" && (!data.commentaire || data.commentaire.trim().length < 5)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["commentaire"],
+        message: "Un commentaire est obligatoire pour une non-conformité (min. 5 caractères).",
+      });
+    }
+  });
+
+module.exports = { auditSchema, repondreQuestionSchema };
