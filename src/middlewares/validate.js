@@ -19,4 +19,21 @@ const validate = (schema) => (req, res, next) => {
   next();
 };
 
-module.exports = { validate };
+// Variante : valide req.query au lieu de req.body — utilisée pour les routes
+// GET paramétrées (ex: rapport de synthèse par période).
+const validateQuery = (schema) => (req, res, next) => {
+  const result = schema.safeParse(req.query);
+  if (!result.success) {
+    const errors = result.error.flatten().fieldErrors;
+    const premier = Object.values(errors).flat()[0] ?? "Paramètres invalides.";
+    return res.status(400).json({
+      success: false,
+      message: premier,
+      errors,
+    });
+  }
+  req.query = result.data;
+  next();
+};
+
+module.exports = { validate, validateQuery };

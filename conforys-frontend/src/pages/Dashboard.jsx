@@ -9,6 +9,7 @@ import EvolutionChart from "../components/dashboard/EvolutionChart";
 import AlertesCritiques from "../components/dashboard/AlertesCritiques";
 import AccesRapides from "../components/dashboard/AccesRapides";
 import Badge from "../components/ui/Badge";
+import toast from "react-hot-toast";
 
 const TYPE_LABEL = {
   ACCIDENT:                 "Accident",
@@ -27,6 +28,93 @@ function KpiCard({ label, value, sub, subColor, valueColor = "#0D2B4E" }) {
       <p className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{label}</p>
       <p className="text-[36px] font-bold leading-none" style={{ color: valueColor }}>{value}</p>
       <p className={`text-[12px] ${subColor || "text-[#94A3B8]"}`}>{sub || " "}</p>
+    </div>
+  );
+}
+
+// â”€â”€ Export du bilan de sÃ©curitÃ© PDF sur une pÃ©riode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function ExportBilan() {
+  const premierJourMois = () => {
+    const d = new Date();
+    d.setDate(1);
+    return d.toISOString().split("T")[0];
+  };
+  const aujourdHui = () => new Date().toISOString().split("T")[0];
+
+  const [sites, setSites] = useState([]);
+  const [dateDebut, setDateDebut] = useState(premierJourMois());
+  const [dateFin, setDateFin] = useState(aujourdHui());
+  const [siteId, setSiteId] = useState("");
+  const [genererEnCours, setGenererEnCours] = useState(false);
+
+  useEffect(() => {
+    api.get("/sites").then((r) => setSites(r.data.data || [])).catch(() => {});
+  }, []);
+
+  const genererBilan = async () => {
+    if (!dateDebut || !dateFin) {
+      toast.error("Sélectionnez une date de début et une date de fin.");
+      return;
+    }
+    if (new Date(dateDebut) > new Date(dateFin)) {
+      toast.error("La date de fin doit être postérieure ou égale à la date de début.");
+      return;
+    }
+    setGenererEnCours(true);
+    try {
+      const res = await api.get("/rapports/synthese-pdf", {
+        params: { dateDebut, dateFin, ...(siteId && { siteId }) },
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const lien = document.createElement("a");
+      lien.href = url;
+      lien.download = `bilan-securite-${dateDebut}-au-${dateFin}.pdf`;
+      document.body.appendChild(lien);
+      lien.click();
+      lien.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de la génération du bilan.");
+    } finally {
+      setGenererEnCours(false);
+    }
+  };
+
+  const inputCls =
+    "px-3 py-2 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#1E293B] " +
+    "focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition";
+
+  return (
+    <div className="bg-white border border-[#E2E8F0] rounded-lg p-5">
+      <p className="text-sm font-bold text-navy mb-1">Exporter un bilan</p>
+      <p className="text-xs text-[#94A3B8] mb-4">
+        Bilan de sécurité PDF sur la période choisie, destiné à la direction.
+      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label className="block mb-1 text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">Du</label>
+          <input type="date" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className="block mb-1 text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">Au</label>
+          <input type="date" value={dateFin} onChange={(e) => setDateFin(e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className="block mb-1 text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">Site</label>
+          <select value={siteId} onChange={(e) => setSiteId(e.target.value)} className={inputCls}>
+            <option value="">Tous les sites</option>
+            {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
+          </select>
+        </div>
+        <button
+          onClick={genererBilan}
+          disabled={genererEnCours}
+          className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors"
+        >
+          {genererEnCours ? "Génération…" : "Générer le bilan PDF"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -299,6 +387,9 @@ function Dashboard() {
             <p className="text-sm font-bold text-navy mb-3">Accès rapides</p>
             <AccesRapides />
           </div>
+
+          {/* â”€â”€ LIGNE 5 : Export du bilan de sÃ©curitÃ© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          <ExportBilan />
 
         </div>
       )}
