@@ -6,7 +6,7 @@ import ScoreGauge from "../components/dashboard/ScoreGauge";
 import GraviteChart from "../components/dashboard/GraviteChart";
 import TypeChart from "../components/dashboard/TypeChart";
 import EvolutionChart from "../components/dashboard/EvolutionChart";
-import AlertesCritiques from "../components/dashboard/AlertesCritiques";
+import AlertesATraiter from "../components/dashboard/AlertesATraiter";
 import AccesRapides from "../components/dashboard/AccesRapides";
 import Badge from "../components/ui/Badge";
 import toast from "react-hot-toast";
@@ -283,16 +283,8 @@ function Dashboard() {
               <EvolutionChart data={evolutionData} />
             </div>
 
-            <div className="bg-white border border-[#E2E8F0] rounded-lg p-5">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-bold text-navy">Alertes en cours</p>
-                {alertes.length > 0 && (
-                  <span className="text-xs font-medium px-2 py-0.5 rounded bg-red-50 text-[#DC2626] border border-red-200">
-                    {alertes.length}
-                  </span>
-                )}
-              </div>
-              <AlertesCritiques alertes={alertes} />
+            <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">
+              <AlertesATraiter />
             </div>
           </div>
 

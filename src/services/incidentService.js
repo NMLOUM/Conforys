@@ -1,6 +1,7 @@
 // Importation de l'instance Prisma partagée (connexion à la base)
 const prisma = require("../config/prisma");
 const { enregistrer } = require("./historiqueService");
+const { creerPourPlusieurs } = require("./notificationService");
 
 // Labels lisibles pour les statuts (utilisés dans les messages d'historique)
 const LABEL_STATUT = {
@@ -9,6 +10,31 @@ const LABEL_STATUT = {
   EN_COURS:  "En cours",
   CLOS:      "Clôturé",
   REJETE:    "Rejeté",
+};
+
+const LABEL_TYPE_INCIDENT = {
+  ACCIDENT:                 "Accident",
+  PRESQU_ACCIDENT:          "Presqu'accident",
+  SITUATION_DANGEREUSE:     "Situation dangereuse",
+  INCIDENT_ENVIRONNEMENTAL: "Incident environnemental",
+};
+const LABEL_GRAVITE = { FAIBLE: "faible", MOYEN: "moyenne", GRAVE: "grave", CRITIQUE: "critique" };
+
+// Notifie tous les RESPONSABLE_QHSE actifs de l'entreprise qu'un incident
+// vient d'être déclaré. Titre plus urgent si la gravité est CRITIQUE.
+// N'échoue jamais l'opération principale (voir notificationService.creer).
+const notifierDeclaration = async (incident, entrepriseId) => {
+  const destinataires = await prisma.user.findMany({
+    where: { entrepriseId, role: "RESPONSABLE_QHSE", actif: true },
+    select: { id: true },
+  });
+
+  const critique = incident.gravite === "CRITIQUE";
+  const type    = critique ? "INCIDENT_CRITIQUE" : "INCIDENT_DECLARE";
+  const titre   = critique ? "Incident critique déclaré" : "Nouvel incident déclaré";
+  const message = `${incident.numeroReference} — ${LABEL_TYPE_INCIDENT[incident.type] ?? incident.type} de gravité ${LABEL_GRAVITE[incident.gravite] ?? incident.gravite}`;
+
+  await creerPourPlusieurs(destinataires.map((u) => u.id), type, titre, message, `/incidents/${incident.id}`);
 };
 
 // Erreur métier avec code HTTP — permet aux contrôleurs de renvoyer 400/403 au lieu de 500
@@ -109,6 +135,11 @@ const createIncident = async (data, userId) => {
       });
       // Piste d'audit — après la transaction pour ne pas l'inclure dans le rollback éventuel
       await enregistrer(incident.id, userId, "Incident déclaré", `Référence : ${incident.numeroReference}`);
+
+      // Notification des QHSE de l'entreprise — best-effort, ne bloque jamais la déclaration
+      const declarant = await prisma.user.findUnique({ where: { id: userId }, select: { entrepriseId: true } });
+      if (declarant) await notifierDeclaration(incident, declarant.entrepriseId);
+
       return incident;
     } catch (err) {
       // P2002 = violation contrainte unique sur numeroReference (collision simultanée)

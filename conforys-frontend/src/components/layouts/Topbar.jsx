@@ -1,5 +1,6 @@
 import { useAuthStore } from "../../store/authStore";
 import { useNavigate } from "react-router-dom";
+import NotificationBell from "./NotificationBell";
 
 function Topbar({ titre, onOuvrirSidebar }) {
   const user     = useAuthStore((state) => state.user);
@@ -38,6 +39,8 @@ function Topbar({ titre, onOuvrirSidebar }) {
         <span className="hidden sm:block text-sm text-[#64748B]">
           {user ? `${user.prenom} ${user.nom}` : ""}
         </span>
+
+        <NotificationBell />
 
         <div className="flex items-center justify-center w-8 h-8 text-xs font-semibold text-white rounded-full bg-navy select-none">
           {initiales}

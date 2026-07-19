@@ -63,6 +63,8 @@ model User {
   actionsAssignees  ActionCorrective[] @relation("ActionsAssignees")
   // Relation : entrées d'historique dont cet utilisateur est l'auteur
   historiqueActions HistoriqueIncident[] @relation("HistoriqueAuteur")
+  // Relation : notifications reçues par cet utilisateur
+  notifications     Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -425,4 +427,34 @@ model Habilitation {
   updatedAt DateTime @updatedAt      @map("updated_at")
 
   @@map("habilitations")
+}
+
+// ─────────────────────────────────────────────
+//  MODULE 7 : NOTIFICATIONS IN-APP
+// ─────────────────────────────────────────────
+
+enum TypeNotification {
+  INCIDENT_DECLARE     // Incident déclaré, notifié aux QHSE de l'entreprise
+  INCIDENT_CRITIQUE    // Idem, mais gravité CRITIQUE (titre plus urgent)
+  EPI_STOCK_BAS        // EPI sous le seuil d'alerte
+  HABILITATION_EXPIRE  // Habilitation expirant bientôt
+  ACTION_EN_RETARD     // Action corrective en retard
+  AUDIT_PLANIFIE       // Audit planifié à venir
+}
+
+model Notification {
+  id      String            @id @default(uuid())
+  type    TypeNotification
+  titre   String
+  message String
+  lu      Boolean           @default(false)
+  lien    String?                              // Ex: /incidents/:id — route frontend cible
+
+  // Relation : destinataire de la notification (suppression en cascade avec l'utilisateur)
+  destinataire   User   @relation(fields: [destinataireId], references: [id], onDelete: Cascade)
+  destinataireId String @map("destinataire_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("notifications")
 }
