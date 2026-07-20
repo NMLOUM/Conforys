@@ -23,4 +23,71 @@ const getHistoriqueByIncident = async (incidentId) => {
   });
 };
 
-module.exports = { enregistrer, getHistoriqueByIncident };
+// ── Journal d'activité global ────────────────────────────────────────────────
+//
+// HistoriqueIncident n'a pas de champ "type" dédié : chaque entrée est un
+// libellé métier free-text ("Incident déclaré", "Statut changé : X → Y",
+// "Action corrective ajoutée", "Photo ajoutée"). On dérive une catégorie à
+// partir du préfixe du libellé — utilisée à la fois pour le filtre
+// ?typeAction= (traduit en clause Prisma) et pour le badge coloré côté client.
+const CATEGORIES_ACTION = [
+  { code: "DECLARATION",       where: { action: "Incident déclaré" },                   test: (a) => a === "Incident déclaré" },
+  { code: "CHANGEMENT_STATUT", where: { action: { startsWith: "Statut changé" } },       test: (a) => a.startsWith("Statut changé") },
+  { code: "ACTION_CORRECTIVE", where: { action: { startsWith: "Action corrective" } },   test: (a) => a.startsWith("Action corrective") },
+  { code: "PIECE_JOINTE",      where: { action: { contains: "Photo" } },                 test: (a) => a.includes("Photo") },
+];
+
+const deriverCategorie = (action) => CATEGORIES_ACTION.find((c) => c.test(action))?.code ?? "AUTRE";
+
+// Journal d'activité global : toutes les entrées HistoriqueIncident de tous
+// les incidents de l'entreprise du demandeur (isolation multi-tenant, même
+// principe que getAllIncidents/getAllActions), avec filtres optionnels et
+// pagination. Chaque entrée renvoyée est annotée d'une "categorie" dérivée
+// pour l'affichage (badge) côté client.
+const getHistoriqueGlobal = async (entrepriseId, { typeAction, auteurId, incidentId, dateDebut, dateFin, page = 1, limit = 20 } = {}) => {
+  const categorie = CATEGORIES_ACTION.find((c) => c.code === typeAction);
+
+  const debut = dateDebut && !isNaN(new Date(dateDebut).getTime()) ? new Date(dateDebut) : null;
+  const fin   = dateFin   && !isNaN(new Date(dateFin).getTime())   ? new Date(dateFin)   : null;
+  if (fin) fin.setHours(23, 59, 59, 999); // inclut toute la journée de fin de période
+
+  const where = {
+    incident: { declarePar: { entrepriseId } },
+    ...(auteurId   && { auteurId }),
+    ...(incidentId && { incidentId }),
+    ...(categorie  && categorie.where),
+    ...((debut || fin) && {
+      dateAction: {
+        ...(debut && { gte: debut }),
+        ...(fin   && { lte: fin }),
+      },
+    }),
+  };
+
+  const pageNum  = Math.max(1, parseInt(page, 10)  || 1);
+  const limitNum = Math.max(1, parseInt(limit, 10) || 20);
+  const skip = (pageNum - 1) * limitNum;
+
+  const [entries, total] = await Promise.all([
+    prisma.historiqueIncident.findMany({
+      where,
+      include: {
+        auteur:   { select: { id: true, nom: true, prenom: true } },
+        incident: { select: { id: true, numeroReference: true } },
+      },
+      orderBy: { dateAction: "desc" },
+      skip,
+      take: limitNum,
+    }),
+    prisma.historiqueIncident.count({ where }),
+  ]);
+
+  return {
+    data: entries.map((e) => ({ ...e, categorie: deriverCategorie(e.action) })),
+    total,
+    page: pageNum,
+    totalPages: Math.ceil(total / limitNum) || 1,
+  };
+};
+
+module.exports = { enregistrer, getHistoriqueByIncident, getHistoriqueGlobal };

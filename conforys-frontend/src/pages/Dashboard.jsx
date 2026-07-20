@@ -171,14 +171,22 @@ function Dashboard() {
               <h2 className="text-lg font-bold text-navy">Vue d'ensemble QHSE</h2>
               <p className="text-xs text-[#94A3B8] capitalize mt-0.5">{dateAujourdhui}</p>
             </div>
-            {alertes.length > 0 && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded border border-[#DC2626]/30 bg-red-50">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#DC2626] shrink-0" />
-                <span className="text-xs font-semibold text-[#DC2626]">
-                  {alertes.filter((a) => a.niveau === "CRITIQUE").length} critique{alertes.filter((a) => a.niveau === "CRITIQUE").length > 1 ? "s" : ""}
-                </span>
-              </div>
-            )}
+            <div className="flex items-center gap-3">
+              {alertes.length > 0 && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded border border-[#DC2626]/30 bg-red-50">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#DC2626] shrink-0" />
+                  <span className="text-xs font-semibold text-[#DC2626]">
+                    {alertes.filter((a) => a.niveau === "CRITIQUE").length} critique{alertes.filter((a) => a.niveau === "CRITIQUE").length > 1 ? "s" : ""}
+                  </span>
+                </div>
+              )}
+              <button
+                onClick={() => navigate("/journal-activite")}
+                className="px-3 py-1.5 text-xs font-semibold text-white rounded-md bg-navy hover:bg-navy/90 transition-colors"
+              >
+                Journal d'activité
+              </button>
+            </div>
           </div>
 
           {/* â”€â”€ LIGNE 1 : Score + 4 KPIs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}

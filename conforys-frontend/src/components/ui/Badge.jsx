@@ -40,6 +40,12 @@ const VARIANTS = {
   // Générique
   ACTIF_USER:   { bg: "bg-green-50",  text: "text-green-700", dot: "bg-green-500" },
   INACTIF_USER: { bg: "bg-gray-100",  text: "text-gray-500",  dot: "bg-gray-400"  },
+  // Catégories du journal d'activité (piste d'audit des incidents)
+  DECLARATION:       { bg: "bg-blue-50",  text: "text-blue-700",  dot: "bg-blue-500"  },
+  CHANGEMENT_STATUT: { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-500" },
+  ACTION_CORRECTIVE: { bg: "bg-slate-100",text: "text-slate-600", dot: "bg-slate-400" },
+  PIECE_JOINTE:      { bg: "bg-gray-100", text: "text-gray-600",  dot: "bg-gray-400"  },
+  AUTRE:             { bg: "bg-gray-100", text: "text-gray-500",  dot: "bg-gray-400"  },
 };
 
 // Labels lisibles par défaut
@@ -80,6 +86,12 @@ const LABELS = {
   RESPONSABLE_QHSE: "Resp. QHSE",
   MANAGER:          "Manager",
   EMPLOYE:          "Employé",
+  // Journal d'activité
+  DECLARATION:       "Déclaration",
+  CHANGEMENT_STATUT: "Changement de statut",
+  ACTION_CORRECTIVE: "Action corrective",
+  PIECE_JOINTE:      "Pièce jointe",
+  AUTRE:             "Autre",
 };
 
 function Badge({ variant = "EMPLOYE", label, className = "" }) {

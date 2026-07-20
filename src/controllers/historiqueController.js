@@ -11,4 +11,19 @@ const getHistorique = async (req, res) => {
   }
 };
 
-module.exports = { getHistorique };
+// GET /api/historique/global — journal d'activité de tous les incidents
+// (RESPONSABLE_QHSE et ADMIN), filtres + pagination, scopé à l'entreprise
+const getHistoriqueGlobal = async (req, res) => {
+  try {
+    const { entrepriseId } = req.user;
+    const { typeAction, auteurId, incidentId, dateDebut, dateFin, page, limit } = req.query;
+    const resultat = await historiqueService.getHistoriqueGlobal(entrepriseId, {
+      typeAction, auteurId, incidentId, dateDebut, dateFin, page, limit,
+    });
+    res.status(200).json({ success: true, ...resultat });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+module.exports = { getHistorique, getHistoriqueGlobal };
