@@ -31,6 +31,9 @@ const VARIANTS = {
   // Niveau d'alerte EPI calculé (OK / BIENTOT / ALERTE)
   OK:        { bg: "bg-green-50",  text: "text-green-700",   dot: "bg-green-500"   },
   BIENTOT:   { bg: "bg-orange-50", text: "text-orange-700",  dot: "bg-orange-500"  },
+  // Statut d'affectation EPI
+  ACTIVE:    { bg: "bg-green-50",  text: "text-green-700",   dot: "bg-green-500"   },
+  RENDUE:    { bg: "bg-gray-100",  text: "text-gray-500",    dot: "bg-gray-400"    },
   // Habilitations
   VALIDE:          { bg: "bg-green-50",   text: "text-green-700",   dot: "bg-green-500"   },
   BIENTOT_EXPIREE: { bg: "bg-amber-50",   text: "text-amber-700",   dot: "bg-amber-500"   },
@@ -82,6 +85,8 @@ const LABELS = {
   STOCK_OK:         "Stock OK",
   OK:               "OK",
   BIENTOT:          "Bientôt",
+  ACTIVE:           "Active",
+  RENDUE:           "Rendue",
   // Habilitations
   VALIDE:           "Valide",
   BIENTOT_EXPIREE:  "Expire bientôt",

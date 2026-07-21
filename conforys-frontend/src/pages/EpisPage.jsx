@@ -100,13 +100,29 @@ function CarteRepartition({ epis }) {
   );
 }
 
+// ── Avatar à initiales — employé affecté à un EPI ────────────────────────────
+
+function AvatarInitiales({ prenom, nom }) {
+  const init = `${prenom?.[0] ?? ""}${nom?.[0] ?? ""}`.toUpperCase() || "?";
+  return (
+    <div
+      title={`${prenom ?? ""} ${nom ?? ""}`.trim()}
+      className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 border-2 border-white -ml-2 first:ml-0"
+      style={{ backgroundColor: "#0D2B4E" }}
+    >
+      {init}
+    </div>
+  );
+}
+
 // ── Carte individuelle d'un EPI ────────────────────────────────────────────────
 
-function CarteEpi({ epi, peutGerer, onModifier }) {
+function CarteEpi({ epi, peutGerer, affectationsActives, onModifier, onAffecter }) {
   const perime = estPerime(epi.datePeremption);
   const enAlerteStock = epi.quantite <= epi.seuilAlerte;
   const derniereInspection = formatDateAffichage(epi.dateDerniereInspection);
   const peremption = formatDateAffichage(epi.datePeremption);
+  const MAX_AVATARS = 4;
 
   return (
     <div className="p-4 rounded-lg border border-[#E2E8F0] bg-white">
@@ -134,11 +150,32 @@ function CarteEpi({ epi, peutGerer, onModifier }) {
         </div>
       </div>
 
+      {affectationsActives.length > 0 && (
+        <div className="flex items-center mt-3 pt-3 border-t border-[#F1F5F9]">
+          <div className="flex">
+            {affectationsActives.slice(0, MAX_AVATARS).map((a) => (
+              <AvatarInitiales key={a.id} prenom={a.employe.prenom} nom={a.employe.nom} />
+            ))}
+          </div>
+          {affectationsActives.length > MAX_AVATARS && (
+            <span className="ml-1.5 text-[10px] font-semibold text-[#64748B]">
+              +{affectationsActives.length - MAX_AVATARS}
+            </span>
+          )}
+        </div>
+      )}
+
       {peutGerer && (
-        <button onClick={() => onModifier(epi)}
-          className="mt-3 w-full px-3 py-1.5 text-xs font-medium text-navy border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
-          Modifier
-        </button>
+        <div className="flex gap-2 mt-3">
+          <button onClick={() => onModifier(epi)}
+            className="flex-1 px-3 py-1.5 text-xs font-medium text-navy border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
+            Modifier
+          </button>
+          <button onClick={() => onAffecter(epi)} disabled={epi.quantite <= 0}
+            className="flex-1 px-3 py-1.5 text-xs font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+            Affecter
+          </button>
+        </div>
       )}
     </div>
   );
@@ -160,6 +197,17 @@ function EpisPage() {
   const [showFiltres,  setShowFiltres]  = useState(false);
   const [filtreStatut, setFiltreStatut] = useState("");
   const [filtreSite,   setFiltreSite]   = useState("");
+
+  // ── Affectation des EPI aux employés ──────────────────────────────────────
+  const [users,        setUsers]        = useState([]);
+  const [affectations, setAffectations] = useState([]);
+  const [showModalAffecter, setShowModalAffecter] = useState(false);
+  const [epiAAffecter,      setEpiAAffecter]      = useState(null);
+  const [formAffectation,   setFormAffectation]   = useState({ employeId: "", poste: "" });
+  const [erreurAffectation, setErreurAffectation] = useState("");
+  const [envoiAffectation,  setEnvoiAffectation]  = useState(false);
+  const [rendreEnCours,     setRendreEnCours]     = useState(null);
+  const [filtreJournalEpi,  setFiltreJournalEpi]  = useState(null);
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
     mode: "onBlur",
@@ -190,10 +238,69 @@ function EpisPage() {
     }
   };
 
+  const chargerAffectations = async () => {
+    try {
+      const res = await api.get("/affectations");
+      setAffectations(res.data.data || []);
+    } catch (e) {
+      console.error("Erreur chargement affectations:", e);
+    }
+  };
+
   useEffect(() => {
     charger();
     api.get("/sites").then((r) => setSites(r.data.data || [])).catch(() => {});
+    if (peutGerer) {
+      api.get("/users").then((r) => setUsers(r.data.data || [])).catch(() => {});
+      chargerAffectations();
+    }
   }, []);
+
+  const ouvrirModalAffecter = (epi) => {
+    setErreurAffectation("");
+    setEpiAAffecter(epi);
+    setFormAffectation({ employeId: "", poste: "" });
+    setShowModalAffecter(true);
+  };
+
+  const soumettreAffectation = async () => {
+    if (!formAffectation.employeId) {
+      setErreurAffectation("Sélectionnez un employé.");
+      return;
+    }
+    setErreurAffectation("");
+    setEnvoiAffectation(true);
+    try {
+      await api.post(`/epis/${epiAAffecter.id}/affecter`, formAffectation);
+      toast.success("EPI affecté avec succès");
+      setShowModalAffecter(false);
+      charger();
+      chargerAffectations();
+    } catch (err) {
+      const msg = err.response?.data?.message || "Erreur lors de l'affectation.";
+      setErreurAffectation(msg);
+      toast.error(msg);
+    } finally {
+      setEnvoiAffectation(false);
+    }
+  };
+
+  const rendreAffectation = async (affectationId) => {
+    setRendreEnCours(affectationId);
+    try {
+      await api.put(`/affectations/${affectationId}/rendre`);
+      toast.success("EPI rendu avec succès");
+      charger();
+      chargerAffectations();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de la restitution.");
+    } finally {
+      setRendreEnCours(null);
+    }
+  };
+
+  const affectationsActivesParEpi = (epiId) =>
+    affectations.filter((a) => a.epiId === epiId && a.statut === "ACTIVE");
 
   const ouvrirCreation = () => {
     setErreurForm("");
@@ -328,7 +435,14 @@ function EpisPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-5">
               {affiches.map((epi) => (
-                <CarteEpi key={epi.id} epi={epi} peutGerer={peutGerer} onModifier={ouvrirModification} />
+                <CarteEpi
+                  key={epi.id}
+                  epi={epi}
+                  peutGerer={peutGerer}
+                  affectationsActives={affectationsActivesParEpi(epi.id)}
+                  onModifier={ouvrirModification}
+                  onAffecter={ouvrirModalAffecter}
+                />
               ))}
             </div>
           )}
@@ -393,6 +507,73 @@ function EpisPage() {
               </div>
             )}
           </div>
+
+          {/* ── Journal des affectations ── */}
+          {peutGerer && (
+            <div className="mt-5">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-navy">Journal des affectations</p>
+                {filtreJournalEpi && (
+                  <button onClick={() => setFiltreJournalEpi(null)} className="text-xs text-[#64748B] hover:text-navy underline">
+                    Retirer le filtre « {filtreJournalEpi.designation} »
+                  </button>
+                )}
+              </div>
+              <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[720px] text-sm">
+                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
+                      <tr>
+                        {["Employé", "EPI", "Date d'affectation", "Statut", "Actions"].map((h) => (
+                          <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#F1F5F9]">
+                      {(() => {
+                        const lignes = filtreJournalEpi
+                          ? affectations.filter((a) => a.epiId === filtreJournalEpi.id)
+                          : affectations;
+                        if (lignes.length === 0) {
+                          return (
+                            <tr><td colSpan={5} className="px-4 py-12 text-center text-[#94A3B8]">Aucune affectation enregistrée.</td></tr>
+                          );
+                        }
+                        return lignes.map((a) => (
+                          <tr key={a.id} className="hover:bg-[#F8FAFC] transition-colors">
+                            <td className="px-4 py-3">
+                              <p className="font-medium text-[#1E293B]">{a.employe.prenom} {a.employe.nom}</p>
+                              <p className="text-xs text-[#94A3B8] mt-0.5">{a.poste || <Badge variant={a.employe.role} />}</p>
+                            </td>
+                            <td className="px-4 py-3">
+                              <p className="text-[#1E293B]">{a.epi.designation}</p>
+                              {a.epi.reference && <p className="text-xs text-[#94A3B8]">{a.epi.reference}</p>}
+                            </td>
+                            <td className="px-4 py-3 text-[#64748B] whitespace-nowrap">{formatDateAffichage(a.dateAffectation)}</td>
+                            <td className="px-4 py-3"><Badge variant={a.statut} /></td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                {a.statut === "ACTIVE" && (
+                                  <button onClick={() => rendreAffectation(a.id)} disabled={rendreEnCours === a.id}
+                                    className="px-2.5 py-1 text-xs font-semibold rounded-md text-white bg-[#2E7D32] hover:bg-[#2E7D32]/90 disabled:opacity-50 transition-colors">
+                                    {rendreEnCours === a.id ? "…" : "Rendre"}
+                                  </button>
+                                )}
+                                <button onClick={() => setFiltreJournalEpi({ id: a.epiId, designation: a.epi.designation })}
+                                  className="px-2.5 py-1 text-xs font-medium text-navy border border-[#E2E8F0] rounded-md hover:bg-[#F1F5F9] transition-colors">
+                                  Voir historique
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -471,6 +652,64 @@ function EpisPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modale d'affectation ── */}
+      {showModalAffecter && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={(e) => e.target === e.currentTarget && setShowModalAffecter(false)}>
+          <div className="w-full max-w-sm bg-white rounded-lg border border-[#E2E8F0] p-6 mx-4">
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-base font-semibold text-[#1E293B]">Affecter un EPI</h2>
+              <button onClick={() => setShowModalAffecter(false)}
+                className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition text-base leading-none">
+                &#x2715;
+              </button>
+            </div>
+            <p className="text-sm text-[#64748B] mb-4">{epiAAffecter?.designation}</p>
+
+            {erreurAffectation && (
+              <div className="mb-4 p-3 text-sm text-[#DC2626] bg-red-50 border border-red-200 rounded-md">{erreurAffectation}</div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Employé</label>
+                <select
+                  value={formAffectation.employeId}
+                  onChange={(e) => setFormAffectation((f) => ({ ...f, employeId: e.target.value }))}
+                  className={inputCls("employeId")}
+                >
+                  <option value="">— Sélectionner un employé —</option>
+                  {users.map((u) => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+                  Poste <span className="font-normal normal-case text-[#94A3B8]">(optionnel)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formAffectation.poste}
+                  onChange={(e) => setFormAffectation((f) => ({ ...f, poste: e.target.value }))}
+                  placeholder="ex: Chantier A"
+                  className={inputCls("poste")}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-[#F1F5F9]">
+              <button type="button" onClick={() => setShowModalAffecter(false)}
+                className="px-4 py-2 text-sm font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
+                Annuler
+              </button>
+              <button type="button" onClick={soumettreAffectation} disabled={envoiAffectation}
+                className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
+                {envoiAffectation ? "Affectation..." : "Affecter"}
+              </button>
+            </div>
           </div>
         </div>
       )}

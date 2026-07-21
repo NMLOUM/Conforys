@@ -65,6 +65,8 @@ model User {
   historiqueActions HistoriqueIncident[] @relation("HistoriqueAuteur")
   // Relation : notifications reçues par cet utilisateur
   notifications     Notification[]
+  // Relation : EPI actuellement ou anciennement affectés à cet utilisateur
+  episAffectes      AffectationEpi[]     @relation("EpisAffectes")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -275,10 +277,43 @@ model Epi {
   site   Site   @relation(fields: [siteId], references: [id])
   siteId String @map("site_id")
 
+  // Relation : affectations de cet EPI à des employés
+  affectations AffectationEpi[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("epis")
+}
+
+// ─────────────────────────────────────────────
+//  MODULE 3b : AFFECTATION DES EPI AUX EMPLOYÉS
+// ─────────────────────────────────────────────
+
+enum StatutAffectation {
+  ACTIVE // EPI actuellement remis à l'employé
+  RENDUE // EPI restitué
+}
+
+model AffectationEpi {
+  id              String            @id @default(uuid())
+  poste           String?                                     // Poste de travail concerné
+  dateAffectation DateTime          @default(now()) @map("date_affectation")
+  dateRetour      DateTime?         @map("date_retour")
+  statut          StatutAffectation @default(ACTIVE)
+
+  // Relation : l'EPI affecté (suppression en cascade avec l'EPI)
+  epi   Epi    @relation(fields: [epiId], references: [id], onDelete: Cascade)
+  epiId String @map("epi_id")
+
+  // Relation : l'employé à qui l'EPI est affecté
+  employe   User   @relation("EpisAffectes", fields: [employeId], references: [id])
+  employeId String @map("employe_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@map("affectations_epi")
 }
 
 // ─────────────────────────────────────────────

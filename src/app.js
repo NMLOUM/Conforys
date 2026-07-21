@@ -23,6 +23,7 @@ const piecesJointesRoutes   = require("./routes/piecesJointesRoutes");
 const rapportRoutes         = require("./routes/rapportRoutes");
 const notificationRoutes    = require("./routes/notificationRoutes");
 const historiqueRoutes      = require("./routes/historiqueRoutes");
+const affectationRoutes     = require("./routes/affectationRoutes");
 // Création de l'application Express
 const app = express();
 
@@ -61,5 +62,6 @@ app.use("/api/pieces-jointes",  piecesJointesRoutes);
 app.use("/api/rapports",        rapportRoutes);
 app.use("/api/notifications",   notificationRoutes);
 app.use("/api/historique",      historiqueRoutes);
+app.use("/api/affectations",    affectationRoutes);
 // Export de l'application pour le démarrage dans server.js
 module.exports = app;

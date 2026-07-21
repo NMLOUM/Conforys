@@ -4,10 +4,12 @@ const {
   getAllEpis, getEpisEnAlerte, getEpiById,
   createEpi, updateEpi, deleteEpi,
 } = require("../controllers/epiController");
+const { affecter, getAffectationsByEpi } = require("../controllers/affectationEpiController");
 const { protect }   = require("../middlewares/authMiddleware");
 const { authorize } = require("../middlewares/roleMiddleware");
 const { validate }  = require("../middlewares/validate");
 const { epiSchema } = require("../validators/epiValidator");
+const { affecterSchema } = require("../validators/affectationEpiValidator");
 
 // ⚠️ Route spécifique placée avant /:id pour éviter le conflit
 // Lecture  →  tous les rôles
@@ -19,5 +21,11 @@ router.get("/:id",     protect, getEpiById);
 router.post("/",      protect, authorize("RESPONSABLE_QHSE"), validate(epiSchema), createEpi);
 router.put("/:id",    protect, authorize("RESPONSABLE_QHSE"), updateEpi);
 router.delete("/:id", protect, authorize("RESPONSABLE_QHSE"), deleteEpi);
+
+// ── Affectation aux employés ──────────────────────────────────────────────────
+// Historique des affectations d'un EPI — tous les rôles
+router.get("/:id/affectations", protect, getAffectationsByEpi);
+// Affecter un EPI à un employé — RESPONSABLE_QHSE uniquement
+router.post("/:id/affecter", protect, authorize("RESPONSABLE_QHSE"), validate(affecterSchema), affecter);
 
 module.exports = router;

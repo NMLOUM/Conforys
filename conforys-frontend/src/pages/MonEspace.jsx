@@ -12,6 +12,7 @@ function MonEspace() {
   const [incidents,     setIncidents]     = useState([]);
   const [formations,    setFormations]    = useState([]);
   const [habilitations, setHabilitations] = useState([]);
+  const [episAffectes,  setEpisAffectes]  = useState([]);
   const [chargement,    setChargement]    = useState(true);
 
   useEffect(() => {
@@ -22,16 +23,19 @@ function MonEspace() {
   useEffect(() => {
     const charger = async () => {
       try {
-        const [resInc, resFrm, resHab] = await Promise.all([
+        const [resInc, resFrm, resHab, resEpi] = await Promise.all([
           api.get("/incidents"),
           api.get("/formations"),
           api.get("/habilitations").catch(() => ({ data: { data: [] } })),
+          api.get("/affectations/mes-epis").catch(() => ({ data: { data: [] } })),
         ]);
         const tousIncidents = resInc.data.data ?? resInc.data ?? [];
         setIncidents(tousIncidents.filter((inc) => inc.declarePar?.id === user?.id));
         setFormations(resFrm.data.data ?? resFrm.data ?? []);
         const toutesHab = resHab.data.data ?? resHab.data ?? [];
         setHabilitations(toutesHab.filter((h) => h.titulaireId === user?.id));
+        const tousEpisAffectes = resEpi.data.data ?? [];
+        setEpisAffectes(tousEpisAffectes.filter((a) => a.statut === "ACTIVE"));
       } catch (e) {
         console.error("Erreur chargement mon espace:", e);
       } finally {
@@ -184,6 +188,29 @@ function MonEspace() {
                       </p>
                     </div>
                     <Badge variant={h.statut ?? "VALIDE"} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* EPI affectés */}
+          {episAffectes.length > 0 && (
+            <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">
+              <div className="px-5 py-4 border-b border-[#E2E8F0]">
+                <h2 className="text-sm font-semibold text-[#1E293B]">Mes EPI affectés</h2>
+              </div>
+              <div className="divide-y divide-[#F1F5F9]">
+                {episAffectes.map((a) => (
+                  <div key={a.id} className="px-5 py-3 flex items-center justify-between hover:bg-[#F8FAFC] transition-colors">
+                    <div>
+                      <p className="text-sm font-medium text-[#1E293B]">{a.epi.designation}</p>
+                      <p className="text-xs text-[#64748B] mt-0.5">
+                        {a.epi.type}{a.epi.reference ? ` · ${a.epi.reference}` : ""}
+                        {a.poste ? ` · ${a.poste}` : ""}
+                      </p>
+                    </div>
+                    <Badge variant="ACTIVE" />
                   </div>
                 ))}
               </div>
