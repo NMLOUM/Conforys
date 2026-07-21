@@ -23,6 +23,7 @@ const epiSchema = z.object({
     .enum(["DISPONIBLE", "EN_RUPTURE", "PERIME", "COMMANDE"])
     .optional(),
   datePeremption: z.string().optional().or(z.null()),
+  dateDerniereInspection: z.string().optional().or(z.null()),
 });
 
 module.exports = { epiSchema };

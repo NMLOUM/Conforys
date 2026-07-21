@@ -7,6 +7,7 @@ export const epiSchema = z.object({
   type: z
     .string({ required_error: "Le type est obligatoire." })
     .min(1, "Le type est obligatoire."),
+  reference: z.string().optional().or(z.literal("")),
   quantite: z.coerce
     .number({ invalid_type_error: "Entrez un nombre." })
     .int("Entier requis.")
@@ -18,4 +19,6 @@ export const epiSchema = z.object({
   siteId: z
     .string({ required_error: "Sélectionnez un site." })
     .uuid("Sélectionnez un site."),
+  datePeremption: z.string().optional().or(z.literal("")),
+  dateDerniereInspection: z.string().optional().or(z.literal("")),
 });

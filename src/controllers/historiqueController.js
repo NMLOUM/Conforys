@@ -1,4 +1,4 @@
-const historiqueService = require("../services/historiqueService");
+ const historiqueService = require("../services/historiqueService");
 const { handleErreur }  = require("../utils/handleErreur");
 
 // GET /api/incidents/:id/historique — piste d'audit en lecture seule

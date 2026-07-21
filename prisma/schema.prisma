@@ -269,6 +269,7 @@ model Epi {
   seuilAlerte Int        @default(5)              // Seuil de réapprovisionnement
   statut      StatutEpi  @default(DISPONIBLE)
   datePeremption DateTime? @map("date_peremption") // Optionnel (certains EPI expirent)
+  dateDerniereInspection DateTime? @map("date_derniere_inspection") // Optionnel
 
   // Relation : l'EPI est rattaché à un site
   site   Site   @relation(fields: [siteId], references: [id])
