@@ -267,6 +267,7 @@ model Epi {
   designation String                              // Ex: Casque de chantier
   type        String                              // Ex: Protection tête
   reference   String?                             // Référence fournisseur
+  photoUrl    String?    @map("photo_url")        // URL de la photo (hébergée sur ImgBB)
   quantite    Int        @default(0)              // Stock disponible
   seuilAlerte Int        @default(5)              // Seuil de réapprovisionnement
   statut      StatutEpi  @default(DISPONIBLE)

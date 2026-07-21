@@ -74,6 +74,7 @@ const createEpi = async (data) => {
       designation: data.designation,
       type: data.type,
       reference: data.reference,
+      photoUrl: data.photoUrl || null,
       quantite: data.quantite,
       seuilAlerte: data.seuilAlerte,
       statut: data.statut,

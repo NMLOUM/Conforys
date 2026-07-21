@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Chart from "react-apexcharts";
 import toast from "react-hot-toast";
+import { HardHat, Hand, Footprints, Shirt, ShieldCheck } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import Badge from "../components/ui/Badge";
@@ -11,23 +12,44 @@ import { useTable } from "../hooks/useTable";
 import { epiSchema } from "../validators/epiSchema";
 
 const FORM_DEFAUT = {
-  designation: "", type: "", reference: "", quantite: "", seuilAlerte: "",
+  designation: "", type: "", reference: "", photoUrl: "", quantite: "", seuilAlerte: "",
   siteId: "", datePeremption: "", dateDerniereInspection: "",
 };
+
+const TYPES_ACCEPTES   = ["image/jpeg", "image/png", "image/webp"];
+const TAILLE_MAX_OCTET = 5 * 1024 * 1024; // 5 Mo
 
 const formatDateInput = (d) => (d ? new Date(d).toISOString().split("T")[0] : "");
 const formatDateAffichage = (d) => (d ? new Date(d).toLocaleDateString("fr-FR") : null);
 const estPerime = (d) => Boolean(d && new Date(d) < new Date());
 
-// ── Icône EPI — espace réservé sobre, en attendant les photos ImgBB ──────────
+// ── Icône par défaut selon le type d'EPI (repli quand il n'y a pas de photo) ──
 
-function IconeEpi() {
+function iconeParType(type) {
+  const t = (type || "").toLowerCase();
+  const props = { size: 20, color: "#0D2B4E", strokeWidth: 1.6 };
+  if (t.includes("casque") || t.includes("tête")) return <HardHat {...props} />;
+  if (t.includes("gant")) return <Hand {...props} />;
+  if (t.includes("chaussure") || t.includes("botte") || t.includes("pied")) return <Footprints {...props} />;
+  if (t.includes("gilet") || t.includes("veste")) return <Shirt {...props} />;
+  return <ShieldCheck {...props} />;
+}
+
+// ── Vignette EPI — photo si disponible, sinon icône par défaut ──────────────
+
+function VignetteEpi({ photoUrl, type }) {
+  if (photoUrl) {
+    return (
+      <img
+        src={photoUrl}
+        alt={type || "EPI"}
+        className="w-10 h-10 rounded-lg object-cover shrink-0 border border-[#E2E8F0]"
+      />
+    );
+  }
   return (
-    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(13, 43, 78, 0.06)" }}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0D2B4E" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2 4 5v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V5l-8-3Z" />
-        <path d="M9 12l2 2 4-4" />
-      </svg>
+    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "#F8FAFC" }}>
+      {iconeParType(type)}
     </div>
   );
 }
@@ -127,7 +149,7 @@ function CarteEpi({ epi, peutGerer, affectationsActives, onModifier, onAffecter 
   return (
     <div className="p-4 rounded-lg border border-[#E2E8F0] bg-white">
       <div className="flex items-start justify-between mb-3">
-        <IconeEpi />
+        <VignetteEpi photoUrl={epi.photoUrl} type={epi.type} />
         <Badge variant={epi.niveauAlerte} />
       </div>
       <p className="text-sm font-semibold text-[#1E293B]">{epi.designation}</p>
@@ -193,6 +215,12 @@ function EpisPage() {
   const [showModal,  setShowModal]  = useState(false);
   const [erreurForm, setErreurForm] = useState("");
   const [epiEnEdition, setEpiEnEdition] = useState(null);
+
+  // ── Upload de la photo de l'EPI (ImgBB) ───────────────────────────────────
+  const [photoUrl,      setPhotoUrl]      = useState("");
+  const [apercuPhoto,   setApercuPhoto]   = useState("");
+  const [uploadPhoto,   setUploadPhoto]   = useState(false);
+  const [erreurPhoto,   setErreurPhoto]   = useState("");
 
   const [showFiltres,  setShowFiltres]  = useState(false);
   const [filtreStatut, setFiltreStatut] = useState("");
@@ -305,6 +333,9 @@ function EpisPage() {
   const ouvrirCreation = () => {
     setErreurForm("");
     setEpiEnEdition(null);
+    setPhotoUrl("");
+    setApercuPhoto("");
+    setErreurPhoto("");
     reset(FORM_DEFAUT);
     setShowModal(true);
   };
@@ -312,6 +343,9 @@ function EpisPage() {
   const ouvrirModification = (epi) => {
     setErreurForm("");
     setEpiEnEdition(epi);
+    setPhotoUrl(epi.photoUrl || "");
+    setApercuPhoto(epi.photoUrl || "");
+    setErreurPhoto("");
     reset({
       designation: epi.designation,
       type: epi.type,
@@ -325,11 +359,53 @@ function EpisPage() {
     setShowModal(true);
   };
 
+  // ── Upload de la photo vers ImgBB ─────────────────────────────────────────
+  const handleFichierPhoto = async (e) => {
+    const fichier = e.target.files?.[0];
+    if (!fichier) return;
+
+    if (!TYPES_ACCEPTES.includes(fichier.type)) {
+      setErreurPhoto("Formats acceptés : JPG, PNG, WebP.");
+      return;
+    }
+    if (fichier.size > TAILLE_MAX_OCTET) {
+      setErreurPhoto("Fichier trop volumineux (max 5 Mo).");
+      return;
+    }
+
+    if (apercuPhoto) URL.revokeObjectURL(apercuPhoto);
+    setApercuPhoto(URL.createObjectURL(fichier));
+    setErreurPhoto("");
+    setPhotoUrl("");
+    setUploadPhoto(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", fichier);
+      const res = await fetch(
+        `https://api.imgbb.com/1/upload?key=${import.meta.env.VITE_IMGBB_API_KEY}`,
+        { method: "POST", body: fd }
+      );
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message || "Réponse ImgBB invalide.");
+      setPhotoUrl(json.data.url);
+    } catch (err) {
+      setErreurPhoto(
+        err.message?.includes("fetch")
+          ? "Impossible de joindre ImgBB. Vérifiez votre connexion."
+          : (err.message || "Échec de l'envoi.")
+      );
+      setApercuPhoto("");
+    } finally {
+      setUploadPhoto(false);
+    }
+  };
+
   const onSubmit = async (data) => {
     setErreurForm("");
     const payload = {
       ...data,
       reference: data.reference || null,
+      photoUrl: photoUrl || null,
       datePeremption: data.datePeremption || null,
       dateDerniereInspection: data.dateDerniereInspection || null,
     };
@@ -611,6 +687,52 @@ function EpisPage() {
                   <input type="text" {...register("reference")} placeholder="ex: REF-4521" className={inputCls("reference")} />
                 </div>
               </div>
+
+              {/* ── Photo de l'EPI (facultatif) ── */}
+              <div>
+                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+                  Photo <span className="font-normal normal-case text-[#94A3B8]">(facultatif)</span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-16 h-16 rounded-lg border border-[#E2E8F0] flex items-center justify-center overflow-hidden shrink-0"
+                    style={{ backgroundColor: "#F8FAFC" }}
+                  >
+                    {apercuPhoto ? (
+                      <img src={apercuPhoto} alt="Aperçu" className="w-full h-full object-cover" />
+                    ) : (
+                      <ShieldCheck size={22} color="#0D2B4E" strokeWidth={1.6} />
+                    )}
+                  </div>
+                  <label
+                    className="flex-1 flex items-center justify-center px-3 py-2.5 text-sm border-2 border-dashed rounded-md cursor-pointer transition-colors select-none"
+                    style={{
+                      borderColor: photoUrl ? "#0D2B4E" : "#E2E8F0",
+                      backgroundColor: photoUrl ? "rgba(13,43,78,0.03)" : "#FAFAFA",
+                    }}
+                  >
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleFichierPhoto}
+                      disabled={uploadPhoto}
+                      className="sr-only"
+                    />
+                    {uploadPhoto ? (
+                      <span className="flex items-center gap-2 text-[#64748B]">
+                        <span className="w-4 h-4 border-2 border-[#0D2B4E] border-t-transparent rounded-full animate-spin shrink-0" />
+                        Envoi de la photo…
+                      </span>
+                    ) : photoUrl ? (
+                      <span className="font-medium text-[#0D2B4E]">Photo envoyée — cliquer pour changer</span>
+                    ) : (
+                      <span className="text-[#64748B]">Sélectionner une photo</span>
+                    )}
+                  </label>
+                </div>
+                {erreurPhoto && <p className="mt-1.5 text-xs text-[#DC2626]">{erreurPhoto}</p>}
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Quantité</label>

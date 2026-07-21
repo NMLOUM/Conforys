@@ -8,6 +8,7 @@ export const epiSchema = z.object({
     .string({ required_error: "Le type est obligatoire." })
     .min(1, "Le type est obligatoire."),
   reference: z.string().optional().or(z.literal("")),
+  photoUrl: z.string().optional().or(z.literal("")),
   quantite: z.coerce
     .number({ invalid_type_error: "Entrez un nombre." })
     .int("Entier requis.")
