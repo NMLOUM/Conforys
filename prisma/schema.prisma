@@ -55,8 +55,8 @@ model User {
   // Relation : incidents validés par cet utilisateur (responsable QHSE)
   incidentsValides  Incident[]        @relation("IncidentsValides")
   audits            Audit[]
-  // Relation many-to-many : formations auxquelles l'utilisateur participe
-  formations        Formation[]       @relation("ParticipantsFormation")
+  // Relation : participations aux formations (présence, validation)
+  participationsFormation ParticipationFormation[] @relation("ParticipantsFormation")
   // Relation : habilitations détenues par cet utilisateur
   habilitations     Habilitation[]
   // Relation : actions correctives assignées à cet utilisateur
@@ -445,11 +445,21 @@ enum StatutFormation {
   ANNULEE    // Formation annulée
 }
 
+enum ThemeFormation {
+  INCENDIE
+  EPI
+  RISQUES_ELECTRIQUES
+  DECHETS
+  PREMIERS_SECOURS
+  TRAVAIL_HAUTEUR
+}
+
 model Formation {
   id          String         @id @default(uuid())
   titre       String
   description String?
   formateur   String
+  theme       ThemeFormation?
   statut      StatutFormation @default(PLANIFIEE)
   dateDebut   DateTime       @map("date_debut")
   dateFin     DateTime?      @map("date_fin")
@@ -459,13 +469,36 @@ model Formation {
   site   Site   @relation(fields: [siteId], references: [id])
   siteId String @map("site_id")
 
-  // Relation many-to-many : les participants (utilisateurs) à cette formation
-  participants User[] @relation("ParticipantsFormation")
+  // Relation : participations des utilisateurs à cette formation (présence,
+  // validation) — remplace l'ancienne relation many-to-many "participants"
+  participations ParticipationFormation[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")
 
   @@map("formations")
+}
+
+// Table de jointure explicite (remplace l'ancienne M2M implicite) : porte le
+// suivi de présence et de validation par participant, propre à chaque session.
+model ParticipationFormation {
+  id             String    @id @default(uuid())
+  present        Boolean   @default(false)
+  valide         Boolean   @default(false)
+  dateValidation DateTime? @map("date_validation")
+
+  formation   Formation @relation(fields: [formationId], references: [id], onDelete: Cascade)
+  formationId String    @map("formation_id")
+
+  participant   User   @relation("ParticipantsFormation", fields: [participantId], references: [id])
+  participantId String @map("participant_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  // Un utilisateur ne peut être inscrit qu'une seule fois à une même session
+  @@unique([formationId, participantId])
+  @@map("participations_formation")
 }
 
 // ─────────────────────────────────────────────

@@ -60,11 +60,89 @@ const deleteFormation = async (req, res) => {
   }
 };
 
-// Export des fonctions du contrôleur
+// PUT /api/formations/:id/demarrer
+const demarrer = async (req, res) => {
+  try {
+    const formation = await formationService.demarrer(req.params.id);
+    res.status(200).json({ success: true, data: formation });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+// PUT /api/formations/:id/terminer
+const terminer = async (req, res) => {
+  try {
+    const formation = await formationService.terminerFormation(req.params.id);
+    res.status(200).json({ success: true, data: formation });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+// PUT /api/formations/:id/annuler
+const annuler = async (req, res) => {
+  try {
+    const formation = await formationService.annuler(req.params.id);
+    res.status(200).json({ success: true, data: formation });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+// PUT /api/formations/:id/participants/:userId/presence
+const marquerPresence = async (req, res) => {
+  try {
+    const participation = await formationService.marquerPresence(
+      req.params.id, req.params.userId, Boolean(req.body.present)
+    );
+    res.status(200).json({ success: true, data: participation });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+// PUT /api/formations/:id/participants/:userId/valider
+const validerParticipant = async (req, res) => {
+  try {
+    const participation = await formationService.validerParticipant(req.params.id, req.params.userId);
+    res.status(200).json({ success: true, data: participation });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+// GET /api/formations/mes-formations
+const getMesFormations = async (req, res) => {
+  try {
+    const participations = await formationService.getFormationsByEmploye(req.user.userId);
+    res.status(200).json({ success: true, data: participations });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+// GET /api/formations/stats
+const getStats = async (req, res) => {
+  try {
+    const stats = await formationService.getStats(req.user.entrepriseId);
+    res.status(200).json({ success: true, data: stats });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
 module.exports = {
   getAllFormations,
   getFormationById,
   createFormation,
   updateFormation,
   deleteFormation,
+  demarrer,
+  terminer,
+  annuler,
+  marquerPresence,
+  validerParticipant,
+  getMesFormations,
+  getStats,
 };

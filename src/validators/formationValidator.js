@@ -13,7 +13,11 @@ const formationSchema = z.object({
   statut: z.enum(
     ["PLANIFIEE", "EN_COURS", "TERMINEE", "ANNULEE"],
     { errorMap: () => ({ message: "Statut invalide." }) }
-  ),
+  ).optional(),
+  theme: z.enum(
+    ["INCENDIE", "EPI", "RISQUES_ELECTRIQUES", "DECHETS", "PREMIERS_SECOURS", "TRAVAIL_HAUTEUR"],
+    { errorMap: () => ({ message: "Thème invalide." }) }
+  ).optional().or(z.null()),
   siteId: z
     .string({ required_error: "Sélectionnez un site." })
     .uuid("Sélectionnez un site valide."),
@@ -23,4 +27,9 @@ const formationSchema = z.object({
   participantIds: z.array(z.string().uuid()).optional(),
 });
 
-module.exports = { formationSchema };
+// Marquer la présence d'un participant
+const presenceSchema = z.object({
+  present: z.boolean({ required_error: "Le champ present est obligatoire." }),
+});
+
+module.exports = { formationSchema, presenceSchema };

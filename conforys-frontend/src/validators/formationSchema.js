@@ -10,10 +10,12 @@ export const formationSchema = z.object({
   dateDebut: z
     .string({ required_error: "La date de début est obligatoire." })
     .min(1, "La date de début est obligatoire."),
-  statut: z.enum(
-    ["PLANIFIEE", "EN_COURS", "TERMINEE", "ANNULEE"],
-    { errorMap: () => ({ message: "Statut invalide." }) }
-  ),
+  dateFin: z.string().optional().or(z.literal("")),
+  dureeHeures: z.coerce.number().positive("Doit être positif.").optional().or(z.literal("")),
+  theme: z.enum(
+    ["INCENDIE", "EPI", "RISQUES_ELECTRIQUES", "DECHETS", "PREMIERS_SECOURS", "TRAVAIL_HAUTEUR"],
+    { errorMap: () => ({ message: "Thème invalide." }) }
+  ).optional().or(z.literal("")),
   siteId: z
     .string({ required_error: "Sélectionnez un site." })
     .uuid("Sélectionnez un site."),

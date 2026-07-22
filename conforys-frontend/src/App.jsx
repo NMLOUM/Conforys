@@ -11,6 +11,7 @@ import EpisPage from "./pages/EpisPage";
 import AuditsPage from "./pages/AuditsPage";
 import AuditDetailPage from "./pages/AuditDetailPage";
 import FormationsPage from "./pages/FormationsPage";
+import FormationDetailPage from "./pages/FormationDetailPage";
 import UsersPage from "./pages/UsersPage";
 import ActionsPage from "./pages/ActionsPage";
 import NotificationsPage from "./pages/NotificationsPage";
@@ -88,7 +89,8 @@ function App() {
         <Route path="/epis"       element={<ProtectedRoute element={<EpisPage />}       rolesAutorises={["RESPONSABLE_QHSE"]} />} />
         <Route path="/audits"     element={<ProtectedRoute element={<AuditsPage />}     rolesAutorises={["RESPONSABLE_QHSE"]} />} />
         <Route path="/audits/:id" element={<ProtectedRoute element={<AuditDetailPage />} rolesAutorises={["RESPONSABLE_QHSE"]} />} />
-        <Route path="/formations" element={<ProtectedRoute element={<FormationsPage />} rolesAutorises={["RESPONSABLE_QHSE", "EMPLOYE"]} />} />
+        <Route path="/formations"     element={<ProtectedRoute element={<FormationsPage />}     rolesAutorises={["RESPONSABLE_QHSE", "EMPLOYE"]} />} />
+        <Route path="/formations/:id" element={<ProtectedRoute element={<FormationDetailPage />} rolesAutorises={["RESPONSABLE_QHSE", "EMPLOYE"]} />} />
         {/* Utilisateurs : ADMIN (CRUD) + QHSE (lecture pour assigner des actions) */}
         <Route path="/users"      element={<ProtectedRoute element={<UsersPage />}      rolesAutorises={["ADMIN", "RESPONSABLE_QHSE"]} />} />
         {/* Notifications : tous les rôles, accessible uniquement via la cloche */}
