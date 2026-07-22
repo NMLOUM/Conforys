@@ -12,6 +12,11 @@ async function main() {
   console.log("Nettoyage de la base...");
   // Ordre inverse des FK
   await prisma.habilitation.deleteMany();
+  await prisma.progressionModule.deleteMany();
+  await prisma.reponseQuiz.deleteMany();
+  await prisma.questionQuiz.deleteMany();
+  await prisma.lecon.deleteMany();
+  await prisma.moduleFormation.deleteMany();
   await prisma.formation.deleteMany();
   await prisma.audit.deleteMany();
   await prisma.epi.deleteMany();
@@ -220,7 +225,7 @@ async function main() {
       dureeHeures: 7,
       statut:      "TERMINEE",
       siteId:      siteDakar.id,
-      participants: { connect: [{ id: emp1.id }, { id: emp2.id }, { id: emp3.id }] },
+      participations: { create: [{ participantId: emp1.id }, { participantId: emp2.id }, { participantId: emp3.id }] },
     },
   });
 
@@ -233,7 +238,7 @@ async function main() {
       dureeHeures: 14,
       statut:      "TERMINEE",
       siteId:      siteDakar.id,
-      participants: { connect: [{ id: emp1.id }, { id: emp3.id }] },
+      participations: { create: [{ participantId: emp1.id }, { participantId: emp3.id }] },
     },
   });
 
@@ -245,7 +250,7 @@ async function main() {
       dureeHeures: 8,
       statut:      "PLANIFIEE",
       siteId:      siteThies.id,
-      participants: { connect: [{ id: emp2.id }, { id: resp2.id }] },
+      participations: { create: [{ participantId: emp2.id }, { participantId: resp2.id }] },
     },
   });
 
@@ -257,10 +262,133 @@ async function main() {
       dureeHeures: 14,
       statut:      "PLANIFIEE",
       siteId:      siteStLouis.id,
-      participants: { connect: [{ id: emp1.id }, { id: emp2.id }, { id: emp3.id }, { id: resp1.id }] },
+      participations: { create: [{ participantId: emp1.id }, { participantId: emp2.id }, { participantId: emp3.id }, { participantId: resp1.id }] },
     },
   });
   console.log("Formations créées : 4");
+
+  // ── FORMATION EN LIGNE (MINI-LMS) ─────────────────────────────────────────
+  await prisma.moduleFormation.create({
+    data: {
+      titre:        "Risques électriques",
+      theme:        "RISQUES_ELECTRIQUES",
+      description:  "Module d'auto-formation sur les dangers électriques, les habilitations et les procédures de consignation.",
+      scoreMinimum: 80,
+      lecons: {
+        create: [
+          {
+            ordre: 1,
+            titre: "Les dangers de l'électricité",
+            contenu:
+              "L'électricité est une énergie invisible et silencieuse : on ne la voit ni ne l'entend avant le contact, ce qui en fait un risque particulièrement insidieux en milieu industriel.\n\n" +
+              "Les principaux dangers sont :\n" +
+              "- L'électrisation : passage d'un courant électrique à travers le corps humain, provoquant brûlures internes et externes, contractions musculaires incontrôlées, voire arrêt respiratoire.\n" +
+              "- L'électrocution : électrisation mortelle, le plus souvent par fibrillation cardiaque.\n" +
+              "- L'arc électrique : lors d'un court-circuit, un arc peut atteindre plusieurs milliers de degrés en quelques millisecondes, causant des brûlures graves et des projections de métal en fusion.\n" +
+              "- Les incendies d'origine électrique : un défaut d'isolement ou une surcharge peut enflammer les matériaux environnants.\n\n" +
+              "La gravité d'un accident électrique dépend de l'intensité du courant, du trajet dans le corps (la traversée du cœur est la plus dangereuse) et de la durée du contact. C'est pourquoi toute intervention sur ou à proximité d'une installation électrique doit être précédée d'une évaluation du risque et réalisée par du personnel habilité.",
+          },
+          {
+            ordre: 2,
+            titre: "Habilitations électriques",
+            contenu:
+              "Toute personne intervenant sur ou à proximité d'installations électriques doit être habilitée par son employeur, après une formation adaptée (référentiel NF C18-510, largement repris dans la réglementation ouest-africaine).\n\n" +
+              "Les habilitations se composent d'une lettre et d'un chiffre :\n" +
+              "- La lettre indique le domaine de tension : B pour la basse tension, H pour la haute tension.\n" +
+              "- Le chiffre indique la nature des opérations : 0 pour un travail d'ordre non électrique, 1 pour une exécution d'opérations électriques, 2 pour l'encadrement de telles opérations.\n" +
+              "- Une lettre additionnelle précise le type d'intervention : V pour un travail au voisinage de pièces nues sous tension, R pour une intervention élémentaire, C pour une consignation.\n\n" +
+              "Exemples courants :\n" +
+              "- B0 : personnel non électricien travaillant à proximité d'installations électriques (sensibilisation aux risques).\n" +
+              "- B1V : exécutant électricien pouvant réaliser des travaux au voisinage de pièces sous tension.\n" +
+              "- BR : chargé d'intervention générale (dépannage, connexion) en basse tension.\n" +
+              "- BC : chargé de consignation, habilité à réaliser les opérations de consignation.\n\n" +
+              "L'habilitation n'est pas un diplôme permanent : elle doit être renouvelée périodiquement et peut être suspendue en cas de non-respect des procédures de sécurité.",
+          },
+          {
+            ordre: 3,
+            titre: "Consignation et EPI électriques",
+            contenu:
+              "La consignation électrique est la procédure obligatoire avant toute intervention sur une installation, afin de garantir qu'aucune tension ne peut réapparaître pendant les travaux. Elle comprend 4 étapes, réalisées dans cet ordre strict :\n\n" +
+              "1. Séparation : isoler l'ouvrage de toute source de tension (ouverture des sectionneurs).\n" +
+              "2. Condamnation : verrouiller les organes de séparation en position d'ouverture (cadenas, pancarte « Ne pas réenclencher »).\n" +
+              "3. Identification : vérifier que l'on intervient bien sur l'ouvrage prévu, et non un ouvrage voisin.\n" +
+              "4. Vérification d'absence de tension (VAT) : contrôler, à l'aide d'un vérificateur adapté, que l'ouvrage est bien hors tension sur toutes ses phases.\n\n" +
+              "Ce n'est qu'après ces 4 étapes que la zone de travail peut être mise à la terre et en court-circuit si nécessaire, puis balisée.\n\n" +
+              "En complément de la consignation, des équipements de protection individuelle (EPI) spécifiques sont requis dès qu'un risque électrique subsiste :\n" +
+              "- Gants isolants, dont la classe est adaptée à la tension de l'installation.\n" +
+              "- Écran facial ou visière anti-UV pour se protéger d'un éventuel arc électrique.\n" +
+              "- Vêtements de travail non propagateurs de flamme (anti-arc) pour les interventions à risque élevé.\n" +
+              "- Tapis ou tabouret isolant lors de travaux au voisinage de pièces sous tension.\n\n" +
+              "Ces équipements ne dispensent jamais du respect des procédures de consignation : ils constituent une protection complémentaire, pas une alternative.",
+          },
+        ],
+      },
+      questions: {
+        create: [
+          {
+            ordre: 1,
+            enonce: "Que signifie l'habilitation électrique B1V ?",
+            reponses: {
+              create: [
+                { texte: "Exécutant électricien pouvant travailler au voisinage de pièces nues sous tension", estCorrecte: true },
+                { texte: "Chargé de travaux non électricien", estCorrecte: false },
+                { texte: "Simple sensibilisation, sans habilitation réelle", estCorrecte: false },
+                { texte: "Chargé de consignation uniquement", estCorrecte: false },
+              ],
+            },
+          },
+          {
+            ordre: 2,
+            enonce: "Quelle est la première étape de la consignation électrique ?",
+            reponses: {
+              create: [
+                { texte: "La séparation de l'ouvrage de toute source de tension", estCorrecte: true },
+                { texte: "La vérification d'absence de tension", estCorrecte: false },
+                { texte: "La condamnation en position d'ouverture", estCorrecte: false },
+                { texte: "L'identification de l'ouvrage", estCorrecte: false },
+              ],
+            },
+          },
+          {
+            ordre: 3,
+            enonce: "Quel équipement est indispensable pour une intervention en basse tension au voisinage de pièces nues ?",
+            reponses: {
+              create: [
+                { texte: "Des gants isolants adaptés à la classe de tension", estCorrecte: true },
+                { texte: "De simples gants de manutention", estCorrecte: false },
+                { texte: "Aucun équipement si l'intervention est rapide", estCorrecte: false },
+              ],
+            },
+          },
+          {
+            ordre: 4,
+            enonce: "Que risque-t-on en cas de contact direct avec un conducteur sous tension ?",
+            reponses: {
+              create: [
+                { texte: "Une électrisation pouvant aller jusqu'à l'électrocution (arrêt cardiaque)", estCorrecte: true },
+                { texte: "Un simple picotement sans danger", estCorrecte: false },
+                { texte: "Aucun risque si l'on porte des gants de travail ordinaires", estCorrecte: false },
+                { texte: "Une décharge statique sans conséquence", estCorrecte: false },
+              ],
+            },
+          },
+          {
+            ordre: 5,
+            enonce: "Avant toute intervention sur une installation électrique consignée, que doit-on impérativement vérifier ?",
+            reponses: {
+              create: [
+                { texte: "L'absence de tension à l'aide d'un vérificateur d'absence de tension (VAT)", estCorrecte: true },
+                { texte: "La couleur des câbles", estCorrecte: false },
+                { texte: "La présence d'un extincteur à proximité", estCorrecte: false },
+                { texte: "La météo du jour", estCorrecte: false },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+  console.log("Module de formation en ligne créé : Risques électriques (3 leçons, 5 questions)");
 
   // ── HABILITATIONS ─────────────────────────────────────────────────────────
   // Dates calculées par rapport à aujourd'hui (15/06/2026) pour tester /expirantes

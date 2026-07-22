@@ -69,6 +69,8 @@ model User {
   episAffectes      AffectationEpi[]     @relation("EpisAffectes")
   // Relation : inspections d'EPI réalisées par cet utilisateur
   inspectionsEffectuees InspectionEpi[]  @relation("InspectionsEffectuees")
+  // Relation : progression sur les modules de formation en ligne
+  progressionsModule    ProgressionModule[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -499,6 +501,99 @@ model ParticipationFormation {
   // Un utilisateur ne peut être inscrit qu'une seule fois à une même session
   @@unique([formationId, participantId])
   @@map("participations_formation")
+}
+
+// ─────────────────────────────────────────────
+//  MODULE 5b : FORMATION EN LIGNE (MINI-LMS)
+// ─────────────────────────────────────────────
+//
+// Complète le sous-bloc A (sessions présentielles) par un mode
+// d'auto-apprentissage textuel : un ModuleFormation regroupe des Lecon
+// (contenu texte, lues séquentiellement) et un quiz de validation
+// (QuestionQuiz / ReponseQuiz). ProgressionModule suit l'avancement et le
+// score de chaque utilisateur, indépendamment des sessions présentielles.
+
+model ModuleFormation {
+  id           String          @id @default(uuid())
+  titre        String
+  theme        ThemeFormation?
+  description  String?
+  scoreMinimum Int             @default(80) @map("score_minimum") // % de bonnes réponses requis pour valider le quiz
+
+  lecons       Lecon[]
+  questions    QuestionQuiz[]
+  progressions ProgressionModule[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@map("modules_formation")
+}
+
+model Lecon {
+  id      String @id @default(uuid())
+  titre   String
+  contenu String                              // Contenu pédagogique (texte)
+  ordre   Int                                 // Position dans le module — déverrouillage séquentiel
+
+  module   ModuleFormation @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId String          @map("module_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@map("lecons")
+}
+
+model QuestionQuiz {
+  id     String @id @default(uuid())
+  enonce String
+  ordre  Int
+
+  module   ModuleFormation @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId String          @map("module_id")
+
+  reponses ReponseQuiz[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("questions_quiz")
+}
+
+model ReponseQuiz {
+  id          String  @id @default(uuid())
+  texte       String
+  estCorrecte Boolean @default(false) @map("est_correcte")
+
+  question   QuestionQuiz @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId String       @map("question_id")
+
+  @@map("reponses_quiz")
+}
+
+// Suivi de progression d'un utilisateur sur un module — leconsCompletees
+// compte les leçons terminées dans l'ordre : la leçon d'ordre N est validée
+// si N <= leconsCompletees, ce qui suffit à déterminer à la fois les coches
+// et le verrou séquentiel sans table de liaison supplémentaire.
+model ProgressionModule {
+  id               String    @id @default(uuid())
+  leconsCompletees Int       @default(0) @map("lecons_completees")
+  scoreQuiz        Int?      @map("score_quiz")
+  valide           Boolean   @default(false)
+  dateValidation   DateTime? @map("date_validation")
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String @map("user_id")
+
+  module   ModuleFormation @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId String          @map("module_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  // Une seule progression par utilisateur et par module
+  @@unique([userId, moduleId])
+  @@map("progressions_module")
 }
 
 // ─────────────────────────────────────────────
