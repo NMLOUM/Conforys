@@ -20,6 +20,7 @@ const CONFIG = {
 const LABELS_CAT = {
   EPI_STOCK:       "EPI — Stock",
   EPI_PERIME:      "EPI — Péremption",
+  EPI_INSPECTION:  "EPI — Inspection",
   HABILITATION:    "Habilitation",
   AUDIT_RETARD:    "Audit en retard",
   INCIDENT_GRAVE:  "Incident grave",

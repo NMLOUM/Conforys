@@ -24,7 +24,13 @@ const epiSchema = z.object({
     .enum(["DISPONIBLE", "EN_RUPTURE", "PERIME", "COMMANDE"])
     .optional(),
   datePeremption: z.string().optional().or(z.null()),
-  dateDerniereInspection: z.string().optional().or(z.null()),
+  frequenceInspectionJours: z.coerce
+    .number({ invalid_type_error: "La fréquence doit être un nombre." })
+    .int("La fréquence doit être un entier.")
+    .min(1, "La fréquence doit être d'au moins 1 jour.")
+    .optional()
+    .or(z.literal(""))
+    .or(z.null()),
 });
 
 module.exports = { epiSchema };

@@ -1,4 +1,5 @@
 const prisma = require("../config/prisma");
+const { calculerNiveauAlerte } = require("./epiService");
 
 const getIncidentStats = async () => {
   const MOIS = ["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
@@ -47,7 +48,8 @@ const getIncidentStats = async () => {
     prisma.epi.findMany({
       select: {
         id: true, designation: true, quantite: true, seuilAlerte: true,
-        datePeremption: true, statut: true,
+        datePeremption: true, statut: true, frequenceInspectionJours: true,
+        inspections: { orderBy: { dateInspection: "desc" }, take: 1, select: { dateInspection: true } },
         site: { select: { nom: true } },
       },
     }),
@@ -79,8 +81,9 @@ const getIncidentStats = async () => {
   // ── KPIs dérivés ──────────────────────────────────────────────
   const critiques   = parGravite.find((g) => g.gravite === "CRITIQUE")?._count?.gravite ?? 0;
   const graves      = parGravite.find((g) => g.gravite === "GRAVE")?._count?.gravite ?? 0;
-  const episOk      = tousEpis.filter((e) => e.quantite > e.seuilAlerte).length;
-  const episEnAlerte = tousEpis.length - episOk;
+  const episAnnotes  = tousEpis.map((e) => ({ ...e, niveauAlerte: calculerNiveauAlerte(e) }));
+  const episOk       = episAnnotes.filter((e) => e.niveauAlerte === "OK").length;
+  const episEnAlerte = episAnnotes.length - episOk;
   const conformiteEpi    = tousEpis.length > 0 ? Math.round((episOk / tousEpis.length) * 100) : 100;
   const tauxConformite   = totalAudits   > 0 ? Math.round((auditsTermines / totalAudits) * 100) : 0;
   const evolutionMensuelle12 = calculerEvolution12Mois(incidents12Mois, MOIS);
@@ -99,17 +102,32 @@ const getIncidentStats = async () => {
   // ── Alertes critiques ─────────────────────────────────────────
   const alertes = [];
 
-  // EPI sous le seuil de stock
-  tousEpis
-    .filter((e) => e.quantite <= e.seuilAlerte)
-    .forEach((e) => alertes.push({
-      niveau: "CRITIQUE",
-      categorie: "EPI_STOCK",
-      message: `${e.designation} — ${e.quantite} restant(s) (seuil : ${e.seuilAlerte})`,
-      detail: e.site?.nom,
-    }));
+  // EPI en alerte (rupture de stock, péremption dépassée, ou inspection en
+  // retard — même calcul que la page EPI, via epiService.calculerNiveauAlerte)
+  episAnnotes
+    .filter((e) => e.niveauAlerte === "ALERTE")
+    .forEach((e) => {
+      const perime = e.datePeremption && new Date(e.datePeremption) < maintenant;
+      const enRupture = e.quantite <= e.seuilAlerte;
+      let alerte;
+      if (perime) {
+        alerte = {
+          categorie: "EPI_PERIME",
+          message: `${e.designation} — périmé depuis le ${new Date(e.datePeremption).toLocaleDateString("fr-FR")}`,
+        };
+      } else if (enRupture) {
+        alerte = {
+          categorie: "EPI_STOCK",
+          message: `${e.designation} — ${e.quantite} restant(s) (seuil : ${e.seuilAlerte})`,
+        };
+      } else {
+        alerte = { categorie: "EPI_INSPECTION", message: `${e.designation} — inspection en retard` };
+      }
+      alertes.push({ niveau: "CRITIQUE", ...alerte, detail: e.site?.nom });
+    });
 
-  // EPI périmé dans < 30 jours
+  // EPI qui périment bientôt (dans les 30 jours, pas encore dépassé) — simple
+  // avertissement, distinct des alertes ci-dessus qui sont déjà critiques
   tousEpis
     .filter((e) => e.datePeremption && new Date(e.datePeremption) <= dans30Jours && new Date(e.datePeremption) >= maintenant)
     .forEach((e) => alertes.push({

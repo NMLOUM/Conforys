@@ -34,6 +34,9 @@ const VARIANTS = {
   // Statut d'affectation EPI
   ACTIVE:    { bg: "bg-green-50",  text: "text-green-700",   dot: "bg-green-500"   },
   RENDUE:    { bg: "bg-gray-100",  text: "text-gray-500",    dot: "bg-gray-400"    },
+  // Résultat d'inspection EPI
+  CONFORME:     { bg: "bg-green-50", text: "text-green-700", dot: "bg-green-500" },
+  NON_CONFORME: { bg: "bg-red-50",   text: "text-red-700",   dot: "bg-red-500"   },
   // Habilitations
   VALIDE:          { bg: "bg-green-50",   text: "text-green-700",   dot: "bg-green-500"   },
   BIENTOT_EXPIREE: { bg: "bg-amber-50",   text: "text-amber-700",   dot: "bg-amber-500"   },
@@ -87,6 +90,8 @@ const LABELS = {
   BIENTOT:          "Bientôt",
   ACTIVE:           "Active",
   RENDUE:           "Rendue",
+  CONFORME:         "Conforme",
+  NON_CONFORME:     "Non conforme",
   // Habilitations
   VALIDE:           "Valide",
   BIENTOT_EXPIREE:  "Expire bientôt",

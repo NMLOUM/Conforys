@@ -5,6 +5,7 @@
 // dates, puis délègue tout le dessin à pdfService (mutualisé).
 const prisma = require("../config/prisma");
 const pdf = require("./pdfService");
+const { calculerNiveauAlerte } = require("./epiService");
 
 const LABELS_GRAVITE  = { FAIBLE: "Faible", MOYEN: "Moyen", GRAVE: "Grave", CRITIQUE: "Critique" };
 const LABELS_STATUT_INCIDENT = { BROUILLON: "Brouillon", OUVERT: "Ouvert", EN_COURS: "En cours", CLOS: "Clôturé", REJETE: "Rejeté" };
@@ -78,6 +79,7 @@ const genererSynthese = async ({ dateDebut, dateFin, siteId, entrepriseId }) => 
     // historisés par date), comme sur le tableau de bord — pas de filtre période.
     prisma.epi.findMany({
       where: { site: { entrepriseId }, ...(siteId && { siteId }) },
+      include: { inspections: { orderBy: { dateInspection: "desc" }, take: 1, select: { dateInspection: true } } },
     }),
 
     // Les habilitations n'ont pas de rattachement à un site dans le modèle
@@ -100,7 +102,7 @@ const genererSynthese = async ({ dateDebut, dateFin, siteId, entrepriseId }) => 
   const scores = auditsTermines.map((a) => a.scoreConformite).filter((s) => s != null);
   const tauxConformiteMoyen = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
 
-  const episEnAlerte  = epis.filter((e) => e.quantite <= e.seuilAlerte).length;
+  const episEnAlerte  = epis.filter((e) => calculerNiveauAlerte(e) === "ALERTE").length;
   const actionsTerminees = actionsPeriode.filter((a) => a.statut === "TERMINE").length;
   const actionsEnRetard  = actionsPeriode.filter(estEnRetard);
 
@@ -132,7 +134,7 @@ const genererSynthese = async ({ dateDebut, dateFin, siteId, entrepriseId }) => 
     actionsEnRetard.length > 0 ? pdf.COULEURS.rouge : pdf.COULEURS.vert
   );
   pdf.dessinerLigneInfoColoree(
-    doc, "EPI en alerte de stock", String(episEnAlerte),
+    doc, "EPI en alerte", String(episEnAlerte),
     episEnAlerte > 0 ? pdf.COULEURS.orange : pdf.COULEURS.vert
   );
   pdf.dessinerLigneInfoColoree(

@@ -24,6 +24,7 @@ const rapportRoutes         = require("./routes/rapportRoutes");
 const notificationRoutes    = require("./routes/notificationRoutes");
 const historiqueRoutes      = require("./routes/historiqueRoutes");
 const affectationRoutes     = require("./routes/affectationRoutes");
+const inspectionRoutes      = require("./routes/inspectionRoutes");
 // Création de l'application Express
 const app = express();
 
@@ -63,5 +64,6 @@ app.use("/api/rapports",        rapportRoutes);
 app.use("/api/notifications",   notificationRoutes);
 app.use("/api/historique",      historiqueRoutes);
 app.use("/api/affectations",    affectationRoutes);
+app.use("/api/inspections",     inspectionRoutes);
 // Export de l'application pour le démarrage dans server.js
 module.exports = app;

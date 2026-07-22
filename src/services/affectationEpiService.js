@@ -25,6 +25,9 @@ const affecter = async (epiId, employeId, poste) => {
   if (epi.quantite <= 0) {
     throw new ErreurMetier("Stock insuffisant pour affecter cet EPI.");
   }
+  if (epi.datePeremption && new Date(epi.datePeremption) < new Date()) {
+    throw new ErreurMetier("Cet EPI est périmé et ne peut pas être affecté.");
+  }
 
   const employe = await prisma.user.findUnique({ where: { id: employeId } });
   if (!employe) throw new ErreurMetier("Employé introuvable.", 404);

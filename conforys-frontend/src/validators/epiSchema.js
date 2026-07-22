@@ -21,5 +21,10 @@ export const epiSchema = z.object({
     .string({ required_error: "Sélectionnez un site." })
     .uuid("Sélectionnez un site."),
   datePeremption: z.string().optional().or(z.literal("")),
-  dateDerniereInspection: z.string().optional().or(z.literal("")),
+  frequenceInspectionJours: z.coerce
+    .number({ invalid_type_error: "Entrez un nombre." })
+    .int("Entier requis.")
+    .min(1, "Au moins 1 jour.")
+    .optional()
+    .or(z.literal("")),
 });

@@ -13,8 +13,10 @@ import { epiSchema } from "../validators/epiSchema";
 
 const FORM_DEFAUT = {
   designation: "", type: "", reference: "", photoUrl: "", quantite: "", seuilAlerte: "",
-  siteId: "", datePeremption: "", dateDerniereInspection: "",
+  siteId: "", datePeremption: "", frequenceInspectionJours: "",
 };
+
+const FORM_INSPECTION_DEFAUT = { dateInspection: new Date().toISOString().split("T")[0], conforme: true, commentaire: "" };
 
 const TYPES_ACCEPTES   = ["image/jpeg", "image/png", "image/webp"];
 const TAILLE_MAX_OCTET = 5 * 1024 * 1024; // 5 Mo
@@ -22,6 +24,16 @@ const TAILLE_MAX_OCTET = 5 * 1024 * 1024; // 5 Mo
 const formatDateInput = (d) => (d ? new Date(d).toISOString().split("T")[0] : "");
 const formatDateAffichage = (d) => (d ? new Date(d).toLocaleDateString("fr-FR") : null);
 const estPerime = (d) => Boolean(d && new Date(d) < new Date());
+
+// Prochaine échéance d'inspection — simple indication à l'affichage, le
+// niveauAlerte calculé côté serveur reste la source de vérité pour l'urgence.
+const calculerProchaineInspection = (epi) => {
+  if (!epi.frequenceInspectionJours) return null;
+  if (!epi.derniereInspection) return "À planifier";
+  const prochaine = new Date(epi.derniereInspection);
+  prochaine.setDate(prochaine.getDate() + epi.frequenceInspectionJours);
+  return formatDateAffichage(prochaine);
+};
 
 // ── Icône par défaut selon le type d'EPI (repli quand il n'y a pas de photo) ──
 
@@ -139,10 +151,11 @@ function AvatarInitiales({ prenom, nom }) {
 
 // ── Carte individuelle d'un EPI ────────────────────────────────────────────────
 
-function CarteEpi({ epi, peutGerer, affectationsActives, onModifier, onAffecter }) {
+function CarteEpi({ epi, peutGerer, affectationsActives, onModifier, onAffecter, onInspecter }) {
   const perime = estPerime(epi.datePeremption);
   const enAlerteStock = epi.quantite <= epi.seuilAlerte;
-  const derniereInspection = formatDateAffichage(epi.dateDerniereInspection);
+  const derniereInspection = formatDateAffichage(epi.derniereInspection);
+  const prochaineInspection = calculerProchaineInspection(epi);
   const peremption = formatDateAffichage(epi.datePeremption);
   const MAX_AVATARS = 4;
 
@@ -166,6 +179,14 @@ function CarteEpi({ epi, peutGerer, affectationsActives, onModifier, onAffecter 
           <span className="text-[#64748B]">Dernière inspection</span>
           <span className="text-[#1E293B]">{derniereInspection ?? "Non inspecté"}</span>
         </div>
+        {prochaineInspection && (
+          <div className="flex items-center justify-between">
+            <span className="text-[#64748B]">Prochaine inspection</span>
+            <span className="font-semibold" style={{ color: epi.niveauAlerte !== "OK" ? "#DC2626" : "#1E293B" }}>
+              {prochaineInspection}
+            </span>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <span className="text-[#64748B]">Péremption</span>
           {perime ? <Badge variant="PERIME" /> : <span className="text-[#1E293B]">{peremption ?? "—"}</span>}
@@ -192,6 +213,10 @@ function CarteEpi({ epi, peutGerer, affectationsActives, onModifier, onAffecter 
           <button onClick={() => onModifier(epi)}
             className="flex-1 px-3 py-1.5 text-xs font-medium text-navy border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
             Modifier
+          </button>
+          <button onClick={() => onInspecter(epi)}
+            className="flex-1 px-3 py-1.5 text-xs font-medium text-navy border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
+            Inspecter
           </button>
           <button onClick={() => onAffecter(epi)} disabled={epi.quantite <= 0}
             className="flex-1 px-3 py-1.5 text-xs font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
@@ -237,6 +262,14 @@ function EpisPage() {
   const [rendreEnCours,     setRendreEnCours]     = useState(null);
   const [filtreJournalEpi,  setFiltreJournalEpi]  = useState(null);
 
+  // ── Historique des inspections ────────────────────────────────────────────
+  const [inspections,          setInspections]          = useState([]);
+  const [showModalInspection,  setShowModalInspection]  = useState(false);
+  const [epiAInspecter,        setEpiAInspecter]        = useState(null);
+  const [formInspection,       setFormInspection]       = useState(FORM_INSPECTION_DEFAUT);
+  const [envoiInspection,      setEnvoiInspection]      = useState(false);
+  const [filtreJournalInspection, setFiltreJournalInspection] = useState(null);
+
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
     mode: "onBlur",
     resolver: zodResolver(epiSchema),
@@ -275,12 +308,22 @@ function EpisPage() {
     }
   };
 
+  const chargerInspections = async () => {
+    try {
+      const res = await api.get("/inspections");
+      setInspections(res.data.data || []);
+    } catch (e) {
+      console.error("Erreur chargement inspections:", e);
+    }
+  };
+
   useEffect(() => {
     charger();
     api.get("/sites").then((r) => setSites(r.data.data || [])).catch(() => {});
     if (peutGerer) {
       api.get("/users").then((r) => setUsers(r.data.data || [])).catch(() => {});
       chargerAffectations();
+      chargerInspections();
     }
   }, []);
 
@@ -330,6 +373,27 @@ function EpisPage() {
   const affectationsActivesParEpi = (epiId) =>
     affectations.filter((a) => a.epiId === epiId && a.statut === "ACTIVE");
 
+  const ouvrirModalInspection = (epi) => {
+    setEpiAInspecter(epi);
+    setFormInspection(FORM_INSPECTION_DEFAUT);
+    setShowModalInspection(true);
+  };
+
+  const soumettreInspection = async () => {
+    setEnvoiInspection(true);
+    try {
+      await api.post(`/epis/${epiAInspecter.id}/inspections`, formInspection);
+      toast.success("Inspection enregistrée avec succès");
+      setShowModalInspection(false);
+      charger();
+      chargerInspections();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de l'enregistrement de l'inspection.");
+    } finally {
+      setEnvoiInspection(false);
+    }
+  };
+
   const ouvrirCreation = () => {
     setErreurForm("");
     setEpiEnEdition(null);
@@ -354,7 +418,7 @@ function EpisPage() {
       seuilAlerte: epi.seuilAlerte,
       siteId: epi.siteId,
       datePeremption: formatDateInput(epi.datePeremption),
-      dateDerniereInspection: formatDateInput(epi.dateDerniereInspection),
+      frequenceInspectionJours: epi.frequenceInspectionJours ?? "",
     });
     setShowModal(true);
   };
@@ -407,7 +471,7 @@ function EpisPage() {
       reference: data.reference || null,
       photoUrl: photoUrl || null,
       datePeremption: data.datePeremption || null,
-      dateDerniereInspection: data.dateDerniereInspection || null,
+      frequenceInspectionJours: data.frequenceInspectionJours || null,
     };
     try {
       if (epiEnEdition) {
@@ -518,6 +582,7 @@ function EpisPage() {
                   affectationsActives={affectationsActivesParEpi(epi.id)}
                   onModifier={ouvrirModification}
                   onAffecter={ouvrirModalAffecter}
+                  onInspecter={ouvrirModalInspection}
                 />
               ))}
             </div>
@@ -650,6 +715,65 @@ function EpisPage() {
               </div>
             </div>
           )}
+
+          {/* ── Journal des inspections ── */}
+          {peutGerer && (
+            <div className="mt-5">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-navy">Journal des inspections</p>
+                {filtreJournalInspection && (
+                  <button onClick={() => setFiltreJournalInspection(null)} className="text-xs text-[#64748B] hover:text-navy underline">
+                    Retirer le filtre « {filtreJournalInspection.designation} »
+                  </button>
+                )}
+              </div>
+              <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[720px] text-sm">
+                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
+                      <tr>
+                        {["EPI", "Date d'inspection", "Résultat", "Inspecteur", "Commentaire", "Actions"].map((h) => (
+                          <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#F1F5F9]">
+                      {(() => {
+                        const lignes = filtreJournalInspection
+                          ? inspections.filter((i) => i.epiId === filtreJournalInspection.id)
+                          : inspections;
+                        if (lignes.length === 0) {
+                          return (
+                            <tr><td colSpan={6} className="px-4 py-12 text-center text-[#94A3B8]">Aucune inspection enregistrée.</td></tr>
+                          );
+                        }
+                        return lignes.map((i) => (
+                          <tr key={i.id} className="hover:bg-[#F8FAFC] transition-colors">
+                            <td className="px-4 py-3">
+                              <p className="text-[#1E293B]">{i.epi.designation}</p>
+                              {i.epi.reference && <p className="text-xs text-[#94A3B8]">{i.epi.reference}</p>}
+                            </td>
+                            <td className="px-4 py-3 text-[#64748B] whitespace-nowrap">{formatDateAffichage(i.dateInspection)}</td>
+                            <td className="px-4 py-3"><Badge variant={i.conforme ? "CONFORME" : "NON_CONFORME"} /></td>
+                            <td className="px-4 py-3 text-[#64748B]">
+                              {i.inspecteur ? `${i.inspecteur.prenom} ${i.inspecteur.nom}` : "—"}
+                            </td>
+                            <td className="px-4 py-3 text-[#64748B]">{i.commentaire || "—"}</td>
+                            <td className="px-4 py-3">
+                              <button onClick={() => setFiltreJournalInspection({ id: i.epiId, designation: i.epi.designation })}
+                                className="px-2.5 py-1 text-xs font-medium text-navy border border-[#E2E8F0] rounded-md hover:bg-[#F1F5F9] transition-colors">
+                                Voir historique
+                              </button>
+                            </td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -755,8 +879,11 @@ function EpisPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Dernière inspection</label>
-                  <input type="date" {...register("dateDerniereInspection")} className={inputCls("dateDerniereInspection")} />
+                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+                    Fréquence d'inspection <span className="font-normal normal-case text-[#94A3B8]">(jours)</span>
+                  </label>
+                  <input type="number" {...register("frequenceInspectionJours")} min={1} placeholder="ex: 180" className={inputCls("frequenceInspectionJours")} />
+                  {errors.frequenceInspectionJours && <p className="mt-1 text-xs text-[#DC2626]">{errors.frequenceInspectionJours.message}</p>}
                 </div>
                 <div>
                   <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Péremption</label>
@@ -830,6 +957,68 @@ function EpisPage() {
               <button type="button" onClick={soumettreAffectation} disabled={envoiAffectation}
                 className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
                 {envoiAffectation ? "Affectation..." : "Affecter"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modale d'inspection ── */}
+      {showModalInspection && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={(e) => e.target === e.currentTarget && setShowModalInspection(false)}>
+          <div className="w-full max-w-sm bg-white rounded-lg border border-[#E2E8F0] p-6 mx-4">
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-base font-semibold text-[#1E293B]">Enregistrer une inspection</h2>
+              <button onClick={() => setShowModalInspection(false)}
+                className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition text-base leading-none">
+                &#x2715;
+              </button>
+            </div>
+            <p className="text-sm text-[#64748B] mb-4">{epiAInspecter?.designation}</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Date d'inspection</label>
+                <input
+                  type="date"
+                  value={formInspection.dateInspection}
+                  onChange={(e) => setFormInspection((f) => ({ ...f, dateInspection: e.target.value }))}
+                  className={inputCls("dateInspection")}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="conforme"
+                  checked={formInspection.conforme}
+                  onChange={(e) => setFormInspection((f) => ({ ...f, conforme: e.target.checked }))}
+                  className="w-4 h-4 rounded border-[#E2E8F0] text-navy focus:ring-navy/30"
+                />
+                <label htmlFor="conforme" className="text-sm text-[#1E293B]">L'EPI est conforme</label>
+              </div>
+              <div>
+                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+                  Commentaire <span className="font-normal normal-case text-[#94A3B8]">(optionnel)</span>
+                </label>
+                <textarea
+                  value={formInspection.commentaire}
+                  onChange={(e) => setFormInspection((f) => ({ ...f, commentaire: e.target.value }))}
+                  rows={3}
+                  placeholder="Observations éventuelles…"
+                  className={inputCls("commentaire")}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-[#F1F5F9]">
+              <button type="button" onClick={() => setShowModalInspection(false)}
+                className="px-4 py-2 text-sm font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
+                Annuler
+              </button>
+              <button type="button" onClick={soumettreInspection} disabled={envoiInspection}
+                className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
+                {envoiInspection ? "Enregistrement..." : "Enregistrer"}
               </button>
             </div>
           </div>

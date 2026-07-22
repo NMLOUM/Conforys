@@ -67,6 +67,8 @@ model User {
   notifications     Notification[]
   // Relation : EPI actuellement ou anciennement affectés à cet utilisateur
   episAffectes      AffectationEpi[]     @relation("EpisAffectes")
+  // Relation : inspections d'EPI réalisées par cet utilisateur
+  inspectionsEffectuees InspectionEpi[]  @relation("InspectionsEffectuees")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -272,7 +274,7 @@ model Epi {
   seuilAlerte Int        @default(5)              // Seuil de réapprovisionnement
   statut      StatutEpi  @default(DISPONIBLE)
   datePeremption DateTime? @map("date_peremption") // Optionnel (certains EPI expirent)
-  dateDerniereInspection DateTime? @map("date_derniere_inspection") // Optionnel
+  frequenceInspectionJours Int? @map("frequence_inspection_jours") // Optionnel : périodicité d'inspection requise (ex: 180 = tous les 6 mois)
 
   // Relation : l'EPI est rattaché à un site
   site   Site   @relation(fields: [siteId], references: [id])
@@ -281,10 +283,39 @@ model Epi {
   // Relation : affectations de cet EPI à des employés
   affectations AffectationEpi[]
 
+  // Relation : historique des inspections de cet EPI
+  inspections InspectionEpi[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("epis")
+}
+
+// ─────────────────────────────────────────────
+//  MODULE 3c : HISTORIQUE DES INSPECTIONS D'EPI
+// ─────────────────────────────────────────────
+
+// Une inspection est un événement daté et immuable (contrairement à
+// dateDerniereInspection auparavant stocké sur l'Epi, qui était écrasé à
+// chaque inspection et ne conservait aucun historique).
+model InspectionEpi {
+  id             String   @id @default(uuid())
+  dateInspection DateTime @default(now()) @map("date_inspection")
+  conforme       Boolean  @default(true)              // L'EPI a-t-il passé l'inspection ?
+  commentaire    String?
+
+  // Relation : l'EPI inspecté (suppression en cascade avec l'EPI)
+  epi   Epi    @relation(fields: [epiId], references: [id], onDelete: Cascade)
+  epiId String @map("epi_id")
+
+  // Relation : l'utilisateur ayant réalisé l'inspection (optionnel)
+  inspecteur   User?   @relation("InspectionsEffectuees", fields: [inspecteurId], references: [id])
+  inspecteurId String? @map("inspecteur_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("inspections_epi")
 }
 
 // ─────────────────────────────────────────────

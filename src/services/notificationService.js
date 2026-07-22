@@ -2,6 +2,7 @@
 // utilisateur, marquage lu, et calcul des alertes métier (EPI, habilitations,
 // actions correctives, incidents critiques, audits planifiés).
 const prisma = require("../config/prisma");
+const { calculerNiveauAlerte } = require("./epiService");
 
 // Erreur métier avec code HTTP — cohérent avec les autres services
 class ErreurMetier extends Error {
@@ -84,7 +85,11 @@ const getAlertesMetier = async (entrepriseId) => {
   const [epis, actionsEnRetard, incidentsCritiques, auditsSemaine] = await Promise.all([
     prisma.epi.findMany({
       where: { site: { entrepriseId } },
-      select: { designation: true, quantite: true, seuilAlerte: true, site: { select: { nom: true } } },
+      select: {
+        designation: true, quantite: true, seuilAlerte: true, datePeremption: true, frequenceInspectionJours: true,
+        inspections: { orderBy: { dateInspection: "desc" }, take: 1, select: { dateInspection: true } },
+        site: { select: { nom: true } },
+      },
     }),
     prisma.actionCorrective.findMany({
       where: {
@@ -111,15 +116,37 @@ const getAlertesMetier = async (entrepriseId) => {
 
   const alertes = [];
 
+  // Niveau ALERTE = rupture de stock, péremption dépassée, ou inspection en
+  // retard (même calcul que la page EPI, via epiService.calculerNiveauAlerte)
+  // — le niveau BIENTOT reste un avertissement, pas une alerte "à traiter"
+  // immédiatement.
   epis
-    .filter((e) => e.quantite <= e.seuilAlerte)
-    .forEach((e) => alertes.push({
-      type: "EPI_STOCK_BAS",
-      niveau: "ATTENTION",
-      libelle: `${e.designation} — ${e.quantite} restant(s) (seuil ${e.seuilAlerte})`,
-      detail: e.site?.nom ?? null,
-      lien: "/epis",
-    }));
+    .filter((e) => calculerNiveauAlerte(e) === "ALERTE")
+    .forEach((e) => {
+      const perime = e.datePeremption && new Date(e.datePeremption) < maintenant;
+      const enRupture = e.quantite <= e.seuilAlerte;
+      let alerte;
+      if (perime) {
+        alerte = {
+          type: "EPI_PERIME",
+          niveau: "URGENT",
+          libelle: `${e.designation} — périmé depuis le ${new Date(e.datePeremption).toLocaleDateString("fr-FR")}`,
+        };
+      } else if (enRupture) {
+        alerte = {
+          type: "EPI_STOCK_BAS",
+          niveau: "ATTENTION",
+          libelle: `${e.designation} — ${e.quantite} restant(s) (seuil ${e.seuilAlerte})`,
+        };
+      } else {
+        alerte = {
+          type: "EPI_INSPECTION",
+          niveau: "URGENT",
+          libelle: `${e.designation} — inspection en retard`,
+        };
+      }
+      alertes.push({ ...alerte, detail: e.site?.nom ?? null, lien: "/epis" });
+    });
 
   actionsEnRetard.forEach((a) => alertes.push({
     type: "ACTION_EN_RETARD",
