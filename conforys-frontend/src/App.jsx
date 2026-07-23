@@ -12,9 +12,6 @@ import AuditsPage from "./pages/AuditsPage";
 import AuditDetailPage from "./pages/AuditDetailPage";
 import FormationsPage from "./pages/FormationsPage";
 import FormationDetailPage from "./pages/FormationDetailPage";
-import ModulesFormationPage from "./pages/ModulesFormationPage";
-import ModuleFormationDetailPage from "./pages/ModuleFormationDetailPage";
-import QuizFormationPage from "./pages/QuizFormationPage";
 import AttestationsPage from "./pages/AttestationsPage";
 import VerifierAttestationPage from "./pages/VerifierAttestationPage";
 import UsersPage from "./pages/UsersPage";
@@ -98,10 +95,6 @@ function App() {
         <Route path="/audits/:id" element={<ProtectedRoute element={<AuditDetailPage />} rolesAutorises={["RESPONSABLE_QHSE"]} />} />
         <Route path="/formations"     element={<ProtectedRoute element={<FormationsPage />}     rolesAutorises={["RESPONSABLE_QHSE", "EMPLOYE"]} />} />
         <Route path="/formations/:id" element={<ProtectedRoute element={<FormationDetailPage />} rolesAutorises={["RESPONSABLE_QHSE", "EMPLOYE"]} />} />
-        {/* Formation en ligne (mini-LMS) — mêmes rôles que les sessions présentielles */}
-        <Route path="/formations-en-ligne"           element={<ProtectedRoute element={<ModulesFormationPage />}       rolesAutorises={["RESPONSABLE_QHSE", "EMPLOYE"]} />} />
-        <Route path="/formations-en-ligne/:id"       element={<ProtectedRoute element={<ModuleFormationDetailPage />}  rolesAutorises={["RESPONSABLE_QHSE", "EMPLOYE"]} />} />
-        <Route path="/formations-en-ligne/:id/quiz"  element={<ProtectedRoute element={<QuizFormationPage />}          rolesAutorises={["RESPONSABLE_QHSE", "EMPLOYE"]} />} />
         {/* Attestations de formation — QHSE et ADMIN uniquement */}
         <Route path="/attestations" element={<ProtectedRoute element={<AttestationsPage />} rolesAutorises={["RESPONSABLE_QHSE", "ADMIN"]} />} />
         {/* Utilisateurs : ADMIN (CRUD) + QHSE (lecture pour assigner des actions) */}
