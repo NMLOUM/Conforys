@@ -71,6 +71,8 @@ model User {
   inspectionsEffectuees InspectionEpi[]  @relation("InspectionsEffectuees")
   // Relation : progression sur les modules de formation en ligne
   progressionsModule    ProgressionModule[]
+  // Relation : attestations de formation obtenues
+  attestations          Attestation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -466,6 +468,7 @@ model Formation {
   dateDebut   DateTime       @map("date_debut")
   dateFin     DateTime?      @map("date_fin")
   dureeHeures Float?         @map("duree_heures")
+  dureeValiditeJours Int?    @map("duree_validite_jours") // Optionnel : périodicité de recyclage requise (ex: 365 = 1 an) — sert à calculer la date d'expiration de l'attestation délivrée
 
   // Relation : la formation se déroule sur un site
   site   Site   @relation(fields: [siteId], references: [id])
@@ -519,6 +522,7 @@ model ModuleFormation {
   theme        ThemeFormation?
   description  String?
   scoreMinimum Int             @default(80) @map("score_minimum") // % de bonnes réponses requis pour valider le quiz
+  dureeValiditeJours Int?      @map("duree_validite_jours") // Optionnel : périodicité de recyclage (ex: 730 = 2 ans)
 
   lecons       Lecon[]
   questions    QuestionQuiz[]
@@ -594,6 +598,40 @@ model ProgressionModule {
   // Une seule progression par utilisateur et par module
   @@unique([userId, moduleId])
   @@map("progressions_module")
+}
+
+// ─────────────────────────────────────────────
+//  MODULE 5c : ATTESTATIONS DE FORMATION
+// ─────────────────────────────────────────────
+//
+// Certificat délivré automatiquement quand un employé est validé sur une
+// session présentielle (sous-bloc A) ou réussit un quiz de module en ligne
+// (sous-bloc B). Volontairement DÉCOUPLÉE de Formation/ModuleFormation (pas
+// de clé étrangère) : l'attestation est un document permanent qui doit rester
+// consultable/vérifiable même si la formation source est plus tard modifiée
+// ou supprimée — d'où les champs texte dénormalisés (titreFormation, etc.).
+
+enum SourceAttestation {
+  SESSION         // Issue d'une session présentielle (sous-bloc A)
+  MODULE_EN_LIGNE // Issue d'un module en ligne / quiz (sous-bloc B)
+}
+
+model Attestation {
+  id               String   @id @default(uuid())
+  codeVerification String   @unique @map("code_verification") // Code public, distinct de l'id interne
+  titreFormation   String   @map("titre_formation")
+  themeFormation   String?  @map("theme_formation")
+  dateObtention    DateTime @default(now()) @map("date_obtention")
+  dateExpiration   DateTime? @map("date_expiration") // Optionnel : formations à recycler périodiquement
+  scoreObtenu      Int?     @map("score_obtenu")     // Renseigné si issue d'un quiz
+  source           SourceAttestation
+
+  beneficiaire   User   @relation(fields: [beneficiaireId], references: [id])
+  beneficiaireId String @map("beneficiaire_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("attestations")
 }
 
 // ─────────────────────────────────────────────

@@ -2,6 +2,7 @@ require("dotenv").config();
 const { PrismaClient } = require("./src/generated/prisma");
 const { PrismaPg } = require("@prisma/adapter-pg");
 const bcrypt = require("bcrypt");
+const crypto = require("crypto");
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -12,6 +13,7 @@ async function main() {
   console.log("Nettoyage de la base...");
   // Ordre inverse des FK
   await prisma.habilitation.deleteMany();
+  await prisma.attestation.deleteMany();
   await prisma.progressionModule.deleteMany();
   await prisma.reponseQuiz.deleteMany();
   await prisma.questionQuiz.deleteMany();
@@ -223,6 +225,7 @@ async function main() {
       dateDebut:   new Date("2026-01-25"),
       dateFin:     new Date("2026-01-25"),
       dureeHeures: 7,
+      dureeValiditeJours: 180, // Recyclage semestriel
       statut:      "TERMINEE",
       siteId:      siteDakar.id,
       participations: { create: [{ participantId: emp1.id }, { participantId: emp2.id }, { participantId: emp3.id }] },
@@ -236,6 +239,7 @@ async function main() {
       dateDebut:   new Date("2026-02-18"),
       dateFin:     new Date("2026-02-19"),
       dureeHeures: 14,
+      dureeValiditeJours: 365, // Recyclage annuel
       statut:      "TERMINEE",
       siteId:      siteDakar.id,
       participations: { create: [{ participantId: emp1.id }, { participantId: emp3.id }] },
@@ -274,6 +278,7 @@ async function main() {
       theme:        "RISQUES_ELECTRIQUES",
       description:  "Module d'auto-formation sur les dangers électriques, les habilitations et les procédures de consignation.",
       scoreMinimum: 80,
+      dureeValiditeJours: 730, // Recyclage tous les 2 ans
       lecons: {
         create: [
           {
@@ -448,6 +453,43 @@ async function main() {
     ],
   });
   console.log("Habilitations créées : 6 (2 bientôt expirées, 1 expirée, 3 valides)");
+
+  // ── ATTESTATIONS DE FORMATION ─────────────────────────────────────────────
+  // Illustrent les 3 statuts possibles (calculés, jamais stockés) : valide
+  // sans échéance, à recycler bientôt, et déjà expirée — pour tester les
+  // alertes de recyclage dès le premier chargement du dashboard.
+  const dansQuelquesJours = new Date(); dansQuelquesJours.setDate(dansQuelquesJours.getDate() + 5);
+  const ilYAQuelquesSemaines = new Date(); ilYAQuelquesSemaines.setDate(ilYAQuelquesSemaines.getDate() - 20);
+
+  await prisma.attestation.createMany({
+    data: [
+      {
+        codeVerification: crypto.randomBytes(12).toString("hex"),
+        beneficiaireId: emp2.id,
+        titreFormation: "Premiers secours en milieu industriel (SST)",
+        themeFormation: "PREMIERS_SECOURS",
+        dateExpiration: null, // Pas de périodicité de recyclage configurée
+        source: "SESSION",
+      },
+      {
+        codeVerification: crypto.randomBytes(12).toString("hex"),
+        beneficiaireId: emp1.id,
+        titreFormation: "Sécurité incendie et procédures d'évacuation",
+        themeFormation: "INCENDIE",
+        dateExpiration: dansQuelquesJours, // À recycler bientôt
+        source: "SESSION",
+      },
+      {
+        codeVerification: crypto.randomBytes(12).toString("hex"),
+        beneficiaireId: emp3.id,
+        titreFormation: "Travail en hauteur et port du harnais",
+        themeFormation: "TRAVAIL_HAUTEUR",
+        dateExpiration: ilYAQuelquesSemaines, // Déjà expirée
+        source: "SESSION",
+      },
+    ],
+  });
+  console.log("Attestations créées : 3 (1 valide, 1 à recycler bientôt, 1 expirée)");
 
   console.log("\n── Seed terminé avec succès ──────────────────────────────");
   console.log("Comptes disponibles :");

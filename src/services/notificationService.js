@@ -81,8 +81,9 @@ const compterNonLues = async (userId) => {
 const getAlertesMetier = async (entrepriseId) => {
   const maintenant = new Date();
   const finSemaine = new Date(); finSemaine.setDate(maintenant.getDate() + 7);
+  const dans30Jours = new Date(); dans30Jours.setDate(maintenant.getDate() + 30);
 
-  const [epis, actionsEnRetard, incidentsCritiques, auditsSemaine] = await Promise.all([
+  const [epis, actionsEnRetard, incidentsCritiques, auditsSemaine, attestationsAvecExpiration] = await Promise.all([
     prisma.epi.findMany({
       where: { site: { entrepriseId } },
       select: {
@@ -111,6 +112,13 @@ const getAlertesMetier = async (entrepriseId) => {
       where: { statut: "PLANIFIE", datePrevue: { gte: maintenant, lte: finSemaine }, auditeur: { entrepriseId } },
       include: { site: { select: { nom: true } } },
       orderBy: { datePrevue: "asc" },
+    }),
+    prisma.attestation.findMany({
+      where: { beneficiaire: { entrepriseId }, dateExpiration: { not: null } },
+      select: {
+        id: true, titreFormation: true, dateExpiration: true,
+        beneficiaire: { select: { nom: true, prenom: true } },
+      },
     }),
   ]);
 
@@ -171,6 +179,28 @@ const getAlertesMetier = async (entrepriseId) => {
     detail: `${new Date(a.datePrevue).toLocaleDateString("fr-FR")} · ${a.site?.nom ?? "—"}`,
     lien: `/audits/${a.id}`,
   }));
+
+  // Attestations de formation déjà expirées ou expirant dans < 30 jours
+  attestationsAvecExpiration.forEach((a) => {
+    const dateExp = new Date(a.dateExpiration);
+    if (dateExp < maintenant) {
+      alertes.push({
+        type: "ATTESTATION_EXPIREE",
+        niveau: "URGENT",
+        libelle: `${a.titreFormation} — ${a.beneficiaire.prenom} ${a.beneficiaire.nom}`,
+        detail: `Expirée depuis le ${dateExp.toLocaleDateString("fr-FR")}`,
+        lien: "/attestations",
+      });
+    } else if (dateExp <= dans30Jours) {
+      alertes.push({
+        type: "ATTESTATION_RECYCLAGE",
+        niveau: "ATTENTION",
+        libelle: `${a.titreFormation} — ${a.beneficiaire.prenom} ${a.beneficiaire.nom}`,
+        detail: `À recycler avant le ${dateExp.toLocaleDateString("fr-FR")}`,
+        lien: "/attestations",
+      });
+    }
+  });
 
   return alertes;
 };

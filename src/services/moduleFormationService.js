@@ -2,6 +2,9 @@
 // séquentiellement, puis d'un quiz de validation. Complète les sessions
 // présentielles du sous-bloc A avec un mode d'auto-apprentissage.
 const prisma = require("../config/prisma");
+const attestationService = require("./attestationService");
+
+const MS_PAR_JOUR = 24 * 60 * 60 * 1000;
 
 // Erreur métier avec code HTTP — cohérent avec les autres services
 class ErreurMetier extends Error {
@@ -119,7 +122,7 @@ const soumettreQuiz = async (moduleId, userId, reponsesSoumises) => {
   const score = Math.round((bonnesReponses / module.questions.length) * 100);
   const valide = score >= module.scoreMinimum;
 
-  return await prisma.progressionModule.update({
+  const resultat = await prisma.progressionModule.update({
     where: { userId_moduleId: { userId, moduleId } },
     data: {
       scoreQuiz: score,
@@ -127,6 +130,21 @@ const soumettreQuiz = async (moduleId, userId, reponsesSoumises) => {
       dateValidation: valide ? new Date() : null,
     },
   });
+
+  if (valide) {
+    await attestationService.creerSiAbsente({
+      beneficiaireId: userId,
+      titreFormation: module.titre,
+      themeFormation: module.theme,
+      dateExpiration: module.dureeValiditeJours
+        ? new Date(Date.now() + module.dureeValiditeJours * MS_PAR_JOUR)
+        : null,
+      scoreObtenu: score,
+      source: "MODULE_EN_LIGNE",
+    });
+  }
+
+  return resultat;
 };
 
 // Progression brute de l'utilisateur connecté sur un module donné

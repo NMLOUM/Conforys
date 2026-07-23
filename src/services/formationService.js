@@ -1,5 +1,8 @@
 // Importation de l'instance Prisma partagée (connexion à la base)
 const prisma = require("../config/prisma");
+const attestationService = require("./attestationService");
+
+const MS_PAR_JOUR = 24 * 60 * 60 * 1000;
 
 // Erreur métier avec code HTTP — cohérent avec les autres services
 class ErreurMetier extends Error {
@@ -141,6 +144,7 @@ const marquerPresence = async (formationId, participantId, present) => {
 
 // Valider un participant atteste qu'il a suivi la formation — impossible pour
 // quelqu'un marqué absent, la présence est le préalable à la validation.
+// Déclenche la délivrance automatique d'une attestation (sans doublon).
 const validerParticipant = async (formationId, participantId) => {
   const participation = await prisma.participationFormation.findUnique({
     where: { formationId_participantId: { formationId, participantId } },
@@ -150,11 +154,25 @@ const validerParticipant = async (formationId, participantId) => {
     throw new ErreurMetier("Impossible de valider un participant marqué absent.");
   }
 
-  return await prisma.participationFormation.update({
+  const resultat = await prisma.participationFormation.update({
     where: { formationId_participantId: { formationId, participantId } },
     data: { valide: true, dateValidation: new Date() },
     include: { participant: { select: { id: true, nom: true, prenom: true } } },
   });
+
+  const formation = await prisma.formation.findUnique({ where: { id: formationId } });
+  await attestationService.creerSiAbsente({
+    beneficiaireId: participantId,
+    titreFormation: formation.titre,
+    themeFormation: formation.theme,
+    dateExpiration: formation.dureeValiditeJours
+      ? new Date(Date.now() + formation.dureeValiditeJours * MS_PAR_JOUR)
+      : null,
+    scoreObtenu: null,
+    source: "SESSION",
+  });
+
+  return resultat;
 };
 
 // ── Consultation côté employé ─────────────────────────────────────────────────

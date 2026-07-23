@@ -11,6 +11,8 @@ const CONFIG_LIGNE = {
   EPI_PERIME:        { couleur: "#DC2626", tag: "Périmé",   gras: true },
   EPI_INSPECTION:    { couleur: "#DC2626", tag: "Inspection", gras: true },
   AUDIT_PLANIFIE:    { couleur: "#0D2B4E", tag: "Planning", gras: false },
+  ATTESTATION_EXPIREE:    { couleur: "#DC2626", tag: "Expirée",   gras: true },
+  ATTESTATION_RECYCLAGE:  { couleur: "#EA580C", tag: "Recyclage", gras: false },
 };
 const CONFIG_DEFAUT = { couleur: "#94A3B8", tag: "Info", gras: false };
 

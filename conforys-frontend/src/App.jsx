@@ -15,6 +15,8 @@ import FormationDetailPage from "./pages/FormationDetailPage";
 import ModulesFormationPage from "./pages/ModulesFormationPage";
 import ModuleFormationDetailPage from "./pages/ModuleFormationDetailPage";
 import QuizFormationPage from "./pages/QuizFormationPage";
+import AttestationsPage from "./pages/AttestationsPage";
+import VerifierAttestationPage from "./pages/VerifierAttestationPage";
 import UsersPage from "./pages/UsersPage";
 import ActionsPage from "./pages/ActionsPage";
 import NotificationsPage from "./pages/NotificationsPage";
@@ -49,6 +51,8 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        {/* Vérification publique d'une attestation (QR code) — aucune authentification */}
+        <Route path="/verifier/:code" element={<VerifierAttestationPage />} />
 
         {/* Dashboard RESPONSABLE_QHSE */}
         <Route
@@ -98,6 +102,8 @@ function App() {
         <Route path="/formations-en-ligne"           element={<ProtectedRoute element={<ModulesFormationPage />}       rolesAutorises={["RESPONSABLE_QHSE", "EMPLOYE"]} />} />
         <Route path="/formations-en-ligne/:id"       element={<ProtectedRoute element={<ModuleFormationDetailPage />}  rolesAutorises={["RESPONSABLE_QHSE", "EMPLOYE"]} />} />
         <Route path="/formations-en-ligne/:id/quiz"  element={<ProtectedRoute element={<QuizFormationPage />}          rolesAutorises={["RESPONSABLE_QHSE", "EMPLOYE"]} />} />
+        {/* Attestations de formation — QHSE et ADMIN uniquement */}
+        <Route path="/attestations" element={<ProtectedRoute element={<AttestationsPage />} rolesAutorises={["RESPONSABLE_QHSE", "ADMIN"]} />} />
         {/* Utilisateurs : ADMIN (CRUD) + QHSE (lecture pour assigner des actions) */}
         <Route path="/users"      element={<ProtectedRoute element={<UsersPage />}      rolesAutorises={["ADMIN", "RESPONSABLE_QHSE"]} />} />
         {/* Notifications : tous les rôles, accessible uniquement via la cloche */}

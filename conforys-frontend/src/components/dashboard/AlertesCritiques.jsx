@@ -24,6 +24,8 @@ const LABELS_CAT = {
   HABILITATION:    "Habilitation",
   AUDIT_RETARD:    "Audit en retard",
   INCIDENT_GRAVE:  "Incident grave",
+  ATTESTATION_EXPIREE:   "Attestation expirée",
+  ATTESTATION_RECYCLAGE: "Attestation — Recyclage",
 };
 
 function AlertesCritiques({ alertes = [] }) {

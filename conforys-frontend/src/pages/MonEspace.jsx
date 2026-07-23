@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import Badge from "../components/ui/Badge";
@@ -13,6 +14,8 @@ function MonEspace() {
   const [formations,    setFormations]    = useState([]);
   const [habilitations, setHabilitations] = useState([]);
   const [episAffectes,  setEpisAffectes]  = useState([]);
+  const [attestations,  setAttestations]  = useState([]);
+  const [telechargementEnCours, setTelechargementEnCours] = useState(null);
   const [chargement,    setChargement]    = useState(true);
 
   useEffect(() => {
@@ -23,11 +26,12 @@ function MonEspace() {
   useEffect(() => {
     const charger = async () => {
       try {
-        const [resInc, resFrm, resHab, resEpi] = await Promise.all([
+        const [resInc, resFrm, resHab, resEpi, resAtt] = await Promise.all([
           api.get("/incidents"),
           api.get("/formations"),
           api.get("/habilitations").catch(() => ({ data: { data: [] } })),
           api.get("/affectations/mes-epis").catch(() => ({ data: { data: [] } })),
+          api.get("/attestations/mes-attestations").catch(() => ({ data: { data: [] } })),
         ]);
         const tousIncidents = resInc.data.data ?? resInc.data ?? [];
         setIncidents(tousIncidents.filter((inc) => inc.declarePar?.id === user?.id));
@@ -36,6 +40,7 @@ function MonEspace() {
         setHabilitations(toutesHab.filter((h) => h.titulaireId === user?.id));
         const tousEpisAffectes = resEpi.data.data ?? [];
         setEpisAffectes(tousEpisAffectes.filter((a) => a.statut === "ACTIVE"));
+        setAttestations(resAtt.data.data ?? []);
       } catch (e) {
         console.error("Erreur chargement mon espace:", e);
       } finally {
@@ -44,6 +49,25 @@ function MonEspace() {
     };
     charger();
   }, [user?.id]);
+
+  const telechargerAttestation = async (attestation) => {
+    setTelechargementEnCours(attestation.id);
+    try {
+      const res = await api.get(`/attestations/${attestation.id}/pdf`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const lien = document.createElement("a");
+      lien.href = url;
+      lien.download = `attestation-${attestation.titreFormation}.pdf`;
+      document.body.appendChild(lien);
+      lien.click();
+      lien.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error("Erreur lors du téléchargement de l'attestation.");
+    } finally {
+      setTelechargementEnCours(null);
+    }
+  };
 
   const prenom  = user?.prenom ?? user?.nom ?? "Utilisateur";
   const dateJour = new Date().toLocaleDateString("fr-FR", {
@@ -213,6 +237,42 @@ function MonEspace() {
                     <Badge variant="ACTIVE" />
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Attestations */}
+          {attestations.length > 0 && (
+            <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">
+              <div className="px-5 py-4 border-b border-[#E2E8F0]">
+                <h2 className="text-sm font-semibold text-[#1E293B]">Mes attestations</h2>
+              </div>
+              <div className="divide-y divide-[#F1F5F9]">
+                {attestations.map((a) => {
+                  const expiree = a.dateExpiration && new Date(a.dateExpiration) < new Date();
+                  return (
+                    <div key={a.id} className="px-5 py-3 flex items-center justify-between hover:bg-[#F8FAFC] transition-colors">
+                      <div>
+                        <p className="text-sm font-medium text-[#1E293B]">{a.titreFormation}</p>
+                        <p className="text-xs text-[#64748B] mt-0.5">
+                          Obtenue le {new Date(a.dateObtention).toLocaleDateString("fr-FR")}
+                          {a.dateExpiration ? ` · ${expiree ? "Expirée le" : "Expire le"} ${new Date(a.dateExpiration).toLocaleDateString("fr-FR")}` : ""}
+                          {a.scoreObtenu != null ? ` · Score ${a.scoreObtenu}%` : ""}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <Badge variant={expiree ? "EXPIREE" : "VALIDE"} />
+                        <button
+                          onClick={() => telechargerAttestation(a)}
+                          disabled={telechargementEnCours === a.id}
+                          className="px-3 py-1.5 text-xs font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors"
+                        >
+                          {telechargementEnCours === a.id ? "..." : "Télécharger le PDF"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

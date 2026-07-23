@@ -25,6 +25,7 @@ const getIncidentStats = async () => {
     incidentsGravesOuverts,
     habExpirantesCount,
     habExpirantes7j,
+    tousAttestations,
   ] = await Promise.all([
     prisma.incident.count(),
     prisma.incident.groupBy({ by: ["gravite"], _count: { gravite: true } }),
@@ -75,6 +76,13 @@ const getIncidentStats = async () => {
         titulaire: { select: { nom: true, prenom: true } },
       },
       orderBy: { dateExpiration: "asc" },
+    }),
+    prisma.attestation.findMany({
+      where: { dateExpiration: { not: null } },
+      select: {
+        id: true, titreFormation: true, dateExpiration: true,
+        beneficiaire: { select: { nom: true, prenom: true } },
+      },
     }),
   ]);
 
@@ -144,6 +152,27 @@ const getIncidentStats = async () => {
     message: `${h.intitule} — ${h.titulaire?.prenom} ${h.titulaire?.nom}`,
     detail: `Expire le ${new Date(h.dateExpiration).toLocaleDateString("fr-FR")}`,
   }));
+
+  // Attestations de formation déjà expirées ou expirant dans < 30 jours
+  // (recyclage à prévoir) — même logique à deux niveaux que les EPI.
+  tousAttestations.forEach((a) => {
+    const dateExp = new Date(a.dateExpiration);
+    if (dateExp < maintenant) {
+      alertes.push({
+        niveau: "CRITIQUE",
+        categorie: "ATTESTATION_EXPIREE",
+        message: `${a.titreFormation} — ${a.beneficiaire.prenom} ${a.beneficiaire.nom}`,
+        detail: `Expirée depuis le ${dateExp.toLocaleDateString("fr-FR")}`,
+      });
+    } else if (dateExp <= dans30Jours) {
+      alertes.push({
+        niveau: "AVERTISSEMENT",
+        categorie: "ATTESTATION_RECYCLAGE",
+        message: `${a.titreFormation} — ${a.beneficiaire.prenom} ${a.beneficiaire.nom}`,
+        detail: `À recycler avant le ${dateExp.toLocaleDateString("fr-FR")}`,
+      });
+    }
+  });
 
   // Audits planifiés non réalisés (date dépassée)
   auditsEnRetard.forEach((a) => alertes.push({
