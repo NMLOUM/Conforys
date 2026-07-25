@@ -71,6 +71,8 @@ model User {
   inspectionsEffectuees InspectionEpi[]  @relation("InspectionsEffectuees")
   // Relation : attestations de formation obtenues
   attestations          Attestation[]
+  // Relation : risques professionnels identifiés par cet utilisateur (DUERP)
+  risquesIdentifies     Risque[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -92,6 +94,7 @@ model Site {
   epis       Epi[]
   audits     Audit[]
   formations Formation[]
+  risques    Risque[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -219,6 +222,10 @@ model ActionCorrective {
   // Relation : liée à un audit (générée automatiquement depuis une non-conformité)
   audit   Audit?  @relation(fields: [auditId], references: [id], onDelete: Cascade)
   auditId String? @map("audit_id")
+
+  // Relation : liée à un risque du DUERP (générée pour un risque élevé/critique)
+  risque   Risque? @relation(fields: [risqueId], references: [id], onDelete: Cascade)
+  risqueId String?  @map("risque_id")
 
   // Relation : responsable assigné
   responsable   User   @relation("ActionsAssignees", fields: [responsableId], references: [id])
@@ -595,4 +602,61 @@ model Notification {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("notifications")
+}
+
+// ─────────────────────────────────────────────
+//  MODULE 8 : DUERP (ÉVALUATION DES RISQUES PROFESSIONNELS)
+// ─────────────────────────────────────────────
+
+enum CategorieRisque {
+  CHUTE
+  ELECTRIQUE
+  CHIMIQUE
+  MECANIQUE
+  INCENDIE
+  BRUIT
+  MANUTENTION
+  THERMIQUE
+  BIOLOGIQUE
+  AUTRE
+}
+
+// Une ligne du Document Unique d'Évaluation des Risques Professionnels.
+// La cotation (probabilité × gravité) et son niveau qualitatif ne sont
+// jamais recalculés côté frontend : niveauRisque/niveauResiduel sont stockés
+// pour rester des valeurs figées au moment de la saisie, cohérentes avec
+// l'historique du document même si l'échelle de calcul évoluait plus tard.
+model Risque {
+  id                String          @id @default(uuid())
+  danger            String                                     // Ex: "Chute de hauteur"
+  description       String?
+  categorie         CategorieRisque @default(AUTRE)
+  zone              String?                                     // Ex: "Atelier soudure"
+
+  probabilite       Int                                         // 1 (rare) à 4 (fréquent)
+  gravite           Int                                         // 1 (mineure) à 4 (critique)
+  niveauRisque      Int             @map("niveau_risque")       // = probabilite × gravite, 1 à 16
+
+  mesuresPrevention String?         @map("mesures_prevention")
+
+  // Cotation résiduelle — après application des mesures de prévention (optionnelle)
+  probabiliteResiduelle Int?        @map("probabilite_residuelle")
+  graviteResiduelle     Int?        @map("gravite_residuelle")
+  niveauResiduel        Int?        @map("niveau_residuel")
+
+  // Relation : site/atelier concerné par ce risque
+  site   Site   @relation(fields: [siteId], references: [id])
+  siteId String @map("site_id")
+
+  // Relation : utilisateur ayant identifié/saisi ce risque
+  auteur   User   @relation(fields: [auteurId], references: [id])
+  auteurId String @map("auteur_id")
+
+  // Relation : actions de prévention générées à partir de ce risque
+  actions ActionCorrective[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@map("risques")
 }

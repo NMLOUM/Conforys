@@ -55,6 +55,13 @@ const IcCheckSquare = () => (
     <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
   </svg>
 );
+const IcMatrice = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="1"/>
+    <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
+  </svg>
+);
+
 const ICONS = {
   "/dashboard-admin": <IcGrid />,
   "/dashboard":       <IcGrid />,
@@ -64,6 +71,7 @@ const ICONS = {
   "/epis":            <IcShield />,
   "/audits":          <IcClipboard />,
   "/formations":      <IcBook />,
+  "/duerp":           <IcMatrice />,
   "/users":           <IcUsers />,
 };
 
@@ -141,6 +149,7 @@ function Sidebar({ ouverte, onClose }) {
             <Lien to="/actions"   label="Actions correctives" />
             <Lien to="/epis"      label="EPI" />
             <Lien to="/audits"    label="Audits" />
+            <Lien to="/duerp"     label="DUERP" />
             <Lien to="/formations" label="Formations" />
             <Lien to="/users"     label="Utilisateurs" />
           </>
@@ -155,6 +164,7 @@ function Sidebar({ ouverte, onClose }) {
             <SectionLabel label="Modules" />
             <Lien to="/incidents"  label="Incidents" />
             <Lien to="/actions"    label="Mes actions" />
+            <Lien to="/duerp"      label="DUERP" />
             <Lien to="/formations" label="Formations" />
           </>
         )}

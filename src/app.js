@@ -26,6 +26,7 @@ const historiqueRoutes      = require("./routes/historiqueRoutes");
 const affectationRoutes     = require("./routes/affectationRoutes");
 const inspectionRoutes      = require("./routes/inspectionRoutes");
 const attestationRoutes     = require("./routes/attestationRoutes");
+const risqueRoutes          = require("./routes/risqueRoutes");
 // Création de l'application Express
 const app = express();
 
@@ -67,5 +68,6 @@ app.use("/api/historique",      historiqueRoutes);
 app.use("/api/affectations",    affectationRoutes);
 app.use("/api/inspections",     inspectionRoutes);
 app.use("/api/attestations",    attestationRoutes);
+app.use("/api/risques",         risqueRoutes);
 // Export de l'application pour le démarrage dans server.js
 module.exports = app;

@@ -12,11 +12,13 @@ class ErreurMetier extends Error {
 // Poids de chaque niveau de criticité converti en priorité d'action corrective
 const PRIORITE_PAR_CRITICITE = { CRITIQUE: "CRITIQUE", MAJEUR: "ELEVE", MINEUR: "MOYEN" };
 
-// Include partagé : responsable + incident + audit (une action n'a jamais les deux à la fois)
+// Include partagé : responsable + incident + audit + risque (une action n'a
+// jamais plus d'une seule de ces trois relations à la fois)
 const INCLUDE_ACTION = {
   responsable: { select: { id: true, nom: true, prenom: true, email: true } },
   incident:    { select: { id: true, numeroReference: true } },
   audit:       { select: { id: true, reference: true } },
+  risque:      { select: { id: true, danger: true } },
 };
 
 // Récupère toutes les actions d'un incident, triées du plus récent au plus ancien
@@ -129,6 +131,7 @@ const getAllActions = async (entrepriseId, { statut, priorite, responsableId } =
     OR: [
       { incident: { declarePar: { entrepriseId } } },
       { audit: { auditeur: { entrepriseId } } },
+      { risque: { site: { entrepriseId } } },
     ],
     ...(statut        && { statut }),
     ...(priorite      && { priorite }),

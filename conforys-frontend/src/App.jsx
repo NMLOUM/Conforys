@@ -13,6 +13,7 @@ import AuditDetailPage from "./pages/AuditDetailPage";
 import FormationsPage from "./pages/FormationsPage";
 import FormationDetailPage from "./pages/FormationDetailPage";
 import AttestationsPage from "./pages/AttestationsPage";
+import DUERPPage from "./pages/DUERPPage";
 import VerifierAttestationPage from "./pages/VerifierAttestationPage";
 import UsersPage from "./pages/UsersPage";
 import ActionsPage from "./pages/ActionsPage";
@@ -97,6 +98,8 @@ function App() {
         <Route path="/formations/:id" element={<ProtectedRoute element={<FormationDetailPage />} rolesAutorises={["RESPONSABLE_QHSE", "EMPLOYE"]} />} />
         {/* Attestations de formation — QHSE et ADMIN uniquement */}
         <Route path="/attestations" element={<ProtectedRoute element={<AttestationsPage />} rolesAutorises={["RESPONSABLE_QHSE", "ADMIN"]} />} />
+        {/* DUERP : consultation tous rôles, gestion QHSE (contrôlée dans la page) */}
+        <Route path="/duerp" element={<ProtectedRoute element={<DUERPPage />} rolesAutorises={["RESPONSABLE_QHSE", "EMPLOYE"]} />} />
         {/* Utilisateurs : ADMIN (CRUD) + QHSE (lecture pour assigner des actions) */}
         <Route path="/users"      element={<ProtectedRoute element={<UsersPage />}      rolesAutorises={["ADMIN", "RESPONSABLE_QHSE"]} />} />
         {/* Notifications : tous les rôles, accessible uniquement via la cloche */}
