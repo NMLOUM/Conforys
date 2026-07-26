@@ -4,7 +4,7 @@ const { handleErreur } = require("../utils/handleErreur");
 // Récupère toutes les habilitations
 const getAllHabilitations = async (req, res) => {
   try {
-    const habilitations = await habilitationService.getAllHabilitations();
+    const habilitations = await habilitationService.getAllHabilitations(req.user.entrepriseId);
     res.status(200).json({ success: true, data: habilitations });
   } catch (error) {
     handleErreur(res, error);
@@ -14,7 +14,7 @@ const getAllHabilitations = async (req, res) => {
 // Récupère les habilitations expirant dans moins de 30 jours (logique sécurité)
 const getHabilitationsExpirantes = async (req, res) => {
   try {
-    const habilitations = await habilitationService.getHabilitationsExpirantes();
+    const habilitations = await habilitationService.getHabilitationsExpirantes(req.user.entrepriseId);
     res.status(200).json({ success: true, data: habilitations });
   } catch (error) {
     handleErreur(res, error);
@@ -24,7 +24,7 @@ const getHabilitationsExpirantes = async (req, res) => {
 // Récupère une habilitation par son id
 const getHabilitationById = async (req, res) => {
   try {
-    const habilitation = await habilitationService.getHabilitationById(req.params.id);
+    const habilitation = await habilitationService.getHabilitationById(req.params.id, req.user.entrepriseId);
     if (!habilitation) {
       return res.status(404).json({ success: false, message: "Habilitation introuvable." });
     }
@@ -37,7 +37,7 @@ const getHabilitationById = async (req, res) => {
 // Crée une nouvelle habilitation
 const createHabilitation = async (req, res) => {
   try {
-    const habilitation = await habilitationService.createHabilitation(req.body);
+    const habilitation = await habilitationService.createHabilitation(req.body, req.user.entrepriseId);
     res.status(201).json({ success: true, data: habilitation });
   } catch (error) {
     handleErreur(res, error);
@@ -47,7 +47,7 @@ const createHabilitation = async (req, res) => {
 // Met à jour une habilitation
 const updateHabilitation = async (req, res) => {
   try {
-    const habilitation = await habilitationService.updateHabilitation(req.params.id, req.body);
+    const habilitation = await habilitationService.updateHabilitation(req.params.id, req.body, req.user.entrepriseId);
     res.status(200).json({ success: true, data: habilitation });
   } catch (error) {
     if (error.code === "P2025") {
@@ -60,7 +60,7 @@ const updateHabilitation = async (req, res) => {
 // Supprime une habilitation
 const deleteHabilitation = async (req, res) => {
   try {
-    await habilitationService.deleteHabilitation(req.params.id);
+    await habilitationService.deleteHabilitation(req.params.id, req.user.entrepriseId);
     res.status(200).json({ success: true, message: "Habilitation supprimée." });
   } catch (error) {
     if (error.code === "P2025") {

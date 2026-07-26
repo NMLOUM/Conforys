@@ -1,9 +1,18 @@
 // Importation de l'instance Prisma partagée (connexion à la base)
 const prisma = require("../config/prisma");
 
-// Récupère toutes les habilitations (avec le titulaire)
-const getAllHabilitations = async () => {
+class ErreurMetier extends Error {
+  constructor(message, statusCode = 400) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}
+
+// Récupère toutes les habilitations (avec le titulaire) — scopées à
+// l'entreprise du demandeur
+const getAllHabilitations = async (entrepriseId) => {
   return await prisma.habilitation.findMany({
+    where: { titulaire: { entrepriseId } },
     include: {
       titulaire: { select: { id: true, nom: true, prenom: true, email: true } },
     },
@@ -11,18 +20,30 @@ const getAllHabilitations = async () => {
   });
 };
 
-// Récupère une habilitation par son id
-const getHabilitationById = async (id) => {
-  return await prisma.habilitation.findUnique({
-    where: { id },
+// Récupère une habilitation par son id — renvoie null si elle n'existe pas
+// ou appartient à une autre entreprise (pour ne pas distinguer les deux cas
+// côté API).
+const getHabilitationById = async (id, entrepriseId) => {
+  return await prisma.habilitation.findFirst({
+    where: { id, titulaire: { entrepriseId } },
     include: {
       titulaire: { select: { id: true, nom: true, prenom: true, email: true } },
     },
   });
 };
 
+// Vérifie que le titulaire visé appartient bien à l'entreprise du demandeur —
+// empêche de créer une habilitation pour un utilisateur d'une autre entreprise
+// en connaissant/devinant son id.
+const verifierTitulaire = async (titulaireId, entrepriseId) => {
+  const titulaire = await prisma.user.findFirst({ where: { id: titulaireId, entrepriseId } });
+  if (!titulaire) throw new ErreurMetier("Utilisateur introuvable.", 404);
+};
+
 // Crée une nouvelle habilitation
-const createHabilitation = async (data) => {
+const createHabilitation = async (data, entrepriseId) => {
+  await verifierTitulaire(data.titulaireId, entrepriseId);
+
   return await prisma.habilitation.create({
     data: {
       intitule:      data.intitule,
@@ -36,8 +57,13 @@ const createHabilitation = async (data) => {
   });
 };
 
-// Met à jour une habilitation existante
-const updateHabilitation = async (id, data) => {
+// Met à jour une habilitation existante — vérifie d'abord qu'elle appartient
+// à l'entreprise du demandeur
+const updateHabilitation = async (id, data, entrepriseId) => {
+  const existante = await prisma.habilitation.findFirst({ where: { id, titulaire: { entrepriseId } } });
+  if (!existante) throw new ErreurMetier("Habilitation introuvable.", 404);
+  if (data.titulaireId) await verifierTitulaire(data.titulaireId, entrepriseId);
+
   // Construction de l'objet de mise à jour (uniquement les champs fournis)
   const dataToUpdate = {};
   if (data.intitule)       dataToUpdate.intitule       = data.intitule;
@@ -51,13 +77,16 @@ const updateHabilitation = async (id, data) => {
   return await prisma.habilitation.update({ where: { id }, data: dataToUpdate });
 };
 
-// Supprime une habilitation
-const deleteHabilitation = async (id) => {
+// Supprime une habilitation — vérifie d'abord qu'elle appartient à l'entreprise du demandeur
+const deleteHabilitation = async (id, entrepriseId) => {
+  const existante = await prisma.habilitation.findFirst({ where: { id, titulaire: { entrepriseId } } });
+  if (!existante) throw new ErreurMetier("Habilitation introuvable.", 404);
+
   return await prisma.habilitation.delete({ where: { id } });
 };
 
 // LOGIQUE MÉTIER : retourne les habilitations expirant dans moins de 30 jours
-const getHabilitationsExpirantes = async () => {
+const getHabilitationsExpirantes = async (entrepriseId) => {
   const maintenant  = new Date();
   const dans30Jours = new Date();
   dans30Jours.setDate(dans30Jours.getDate() + 30);
@@ -65,6 +94,7 @@ const getHabilitationsExpirantes = async () => {
   // On cherche les habilitations dont la date d'expiration est entre aujourd'hui et J+30
   return await prisma.habilitation.findMany({
     where: {
+      titulaire: { entrepriseId },
       dateExpiration: {
         gte: maintenant,   // pas encore expirées
         lte: dans30Jours,  // mais dans moins de 30 jours

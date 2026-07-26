@@ -55,8 +55,8 @@ const dessinerQuestion = (doc, numero, question) => {
 };
 
 // Construit le document PDF du rapport d'audit et renvoie { doc, filename }.
-const genererRapportAudit = async (auditId) => {
-  const audit = await getAuditById(auditId);
+const genererRapportAudit = async (auditId, entrepriseId) => {
+  const audit = await getAuditById(auditId, entrepriseId);
   if (!audit) throw new ErreurMetier("Audit introuvable.", 404);
 
   const actions = await getActionsByAudit(auditId);

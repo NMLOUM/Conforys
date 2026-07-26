@@ -92,10 +92,11 @@ const getAllIncidents = async (userId, role, entrepriseId, { statut, type, gravi
   return { data: incidents, total, page, totalPages: Math.ceil(total / limit) || 1 };
 };
 
-// Récupère un incident par son id
-const getIncidentById = async (id) => {
-  return await prisma.incident.findUnique({
-    where: { id },
+// Récupère un incident par son id — scopé à l'entreprise du demandeur (renvoie
+// null si l'incident n'existe pas ou appartient à une autre entreprise).
+const getIncidentById = async (id, entrepriseId) => {
+  return await prisma.incident.findFirst({
+    where: { id, declarePar: { entrepriseId } },
     include: {
       declarePar: { select: { id: true, nom: true, prenom: true, email: true } },
       validePar: { select: { id: true, nom: true, prenom: true, email: true } },
@@ -149,16 +150,22 @@ const createIncident = async (data, userId) => {
   }
 };
 
-// Met à jour un incident
-const updateIncident = async (id, data) => {
+// Met à jour un incident — vérifie d'abord qu'il appartient à l'entreprise du demandeur
+const updateIncident = async (id, data, entrepriseId) => {
+  const existant = await prisma.incident.findFirst({ where: { id, declarePar: { entrepriseId } } });
+  if (!existant) throw new ErreurMetier("Incident introuvable.", 404);
+
   return await prisma.incident.update({
     where: { id },
     data,
   });
 };
 
-// Supprime un incident
-const deleteIncident = async (id) => {
+// Supprime un incident — vérifie d'abord qu'il appartient à l'entreprise du demandeur
+const deleteIncident = async (id, entrepriseId) => {
+  const existant = await prisma.incident.findFirst({ where: { id, declarePar: { entrepriseId } } });
+  if (!existant) throw new ErreurMetier("Incident introuvable.", 404);
+
   return await prisma.incident.delete({
     where: { id },
   });
@@ -167,8 +174,8 @@ const deleteIncident = async (id) => {
 // ── Workflow de statuts ────────────────────────────────────────────────────────
 
 // BROUILLON → OUVERT : le déclarant soumet son incident pour traitement
-const soumettre = async (id, userId) => {
-  const incident = await getIncidentById(id);
+const soumettre = async (id, userId, entrepriseId) => {
+  const incident = await getIncidentById(id, entrepriseId);
   if (!incident) throw new ErreurMetier("Incident introuvable.", 404);
   if (incident.statut !== "BROUILLON")
     throw new ErreurMetier(`Impossible de soumettre un incident en statut "${incident.statut}". Statut attendu : BROUILLON.`);
@@ -185,8 +192,8 @@ const soumettre = async (id, userId) => {
 };
 
 // OUVERT → EN_COURS : un responsable QHSE/ADMIN valide (pas le déclarant)
-const valider = async (id, userId) => {
-  const incident = await getIncidentById(id);
+const valider = async (id, userId, entrepriseId) => {
+  const incident = await getIncidentById(id, entrepriseId);
   if (!incident) throw new ErreurMetier("Incident introuvable.", 404);
   if (incident.statut !== "OUVERT")
     throw new ErreurMetier(`Impossible de valider un incident en statut "${incident.statut}". Statut attendu : OUVERT.`);
@@ -203,11 +210,11 @@ const valider = async (id, userId) => {
 };
 
 // OUVERT → REJETE : un responsable QHSE/ADMIN rejette l'incident avec un motif obligatoire
-const rejeter = async (id, motifRejet, userId) => {
+const rejeter = async (id, motifRejet, userId, entrepriseId) => {
   if (!motifRejet || motifRejet.trim().length < 5)
     throw new ErreurMetier("Le motif de rejet est obligatoire (min. 5 caractères).");
 
-  const incident = await getIncidentById(id);
+  const incident = await getIncidentById(id, entrepriseId);
   if (!incident) throw new ErreurMetier("Incident introuvable.", 404);
   if (incident.statut !== "OUVERT")
     throw new ErreurMetier(`Impossible de rejeter un incident en statut "${incident.statut}". Statut attendu : OUVERT.`);
@@ -222,8 +229,8 @@ const rejeter = async (id, motifRejet, userId) => {
 };
 
 // EN_COURS → CLOS : un responsable QHSE/ADMIN clôture l'incident
-const cloturer = async (id, userId) => {
-  const incident = await getIncidentById(id);
+const cloturer = async (id, userId, entrepriseId) => {
+  const incident = await getIncidentById(id, entrepriseId);
   if (!incident) throw new ErreurMetier("Incident introuvable.", 404);
   if (incident.statut !== "EN_COURS")
     throw new ErreurMetier(`Impossible de clôturer un incident en statut "${incident.statut}". Statut attendu : EN_COURS.`);

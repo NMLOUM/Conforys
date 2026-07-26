@@ -16,7 +16,7 @@ const getTemplates = async (req, res) => {
 const getHistoriqueScores = async (req, res) => {
   try {
     const { siteId, type } = req.query;
-    const historique = await auditService.getHistoriqueScores({ siteId, type });
+    const historique = await auditService.getHistoriqueScores(req.user.entrepriseId, { siteId, type });
     res.status(200).json({ success: true, data: historique });
   } catch (error) {
     handleErreur(res, error);
@@ -26,7 +26,7 @@ const getHistoriqueScores = async (req, res) => {
 // Récupère tous les audits
 const getAllAudits = async (req, res) => {
   try {
-    const audits = await auditService.getAllAudits();
+    const audits = await auditService.getAllAudits(req.user.entrepriseId);
     res.status(200).json({ success: true, data: audits });
   } catch (error) {
     handleErreur(res, error);
@@ -36,7 +36,7 @@ const getAllAudits = async (req, res) => {
 // Récupère un audit par son id
 const getAuditById = async (req, res) => {
   try {
-    const audit = await auditService.getAuditById(req.params.id);
+    const audit = await auditService.getAuditById(req.params.id, req.user.entrepriseId);
     if (!audit) {
       return res.status(404).json({
         success: false,
@@ -52,7 +52,7 @@ const getAuditById = async (req, res) => {
 // Crée un nouvel audit
 const createAudit = async (req, res) => {
   try {
-    const audit = await auditService.createAudit(req.body);
+    const audit = await auditService.createAudit(req.body, req.user.entrepriseId);
     res.status(201).json({ success: true, data: audit });
   } catch (error) {
     handleErreur(res, error);
@@ -62,7 +62,7 @@ const createAudit = async (req, res) => {
 // Met à jour un audit
 const updateAudit = async (req, res) => {
   try {
-    const audit = await auditService.updateAudit(req.params.id, req.body);
+    const audit = await auditService.updateAudit(req.params.id, req.body, req.user.entrepriseId);
     res.status(200).json({ success: true, data: audit });
   } catch (error) {
     handleErreur(res, error);
@@ -72,7 +72,7 @@ const updateAudit = async (req, res) => {
 // Supprime un audit
 const deleteAudit = async (req, res) => {
   try {
-    await auditService.deleteAudit(req.params.id);
+    await auditService.deleteAudit(req.params.id, req.user.entrepriseId);
     res.status(200).json({ success: true, message: "Audit supprimé." });
   } catch (error) {
     handleErreur(res, error);
@@ -85,7 +85,8 @@ const repondreQuestion = async (req, res) => {
     const audit = await auditService.repondreQuestion(
       req.params.id,
       req.params.questionId,
-      req.body
+      req.body,
+      req.user.entrepriseId
     );
     res.status(200).json({ success: true, data: audit });
   } catch (error) {
@@ -98,7 +99,7 @@ const repondreQuestion = async (req, res) => {
 // PLANIFIE → EN_COURS
 const demarrer = async (req, res) => {
   try {
-    const audit = await auditService.demarrer(req.params.id);
+    const audit = await auditService.demarrer(req.params.id, req.user.entrepriseId);
     res.status(200).json({ success: true, data: audit });
   } catch (error) {
     handleErreur(res, error);
@@ -108,7 +109,7 @@ const demarrer = async (req, res) => {
 // EN_COURS → TERMINE
 const finaliser = async (req, res) => {
   try {
-    const audit = await auditService.finaliser(req.params.id);
+    const audit = await auditService.finaliser(req.params.id, req.user.entrepriseId);
     res.status(200).json({ success: true, data: audit });
   } catch (error) {
     handleErreur(res, error);
@@ -118,7 +119,7 @@ const finaliser = async (req, res) => {
 // * → ANNULE
 const annuler = async (req, res) => {
   try {
-    const audit = await auditService.annuler(req.params.id);
+    const audit = await auditService.annuler(req.params.id, req.user.entrepriseId);
     res.status(200).json({ success: true, data: audit });
   } catch (error) {
     handleErreur(res, error);
@@ -129,7 +130,7 @@ const annuler = async (req, res) => {
 // jamais stocké sur le serveur)
 const genererRapportPdf = async (req, res) => {
   try {
-    const { doc, filename } = await genererRapportAudit(req.params.id);
+    const { doc, filename } = await genererRapportAudit(req.params.id, req.user.entrepriseId);
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     doc.pipe(res);

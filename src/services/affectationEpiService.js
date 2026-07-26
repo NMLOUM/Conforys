@@ -19,8 +19,8 @@ const INCLUDE_AFFECTATION = {
 // Affecte un EPI à un employé : crée l'affectation ACTIVE et décrémente le
 // stock disponible de l'EPI (l'unité affectée n'est plus disponible en stock).
 // Les deux opérations sont dans une même transaction pour rester cohérentes.
-const affecter = async (epiId, employeId, poste) => {
-  const epi = await prisma.epi.findUnique({ where: { id: epiId } });
+const affecter = async (epiId, employeId, poste, entrepriseId) => {
+  const epi = await prisma.epi.findFirst({ where: { id: epiId, site: { entrepriseId } } });
   if (!epi) throw new ErreurMetier("EPI introuvable.", 404);
   if (epi.quantite <= 0) {
     throw new ErreurMetier("Stock insuffisant pour affecter cet EPI.");
@@ -29,7 +29,7 @@ const affecter = async (epiId, employeId, poste) => {
     throw new ErreurMetier("Cet EPI est périmé et ne peut pas être affecté.");
   }
 
-  const employe = await prisma.user.findUnique({ where: { id: employeId } });
+  const employe = await prisma.user.findFirst({ where: { id: employeId, entrepriseId } });
   if (!employe) throw new ErreurMetier("Employé introuvable.", 404);
 
   return await prisma.$transaction(async (tx) => {
@@ -47,8 +47,10 @@ const affecter = async (epiId, employeId, poste) => {
 
 // Rend un EPI affecté : passe l'affectation à RENDUE, remplit dateRetour et
 // réincrémente le stock disponible de l'EPI.
-const rendre = async (affectationId) => {
-  const affectation = await prisma.affectationEpi.findUnique({ where: { id: affectationId } });
+const rendre = async (affectationId, entrepriseId) => {
+  const affectation = await prisma.affectationEpi.findFirst({
+    where: { id: affectationId, epi: { site: { entrepriseId } } },
+  });
   if (!affectation) throw new ErreurMetier("Affectation introuvable.", 404);
   if (affectation.statut === "RENDUE") {
     throw new ErreurMetier("Cet EPI a déjà été rendu.");
@@ -69,9 +71,9 @@ const rendre = async (affectationId) => {
 };
 
 // Historique des affectations d'un EPI donné, du plus récent au plus ancien
-const getAffectationsByEpi = async (epiId) => {
+const getAffectationsByEpi = async (epiId, entrepriseId) => {
   return await prisma.affectationEpi.findMany({
-    where: { epiId },
+    where: { epiId, epi: { site: { entrepriseId } } },
     include: INCLUDE_AFFECTATION,
     orderBy: { dateAffectation: "desc" },
   });

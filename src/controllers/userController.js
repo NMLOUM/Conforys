@@ -2,12 +2,13 @@ const prisma  = require("../config/prisma");
 const bcrypt  = require("bcrypt");
 const { handleErreur } = require("../utils/handleErreur");
 
-// Fonction qui récupère TOUS les utilisateurs
+// Fonction qui récupère TOUS les utilisateurs — scopés à l'entreprise du demandeur
 const getAllUsers = async (req, res) => {
   try {
-    // Recherche de tous les utilisateurs, avec les infos de leur entreprise
+    // Recherche des utilisateurs de la même entreprise, avec les infos de leur entreprise
     // Le mot de passe est exclu de la réponse même haché
     const users = await prisma.user.findMany({
+      where: { entrepriseId: req.user.entrepriseId },
       omit: { password: true },
       include: { entreprise: true },
     });
@@ -22,15 +23,18 @@ const getAllUsers = async (req, res) => {
 // Fonction qui CRÉE un nouvel utilisateur
 const createUser = async (req, res) => {
   try {
-    // Extraction des données envoyées dans le corps de la requête
-    const { nom, prenom, email, password, role, entrepriseId } = req.body;
+    // Extraction des données envoyées dans le corps de la requête —
+    // entrepriseId n'est JAMAIS pris du corps de la requête : il serait
+    // possible de créer un utilisateur dans une autre entreprise en le
+    // fournissant soi-même. Toujours celle de l'ADMIN qui crée le compte.
+    const { nom, prenom, email, password, role } = req.body;
 
     // Hachage du mot de passe (10 = niveau de sécurité du chiffrement)
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Création de l'utilisateur avec le mot de passe haché
     const newUser = await prisma.user.create({
-      data: { nom, prenom, email, password: hashedPassword, role, entrepriseId },
+      data: { nom, prenom, email, password: hashedPassword, role, entrepriseId: req.user.entrepriseId },
     });
 
     // On retire le mot de passe de l'objet renvoyé au client
@@ -49,6 +53,15 @@ const updateUser = async (req, res) => {
   try {
     // Récupération de l'identifiant depuis l'URL (/api/users/:id)
     const { id } = req.params;
+
+    // Vérifie que l'utilisateur visé appartient bien à l'entreprise du
+    // demandeur — sans ce contrôle, connaître l'id d'un utilisateur d'une
+    // autre entreprise suffirait à le modifier (rôle, mot de passe...).
+    const existant = await prisma.user.findFirst({ where: { id, entrepriseId: req.user.entrepriseId } });
+    if (!existant) {
+      return res.status(404).json({ success: false, message: "Utilisateur introuvable." });
+    }
+
     // Extraction des champs modifiables envoyés dans le corps
     const { nom, prenom, email, password, role, actif } = req.body;
 
@@ -88,6 +101,12 @@ const deleteUser = async (req, res) => {
   try {
     // Récupération de l'identifiant depuis l'URL (/api/users/:id)
     const { id } = req.params;
+
+    // Vérifie que l'utilisateur visé appartient bien à l'entreprise du demandeur
+    const existant = await prisma.user.findFirst({ where: { id, entrepriseId: req.user.entrepriseId } });
+    if (!existant) {
+      return res.status(404).json({ success: false, message: "Utilisateur introuvable." });
+    }
 
     // Suppression de l'utilisateur en base
     await prisma.user.delete({ where: { id } });

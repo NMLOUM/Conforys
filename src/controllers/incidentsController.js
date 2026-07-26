@@ -22,7 +22,7 @@ const getAllIncidents = async (req, res) => {
 // Récupère un incident par son id
 const getIncidentById = async (req, res) => {
   try {
-    const incident = await incidentService.getIncidentById(req.params.id);
+    const incident = await incidentService.getIncidentById(req.params.id, req.user.entrepriseId);
     if (!incident) {
       return res.status(404).json({ success: false, message: "Incident introuvable." });
     }
@@ -45,7 +45,7 @@ const createIncident = async (req, res) => {
 // Met à jour un incident
 const updateIncident = async (req, res) => {
   try {
-    const incident = await incidentService.updateIncident(req.params.id, req.body);
+    const incident = await incidentService.updateIncident(req.params.id, req.body, req.user.entrepriseId);
     res.status(200).json({ success: true, data: incident });
   } catch (error) {
     handleErreur(res, error);
@@ -55,7 +55,7 @@ const updateIncident = async (req, res) => {
 // Supprime un incident
 const deleteIncident = async (req, res) => {
   try {
-    await incidentService.deleteIncident(req.params.id);
+    await incidentService.deleteIncident(req.params.id, req.user.entrepriseId);
     res.status(200).json({ success: true, message: "Incident supprimé." });
   } catch (error) {
     handleErreur(res, error);
@@ -67,7 +67,7 @@ const deleteIncident = async (req, res) => {
 // BROUILLON → OUVERT (le déclarant soumet son propre incident)
 const soumettre = async (req, res) => {
   try {
-    const incident = await incidentService.soumettre(req.params.id, req.user.userId);
+    const incident = await incidentService.soumettre(req.params.id, req.user.userId, req.user.entrepriseId);
     res.status(200).json({ success: true, data: incident });
   } catch (error) {
     handleErreur(res, error);
@@ -77,7 +77,7 @@ const soumettre = async (req, res) => {
 // OUVERT → EN_COURS (QHSE/ADMIN valide, pas le déclarant)
 const valider = async (req, res) => {
   try {
-    const incident = await incidentService.valider(req.params.id, req.user.userId);
+    const incident = await incidentService.valider(req.params.id, req.user.userId, req.user.entrepriseId);
     res.status(200).json({ success: true, data: incident });
   } catch (error) {
     handleErreur(res, error);
@@ -87,7 +87,7 @@ const valider = async (req, res) => {
 // OUVERT → REJETE (QHSE/ADMIN) — motif obligatoire dans le corps
 const rejeter = async (req, res) => {
   try {
-    const incident = await incidentService.rejeter(req.params.id, req.body.motifRejet, req.user.userId);
+    const incident = await incidentService.rejeter(req.params.id, req.body.motifRejet, req.user.userId, req.user.entrepriseId);
     res.status(200).json({ success: true, data: incident });
   } catch (error) {
     handleErreur(res, error);
@@ -97,7 +97,7 @@ const rejeter = async (req, res) => {
 // EN_COURS → CLOS (QHSE/ADMIN, remplit dateCloture)
 const cloturer = async (req, res) => {
   try {
-    const incident = await incidentService.cloturer(req.params.id, req.user.userId);
+    const incident = await incidentService.cloturer(req.params.id, req.user.userId, req.user.entrepriseId);
     res.status(200).json({ success: true, data: incident });
   } catch (error) {
     handleErreur(res, error);
@@ -108,7 +108,7 @@ const cloturer = async (req, res) => {
 // jamais stocké sur le serveur)
 const genererRapportPdf = async (req, res) => {
   try {
-    const { doc, filename } = await genererRapportIncident(req.params.id);
+    const { doc, filename } = await genererRapportIncident(req.params.id, req.user.entrepriseId);
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     doc.pipe(res);

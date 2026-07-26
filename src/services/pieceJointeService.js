@@ -10,16 +10,16 @@ class ErreurMetier extends Error {
 }
 
 // Récupère toutes les pièces jointes d'un incident, triées par date d'ajout
-const getPiecesByIncident = async (incidentId) => {
+const getPiecesByIncident = async (incidentId, entrepriseId) => {
   return await prisma.pieceJointe.findMany({
-    where: { incidentId },
+    where: { incidentId, incident: { declarePar: { entrepriseId } } },
     orderBy: { dateAjout: "desc" },
   });
 };
 
 // Enregistre une pièce jointe (l'URL ImgBB est fournie déjà uploadée depuis le frontend)
-const addPieceJointe = async (incidentId, data, auteurId) => {
-  const incident = await prisma.incident.findUnique({ where: { id: incidentId } });
+const addPieceJointe = async (incidentId, data, auteurId, entrepriseId) => {
+  const incident = await prisma.incident.findFirst({ where: { id: incidentId, declarePar: { entrepriseId } } });
   if (!incident) throw new ErreurMetier("Incident introuvable.", 404);
 
   const piece = await prisma.pieceJointe.create({
@@ -36,8 +36,8 @@ const addPieceJointe = async (incidentId, data, auteurId) => {
 
 // Supprime une pièce jointe (le fichier distant sur ImgBB n'est pas supprimé —
 // ImgBB ne fournit pas d'API de suppression publique sans clé de suppression)
-const deletePieceJointe = async (id) => {
-  const piece = await prisma.pieceJointe.findUnique({ where: { id } });
+const deletePieceJointe = async (id, entrepriseId) => {
+  const piece = await prisma.pieceJointe.findFirst({ where: { id, incident: { declarePar: { entrepriseId } } } });
   if (!piece) throw new ErreurMetier("Pièce jointe introuvable.", 404);
   return await prisma.pieceJointe.delete({ where: { id } });
 };

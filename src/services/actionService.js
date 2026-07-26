@@ -22,17 +22,17 @@ const INCLUDE_ACTION = {
 };
 
 // Récupère toutes les actions d'un incident, triées du plus récent au plus ancien
-const getActionsByIncident = async (incidentId) => {
+const getActionsByIncident = async (incidentId, entrepriseId) => {
   return await prisma.actionCorrective.findMany({
-    where: { incidentId },
+    where: { incidentId, incident: { declarePar: { entrepriseId } } },
     include: INCLUDE_ACTION,
     orderBy: { createdAt: "desc" },
   });
 };
 
 // Crée une nouvelle action corrective liée à un incident
-const createAction = async (incidentId, data, auteurId) => {
-  const incident = await prisma.incident.findUnique({ where: { id: incidentId } });
+const createAction = async (incidentId, data, auteurId, entrepriseId) => {
+  const incident = await prisma.incident.findFirst({ where: { id: incidentId, declarePar: { entrepriseId } } });
   if (!incident) throw new ErreurMetier("Incident introuvable.", 404);
 
   const action = await prisma.actionCorrective.create({
@@ -49,10 +49,28 @@ const createAction = async (incidentId, data, auteurId) => {
   return action;
 };
 
-// Met à jour une action (description, priorité, statut, date limite, responsable)
-const updateAction = async (id, data) => {
-  const action = await prisma.actionCorrective.findUnique({ where: { id } });
+// Vérifie qu'une action appartient à l'entreprise du demandeur, via celle de
+// ses trois relations parentes (incident/audit/risque, mutuellement
+// exclusives) — empêche de modifier/clôturer/supprimer une action d'une
+// autre entreprise en connaissant/devinant son id.
+const verifierAppartenance = async (id, entrepriseId) => {
+  const action = await prisma.actionCorrective.findFirst({
+    where: {
+      id,
+      OR: [
+        { incident: { declarePar: { entrepriseId } } },
+        { audit: { auditeur: { entrepriseId } } },
+        { risque: { site: { entrepriseId } } },
+      ],
+    },
+  });
   if (!action) throw new ErreurMetier("Action introuvable.", 404);
+  return action;
+};
+
+// Met à jour une action (description, priorité, statut, date limite, responsable)
+const updateAction = async (id, data, entrepriseId) => {
+  const action = await verifierAppartenance(id, entrepriseId);
 
   // Bloquer la modification d'une action déjà clôturée ou annulée
   if (action.statut === "TERMINE" || action.statut === "ANNULE") {
@@ -82,9 +100,8 @@ const updateAction = async (id, data) => {
 };
 
 // Clôture une action : passe au statut TERMINE, remplit dateCloture et commentaire
-const cloturerAction = async (id, commentaireCloture) => {
-  const action = await prisma.actionCorrective.findUnique({ where: { id } });
-  if (!action) throw new ErreurMetier("Action introuvable.", 404);
+const cloturerAction = async (id, commentaireCloture, entrepriseId) => {
+  const action = await verifierAppartenance(id, entrepriseId);
 
   if (action.statut === "TERMINE") throw new ErreurMetier("Cette action est déjà clôturée.");
   if (action.statut === "ANNULE")  throw new ErreurMetier("Impossible de clôturer une action annulée.");
@@ -117,9 +134,8 @@ const progresserAction = async (id, userId) => {
 };
 
 // Supprime définitivement une action (ADMIN uniquement)
-const deleteAction = async (id) => {
-  const action = await prisma.actionCorrective.findUnique({ where: { id } });
-  if (!action) throw new ErreurMetier("Action introuvable.", 404);
+const deleteAction = async (id, entrepriseId) => {
+  await verifierAppartenance(id, entrepriseId);
   return await prisma.actionCorrective.delete({ where: { id } });
 };
 
@@ -145,9 +161,9 @@ const getAllActions = async (entrepriseId, { statut, priorite, responsableId } =
 };
 
 // Récupère toutes les actions correctives d'un audit, triées du plus récent au plus ancien
-const getActionsByAudit = async (auditId) => {
+const getActionsByAudit = async (auditId, entrepriseId) => {
   return await prisma.actionCorrective.findMany({
-    where: { auditId },
+    where: { auditId, audit: { auditeur: { entrepriseId } } },
     include: INCLUDE_ACTION,
     orderBy: { createdAt: "desc" },
   });
@@ -158,9 +174,9 @@ const getActionsByAudit = async (auditId) => {
 // action existante (même description, donc même libellé) ne sont pas dupliquées.
 // Le responsable par défaut est l'auditeur — aucune saisie manuelle n'est possible
 // sur cet endpoint de génération en masse.
-const genererActionsDepuisAudit = async (auditId) => {
-  const audit = await prisma.audit.findUnique({
-    where: { id: auditId },
+const genererActionsDepuisAudit = async (auditId, entrepriseId) => {
+  const audit = await prisma.audit.findFirst({
+    where: { id: auditId, auditeur: { entrepriseId } },
     include: { questions: true },
   });
   if (!audit) throw new ErreurMetier("Audit introuvable.", 404);
@@ -189,7 +205,7 @@ const genererActionsDepuisAudit = async (auditId) => {
     }
   }
 
-  return await getActionsByAudit(auditId);
+  return await getActionsByAudit(auditId, entrepriseId);
 };
 
 // Actions assignées à l'utilisateur connecté — tous rôles (vue "Mes actions")

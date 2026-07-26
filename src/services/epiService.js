@@ -1,6 +1,13 @@
 // Importation de l'instance Prisma partagée (connexion à la base)
 const prisma = require("../config/prisma");
 
+class ErreurMetier extends Error {
+  constructor(message, statusCode = 400) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}
+
 const MS_PAR_JOUR = 24 * 60 * 60 * 1000;
 
 // Inclusion Prisma standard pour obtenir la dernière inspection d'un EPI
@@ -89,25 +96,38 @@ const normaliserDates = (data) => ({
 });
 
 // Récupère tous les EPI (avec leur site, leur dernière inspection et leur niveau d'alerte calculé)
-const getAllEpis = async () => {
+const getAllEpis = async (entrepriseId) => {
   const epis = await prisma.epi.findMany({
+    where: { site: { entrepriseId } },
     include: { site: { select: { id: true, nom: true } }, ...INCLUDE_DERNIERE_INSPECTION },
     orderBy: { createdAt: "desc" },
   });
   return epis.map(avecNiveauAlerte);
 };
 
-// Récupère un EPI par son id
-const getEpiById = async (id) => {
-  const epi = await prisma.epi.findUnique({
-    where: { id },
+// Récupère un EPI par son id — scopé à l'entreprise du demandeur (renvoie
+// null si l'EPI n'existe pas ou appartient à une autre entreprise, pour ne
+// pas distinguer les deux cas côté API).
+const getEpiById = async (id, entrepriseId) => {
+  const epi = await prisma.epi.findFirst({
+    where: { id, site: { entrepriseId } },
     include: { site: true, ...INCLUDE_DERNIERE_INSPECTION },
   });
   return epi ? avecNiveauAlerte(epi) : null;
 };
 
+// Vérifie que le site visé appartient bien à l'entreprise du demandeur avant
+// toute création/affectation — empêche de rattacher un EPI au site d'une
+// autre entreprise en connaissant/devinant son id.
+const verifierSite = async (siteId, entrepriseId) => {
+  const site = await prisma.site.findFirst({ where: { id: siteId, entrepriseId } });
+  if (!site) throw new ErreurMetier("Site introuvable.", 404);
+};
+
 // Crée un nouvel EPI
-const createEpi = async (data) => {
+const createEpi = async (data, entrepriseId) => {
+  await verifierSite(data.siteId, entrepriseId);
+
   const epi = await prisma.epi.create({
     data: {
       designation: data.designation,
@@ -126,8 +146,12 @@ const createEpi = async (data) => {
   return avecNiveauAlerte(epi);
 };
 
-// Met à jour un EPI
-const updateEpi = async (id, data) => {
+// Met à jour un EPI — vérifie d'abord qu'il appartient à l'entreprise du demandeur
+const updateEpi = async (id, data, entrepriseId) => {
+  const existant = await prisma.epi.findFirst({ where: { id, site: { entrepriseId } } });
+  if (!existant) throw new ErreurMetier("EPI introuvable.", 404);
+  if (data.siteId) await verifierSite(data.siteId, entrepriseId);
+
   const epi = await prisma.epi.update({
     where: { id },
     data: normaliserDates(data),
@@ -136,8 +160,11 @@ const updateEpi = async (id, data) => {
   return avecNiveauAlerte(epi);
 };
 
-// Supprime un EPI
-const deleteEpi = async (id) => {
+// Supprime un EPI — vérifie d'abord qu'il appartient à l'entreprise du demandeur
+const deleteEpi = async (id, entrepriseId) => {
+  const existant = await prisma.epi.findFirst({ where: { id, site: { entrepriseId } } });
+  if (!existant) throw new ErreurMetier("EPI introuvable.", 404);
+
   return await prisma.epi.delete({
     where: { id },
   });
@@ -145,8 +172,9 @@ const deleteEpi = async (id) => {
 
 // EPI en alerte : stock critique, péremption, ou inspection en retard/proche
 // (regroupe les niveaux ALERTE et BIENTOT calculés ci-dessus)
-const getEpisEnAlerte = async () => {
+const getEpisEnAlerte = async (entrepriseId) => {
   const epis = await prisma.epi.findMany({
+    where: { site: { entrepriseId } },
     include: { site: { select: { nom: true } }, ...INCLUDE_DERNIERE_INSPECTION },
   });
   return epis

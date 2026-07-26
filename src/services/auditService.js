@@ -29,9 +29,10 @@ const getTemplates = () => {
   }));
 };
 
-// Récupère tous les audits (avec auditeur et site)
-const getAllAudits = async () => {
+// Récupère tous les audits (avec auditeur et site) — scopés à l'entreprise du demandeur
+const getAllAudits = async (entrepriseId) => {
   return await prisma.audit.findMany({
+    where: { site: { entrepriseId } },
     include: {
       auditeur: { select: { id: true, nom: true, prenom: true } },
       site: { select: { id: true, nom: true } },
@@ -40,10 +41,12 @@ const getAllAudits = async () => {
   });
 };
 
-// Récupère un audit par son id, avec ses questions de checklist
-const getAuditById = async (id) => {
-  return await prisma.audit.findUnique({
-    where: { id },
+// Récupère un audit par son id, avec ses questions de checklist — renvoie
+// null si l'audit n'existe pas ou appartient à une autre entreprise (pour ne
+// pas distinguer les deux cas côté API).
+const getAuditById = async (id, entrepriseId) => {
+  return await prisma.audit.findFirst({
+    where: { id, site: { entrepriseId } },
     include: {
       auditeur: { select: { id: true, nom: true, prenom: true } },
       site: true,
@@ -52,14 +55,23 @@ const getAuditById = async (id) => {
   });
 };
 
+// Vérifie que le site visé appartient bien à l'entreprise du demandeur —
+// empêche de créer un audit sur le site d'une autre entreprise en
+// connaissant/devinant son id.
+const verifierSite = async (siteId, entrepriseId) => {
+  const site = await prisma.site.findFirst({ where: { id: siteId, entrepriseId } });
+  if (!site) throw new ErreurMetier("Site introuvable.", 404);
+};
+
 // Crée un nouvel audit à partir d'un template : l'audit et ses questions
 // de checklist sont créés dans la même transaction, avec la même référence
 // atomique que pour les incidents (cohérence garantie même en cas d'erreur).
-const createAudit = async (data) => {
+const createAudit = async (data, entrepriseId) => {
   const template = getTemplateById(data.templateId);
   if (!template) {
     throw new ErreurMetier("Template d'audit introuvable.");
   }
+  await verifierSite(data.siteId, entrepriseId);
 
   const reference = await genererReference();
 
@@ -96,8 +108,19 @@ const createAudit = async (data) => {
   });
 };
 
+// Vérifie qu'un audit appartient à l'entreprise du demandeur avant toute
+// écriture (modification, suppression, transition de statut) — sans ce
+// contrôle, n'importe quel utilisateur connaissant l'id d'un audit d'une
+// autre entreprise pourrait le modifier/supprimer/clôturer.
+const verifierAppartenanceAudit = async (id, entrepriseId) => {
+  const audit = await prisma.audit.findFirst({ where: { id, site: { entrepriseId } } });
+  if (!audit) throw new ErreurMetier("Audit introuvable.", 404);
+  return audit;
+};
+
 // Met à jour un audit
-const updateAudit = async (id, data) => {
+const updateAudit = async (id, data, entrepriseId) => {
+  await verifierAppartenanceAudit(id, entrepriseId);
   return await prisma.audit.update({
     where: { id },
     data,
@@ -105,7 +128,8 @@ const updateAudit = async (id, data) => {
 };
 
 // Supprime un audit (les questions sont supprimées en cascade)
-const deleteAudit = async (id) => {
+const deleteAudit = async (id, entrepriseId) => {
+  await verifierAppartenanceAudit(id, entrepriseId);
   return await prisma.audit.delete({
     where: { id },
   });
@@ -121,9 +145,8 @@ const INCLUDE_AUDIT = {
 // ── Workflow de statuts ────────────────────────────────────────────────────────
 
 // PLANIFIE → EN_COURS : démarre la réalisation de l'audit sur le terrain
-const demarrer = async (id) => {
-  const audit = await prisma.audit.findUnique({ where: { id } });
-  if (!audit) throw new ErreurMetier("Audit introuvable.", 404);
+const demarrer = async (id, entrepriseId) => {
+  const audit = await verifierAppartenanceAudit(id, entrepriseId);
   if (audit.statut !== "PLANIFIE") {
     throw new ErreurMetier(
       `Impossible de démarrer un audit en statut "${audit.statut}". Statut attendu : PLANIFIE.`
@@ -140,12 +163,12 @@ const demarrer = async (id) => {
 // EN_COURS → TERMINE : clôture l'audit après vérification que toutes les
 // questions ont reçu une réponse. Le score (déjà tenu à jour à chaque
 // réponse) est conservé tel quel — c'est la valeur finale figée.
-const finaliser = async (id) => {
+const finaliser = async (id, entrepriseId) => {
+  await verifierAppartenanceAudit(id, entrepriseId);
   const audit = await prisma.audit.findUnique({
     where: { id },
     include: { questions: true },
   });
-  if (!audit) throw new ErreurMetier("Audit introuvable.", 404);
   if (audit.statut !== "EN_COURS") {
     throw new ErreurMetier(
       `Impossible de finaliser un audit en statut "${audit.statut}". Statut attendu : EN_COURS.`
@@ -167,9 +190,8 @@ const finaliser = async (id) => {
 };
 
 // * → ANNULE (sauf audit déjà terminé ou déjà annulé)
-const annuler = async (id) => {
-  const audit = await prisma.audit.findUnique({ where: { id } });
-  if (!audit) throw new ErreurMetier("Audit introuvable.", 404);
+const annuler = async (id, entrepriseId) => {
+  const audit = await verifierAppartenanceAudit(id, entrepriseId);
   if (audit.statut === "TERMINE") {
     throw new ErreurMetier("Impossible d'annuler un audit déjà terminé.");
   }
@@ -219,8 +241,9 @@ const calculerScore = async (auditId) => {
 
 // Historique des scores des audits terminés, pour tracer leur évolution dans
 // le temps (courbe). Filtres optionnels par site et par type.
-const getHistoriqueScores = async ({ siteId, type } = {}) => {
+const getHistoriqueScores = async (entrepriseId, { siteId, type } = {}) => {
   const where = {
+    site: { entrepriseId },
     statut: "TERMINE",
     scoreConformite: { not: null },
     ...(siteId && { siteId }),
@@ -254,9 +277,8 @@ const getHistoriqueScores = async ({ siteId, type } = {}) => {
 // Enregistre la réponse à une question et recalcule le score de l'audit.
 // Réservé aux audits EN_COURS : un audit PLANIFIE n'a pas encore démarré,
 // et un audit TERMINE/ANNULE est figé en lecture seule.
-const repondreQuestion = async (auditId, questionId, data) => {
-  const audit = await prisma.audit.findUnique({ where: { id: auditId } });
-  if (!audit) throw new ErreurMetier("Audit introuvable.", 404);
+const repondreQuestion = async (auditId, questionId, data, entrepriseId) => {
+  const audit = await verifierAppartenanceAudit(auditId, entrepriseId);
   if (audit.statut !== "EN_COURS") {
     throw new ErreurMetier(
       `Impossible de répondre : l'audit doit être « En cours » (statut actuel : "${audit.statut}").`
@@ -279,7 +301,7 @@ const repondreQuestion = async (auditId, questionId, data) => {
 
   await calculerScore(auditId);
 
-  return await getAuditById(auditId);
+  return await getAuditById(auditId, entrepriseId);
 };
 
 // Export de toutes les fonctions du service

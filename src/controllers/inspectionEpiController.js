@@ -7,7 +7,7 @@ const enregistrerInspection = async (req, res) => {
     const inspection = await inspectionEpiService.enregistrerInspection(req.params.id, {
       ...req.body,
       inspecteurId: req.user.userId,
-    });
+    }, req.user.entrepriseId);
     res.status(201).json({ success: true, data: inspection });
   } catch (error) {
     handleErreur(res, error);
@@ -17,7 +17,7 @@ const enregistrerInspection = async (req, res) => {
 // GET /api/epis/:id/inspections — historique des inspections d'un EPI
 const getInspectionsByEpi = async (req, res) => {
   try {
-    const inspections = await inspectionEpiService.getInspectionsByEpi(req.params.id);
+    const inspections = await inspectionEpiService.getInspectionsByEpi(req.params.id, req.user.entrepriseId);
     res.status(200).json({ success: true, data: inspections });
   } catch (error) {
     handleErreur(res, error);

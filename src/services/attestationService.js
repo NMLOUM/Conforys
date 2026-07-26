@@ -83,13 +83,16 @@ const getToutesAttestations = async (entrepriseId, { beneficiaireId, recherche, 
 const genererPdf = async (attestationId, demandeur) => {
   const attestation = await prisma.attestation.findUnique({
     where: { id: attestationId },
-    include: { beneficiaire: { select: { nom: true, prenom: true } } },
+    include: { beneficiaire: { select: { nom: true, prenom: true, entrepriseId: true } } },
   });
   if (!attestation) throw new ErreurMetier("Attestation introuvable.", 404);
 
+  // Un QHSE/ADMIN ne peut consulter que les attestations de sa propre
+  // entreprise — sans ce contrôle, connaître un id suffirait à télécharger
+  // l'attestation d'un bénéficiaire d'une autre entreprise.
   const estAutorise = attestation.beneficiaireId === demandeur.userId
-    || demandeur.role === "RESPONSABLE_QHSE"
-    || demandeur.role === "ADMIN";
+    || ((demandeur.role === "RESPONSABLE_QHSE" || demandeur.role === "ADMIN")
+        && attestation.beneficiaire.entrepriseId === demandeur.entrepriseId);
   if (!estAutorise) {
     throw new ErreurMetier("Vous n'êtes pas autorisé à consulter cette attestation.", 403);
   }

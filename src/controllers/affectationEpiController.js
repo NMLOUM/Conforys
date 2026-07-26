@@ -7,7 +7,8 @@ const affecter = async (req, res) => {
     const affectation = await affectationEpiService.affecter(
       req.params.id,
       req.body.employeId,
-      req.body.poste
+      req.body.poste,
+      req.user.entrepriseId
     );
     res.status(201).json({ success: true, data: affectation });
   } catch (error) {
@@ -18,7 +19,7 @@ const affecter = async (req, res) => {
 // PUT /api/affectations/:id/rendre — restitue l'EPI (RESPONSABLE_QHSE)
 const rendre = async (req, res) => {
   try {
-    const affectation = await affectationEpiService.rendre(req.params.id);
+    const affectation = await affectationEpiService.rendre(req.params.id, req.user.entrepriseId);
     res.status(200).json({ success: true, data: affectation });
   } catch (error) {
     handleErreur(res, error);
@@ -28,7 +29,7 @@ const rendre = async (req, res) => {
 // GET /api/epis/:id/affectations — historique des affectations d'un EPI
 const getAffectationsByEpi = async (req, res) => {
   try {
-    const affectations = await affectationEpiService.getAffectationsByEpi(req.params.id);
+    const affectations = await affectationEpiService.getAffectationsByEpi(req.params.id, req.user.entrepriseId);
     res.status(200).json({ success: true, data: affectations });
   } catch (error) {
     handleErreur(res, error);

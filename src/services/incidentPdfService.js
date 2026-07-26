@@ -38,12 +38,12 @@ const formatDateHeure = (d) => (d ? new Date(d).toLocaleString("fr-FR", { dateSt
 // Construit le document PDF du rapport d'incident et renvoie { doc, filename }.
 // Le PDF est entièrement généré en mémoire (aucun fichier écrit sur le serveur) —
 // seules les données strictement nécessaires au rapport sont extraites.
-const genererRapportIncident = async (incidentId) => {
-  const incident = await getIncidentById(incidentId);
+const genererRapportIncident = async (incidentId, entrepriseId) => {
+  const incident = await getIncidentById(incidentId, entrepriseId);
   if (!incident) throw new ErreurMetier("Incident introuvable.", 404);
 
   const [actions, historique] = await Promise.all([
-    getActionsByIncident(incidentId),
+    getActionsByIncident(incidentId, entrepriseId),
     getHistoriqueByIncident(incidentId),
   ]);
 

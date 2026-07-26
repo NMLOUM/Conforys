@@ -26,7 +26,7 @@ const getMesActions = async (req, res) => {
 // GET /api/incidents/:id/actions
 const getActionsByIncident = async (req, res) => {
   try {
-    const actions = await actionService.getActionsByIncident(req.params.id);
+    const actions = await actionService.getActionsByIncident(req.params.id, req.user.entrepriseId);
     res.status(200).json({ success: true, data: actions });
   } catch (error) {
     handleErreur(res, error);
@@ -36,7 +36,7 @@ const getActionsByIncident = async (req, res) => {
 // POST /api/incidents/:id/actions
 const createAction = async (req, res) => {
   try {
-    const action = await actionService.createAction(req.params.id, req.body, req.user.userId);
+    const action = await actionService.createAction(req.params.id, req.body, req.user.userId, req.user.entrepriseId);
     res.status(201).json({ success: true, data: action });
   } catch (error) {
     handleErreur(res, error);
@@ -46,7 +46,7 @@ const createAction = async (req, res) => {
 // PUT /api/actions/:id
 const updateAction = async (req, res) => {
   try {
-    const action = await actionService.updateAction(req.params.id, req.body);
+    const action = await actionService.updateAction(req.params.id, req.body, req.user.entrepriseId);
     res.status(200).json({ success: true, data: action });
   } catch (error) {
     handleErreur(res, error);
@@ -58,7 +58,8 @@ const cloturerAction = async (req, res) => {
   try {
     const action = await actionService.cloturerAction(
       req.params.id,
-      req.body.commentaireCloture
+      req.body.commentaireCloture,
+      req.user.entrepriseId
     );
     res.status(200).json({ success: true, data: action });
   } catch (error) {
@@ -79,7 +80,7 @@ const progresserAction = async (req, res) => {
 // DELETE /api/actions/:id
 const deleteAction = async (req, res) => {
   try {
-    await actionService.deleteAction(req.params.id);
+    await actionService.deleteAction(req.params.id, req.user.entrepriseId);
     res.status(200).json({ success: true, message: "Action supprimée." });
   } catch (error) {
     handleErreur(res, error);
@@ -89,7 +90,7 @@ const deleteAction = async (req, res) => {
 // GET /api/audits/:id/actions
 const getActionsByAudit = async (req, res) => {
   try {
-    const actions = await actionService.getActionsByAudit(req.params.id);
+    const actions = await actionService.getActionsByAudit(req.params.id, req.user.entrepriseId);
     res.status(200).json({ success: true, data: actions });
   } catch (error) {
     handleErreur(res, error);
@@ -99,7 +100,7 @@ const getActionsByAudit = async (req, res) => {
 // POST /api/audits/:id/generer-actions — QHSE uniquement
 const genererActionsDepuisAudit = async (req, res) => {
   try {
-    const actions = await actionService.genererActionsDepuisAudit(req.params.id);
+    const actions = await actionService.genererActionsDepuisAudit(req.params.id, req.user.entrepriseId);
     res.status(201).json({ success: true, data: actions });
   } catch (error) {
     handleErreur(res, error);

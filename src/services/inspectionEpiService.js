@@ -18,8 +18,8 @@ const INCLUDE_INSPECTION = {
 };
 
 // Enregistre une nouvelle inspection pour un EPI donné
-const enregistrerInspection = async (epiId, { dateInspection, conforme, commentaire, inspecteurId }) => {
-  const epi = await prisma.epi.findUnique({ where: { id: epiId } });
+const enregistrerInspection = async (epiId, { dateInspection, conforme, commentaire, inspecteurId }, entrepriseId) => {
+  const epi = await prisma.epi.findFirst({ where: { id: epiId, site: { entrepriseId } } });
   if (!epi) throw new ErreurMetier("EPI introuvable.", 404);
 
   return await prisma.inspectionEpi.create({
@@ -35,9 +35,9 @@ const enregistrerInspection = async (epiId, { dateInspection, conforme, commenta
 };
 
 // Historique des inspections d'un EPI donné, du plus récent au plus ancien
-const getInspectionsByEpi = async (epiId) => {
+const getInspectionsByEpi = async (epiId, entrepriseId) => {
   return await prisma.inspectionEpi.findMany({
-    where: { epiId },
+    where: { epiId, epi: { site: { entrepriseId } } },
     include: INCLUDE_INSPECTION,
     orderBy: { dateInspection: "desc" },
   });
