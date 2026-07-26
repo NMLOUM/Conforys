@@ -13,6 +13,7 @@ const CONFIG_LIGNE = {
   AUDIT_PLANIFIE:    { couleur: "#0D2B4E", tag: "Planning", gras: false },
   ATTESTATION_EXPIREE:    { couleur: "#DC2626", tag: "Expirée",   gras: true },
   ATTESTATION_RECYCLAGE:  { couleur: "#EA580C", tag: "Recyclage", gras: false },
+  RISQUE_SANS_ACTION:     { couleur: "#DC2626", tag: "DUERP",     gras: true },
 };
 const CONFIG_DEFAUT = { couleur: "#94A3B8", tag: "Info", gras: false };
 

@@ -45,10 +45,17 @@ const avecNiveaux = (risque) => {
   };
 };
 
-// Include partagé : site + auteur + nombre d'actions déjà générées
+// Include partagé : site + auteur + actions de prévention générées (au plus
+// une en pratique, la génération étant idempotente) + leur nombre
 const INCLUDE_RISQUE = {
   site:   { select: { id: true, nom: true } },
   auteur: { select: { id: true, nom: true, prenom: true } },
+  actions: {
+    select: {
+      id: true, description: true, statut: true, priorite: true, dateLimite: true,
+      responsable: { select: { id: true, nom: true, prenom: true } },
+    },
+  },
   _count: { select: { actions: true } },
 };
 

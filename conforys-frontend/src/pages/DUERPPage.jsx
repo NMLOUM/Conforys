@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
-import { Plus, Search, X, AlertTriangle } from "lucide-react";
+import { Plus, Search, X, AlertTriangle, FileDown, Trash2, CalendarCheck } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import { useRole } from "../hooks/useRole";
@@ -10,11 +11,15 @@ import { useTable } from "../hooks/useTable";
 import { risqueSchema } from "../validators/risqueSchema";
 
 // ── Référentiel de cotation — partagé entre la matrice, les badges et le formulaire ──
+// celluleTexte : couleur du chiffre affiché dans la case de la matrice —
+// distincte de `texte` (utilisée par les badges sur fond pâle `fond`), car
+// le fond de case est plus foncé/saturé et nécessite du blanc pour rester
+// lisible sur les niveaux élevé/critique.
 const CONFIG_NIVEAU = {
-  FAIBLE:   { label: "Faible",   texte: "#2E7D32", fond: "#F0FDF4", cellule: "#DCFCE7" },
-  MODERE:   { label: "Modéré",   texte: "#A16207", fond: "#FEFCE8", cellule: "#FEF08A" },
-  ELEVE:    { label: "Élevé",    texte: "#EA580C", fond: "#FFF7ED", cellule: "#FED7AA" },
-  CRITIQUE: { label: "Critique", texte: "#DC2626", fond: "#FEF2F2", cellule: "#FECACA" },
+  FAIBLE:   { label: "Faible",   plage: "1 à 3",   texte: "#166534", fond: "#F0FDF4", cellule: "#BBF7D0", celluleTexte: "#14532D" },
+  MODERE:   { label: "Modéré",   plage: "4 à 7",   texte: "#854D0E", fond: "#FEFCE8", cellule: "#FEF08A", celluleTexte: "#713F12" },
+  ELEVE:    { label: "Élevé",    plage: "8 à 11",  texte: "#9A3412", fond: "#FFF7ED", cellule: "#FED7AA", celluleTexte: "#7C2D12" },
+  CRITIQUE: { label: "Critique", plage: "12 à 16", texte: "#DC2626", fond: "#FEF2F2", cellule: "#F87171", celluleTexte: "#FFFFFF" },
 };
 
 // Même calcul que le backend (risqueService.calculerNiveauQualitatif) — dupliqué
@@ -35,6 +40,7 @@ const CATEGORIES = {
 
 const LABELS_PROBABILITE = { 1: "Rare", 2: "Possible", 3: "Probable", 4: "Fréquent" };
 const LABELS_GRAVITE     = { 1: "Mineure", 2: "Modérée", 3: "Grave", 4: "Critique" };
+const LABELS_STATUT_ACTION = { A_FAIRE: "à faire", EN_COURS: "en cours", TERMINE: "terminée", ANNULE: "annulée" };
 
 const FORM_DEFAUT = {
   danger: "", description: "", categorie: "AUTRE", zone: "", siteId: "",
@@ -98,6 +104,34 @@ function BarreRepartition({ risques }) {
   );
 }
 
+// ── Suivi de révision annuelle du DUERP ──────────────────────────────────────
+function StatutRevision({ statut, onMarquerRevise, enCours, peutGerer }) {
+  if (!statut) return null;
+  const formatDate = (d) => d ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }) : "—";
+
+  return (
+    <div className="p-5 bg-white border border-[#E2E8F0] rounded-xl">
+      <div className="flex items-center gap-2 mb-3">
+        <CalendarCheck size={16} color={statut.enRetard ? "#DC2626" : "#2E7D32"} strokeWidth={2} className="shrink-0" />
+        <p className="text-sm font-semibold text-navy">Révision annuelle</p>
+      </div>
+      <div className="space-y-1.5 text-xs text-[#475569]">
+        <p>Dernière révision : <span className="font-medium text-[#1E293B]">{formatDate(statut.dateDerniereRevision)}</span></p>
+        <p>Prochaine échéance : <span className="font-medium text-[#1E293B]">{formatDate(statut.dateProchaineRevision)}</span></p>
+      </div>
+      <div className={`mt-3 px-2.5 py-1.5 rounded-md text-xs font-semibold ${statut.enRetard ? "bg-red-50 text-[#DC2626]" : "bg-green-50 text-[#2E7D32]"}`}>
+        {statut.enRetard ? "Révision en retard" : "À jour"}
+      </div>
+      {peutGerer && (
+        <button onClick={onMarquerRevise} disabled={enCours}
+          className="mt-3 w-full px-3 py-2 text-xs font-semibold rounded-md text-white bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
+          {enCours ? "…" : "Marquer comme révisé aujourd'hui"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Risques prioritaires — élevés/critiques sans action encore générée ──────
 function RisquesPrioritaires({ risques, onGenerer, genererEnCoursId }) {
   const prioritaires = risques
@@ -142,18 +176,18 @@ function MatriceRisques({ cellules, filtreCase, onFiltrer }) {
       <p className="text-sm font-semibold text-navy mb-1">Matrice des risques</p>
       <p className="text-xs text-[#94A3B8] mb-4">Probabilité × Gravité — cliquez une case pour filtrer le tableau</p>
 
-      <div className="flex gap-2">
+      <div className="flex gap-1.5 max-w-[340px]">
         {/* Libellés de l'axe probabilité (vertical) */}
-        <div className="flex flex-col justify-between shrink-0 py-1" style={{ width: 70 }}>
+        <div className="flex flex-col justify-between shrink-0 py-1" style={{ width: 56 }}>
           {[4, 3, 2, 1].map((p) => (
-            <div key={p} className="flex-1 flex items-center justify-end pr-2 text-[11px] text-[#64748B] text-right">
+            <div key={p} className="flex-1 flex items-center justify-end pr-2 text-[10px] text-[#64748B] text-right">
               {LABELS_PROBABILITE[p]}
             </div>
           ))}
         </div>
 
         <div className="flex-1">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-1.5">
             {cellules.map((cell) => {
               const c = CONFIG_NIVEAU[cell.niveauQualitatif];
               const actif = filtreCase && filtreCase.probabilite === cell.probabilite && filtreCase.gravite === cell.gravite;
@@ -161,7 +195,7 @@ function MatriceRisques({ cellules, filtreCase, onFiltrer }) {
                 <button
                   key={`${cell.probabilite}-${cell.gravite}`}
                   onClick={() => onFiltrer(actif ? null : { probabilite: cell.probabilite, gravite: cell.gravite })}
-                  className="aspect-square rounded-lg flex flex-col items-center justify-center transition-transform hover:scale-[1.03] hover:brightness-95"
+                  className="aspect-square rounded-md flex flex-col items-center justify-center transition-transform hover:scale-[1.03] hover:brightness-95"
                   style={{
                     backgroundColor: c.cellule,
                     outline: actif ? `2.5px solid ${c.texte}` : "none",
@@ -169,25 +203,25 @@ function MatriceRisques({ cellules, filtreCase, onFiltrer }) {
                   }}
                   title={`Probabilité ${cell.probabilite} × Gravité ${cell.gravite} = ${cell.niveauRisque}`}
                 >
-                  <span className="text-lg font-bold" style={{ color: c.texte }}>{cell.nombre || ""}</span>
+                  <span className="text-sm font-bold" style={{ color: c.celluleTexte }}>{cell.nombre || ""}</span>
                 </button>
               );
             })}
           </div>
           {/* Libellés de l'axe gravité (horizontal) */}
-          <div className="grid grid-cols-4 gap-2 mt-1.5">
+          <div className="grid grid-cols-4 gap-1.5 mt-1">
             {[1, 2, 3, 4].map((g) => (
-              <div key={g} className="text-center text-[11px] text-[#64748B]">{LABELS_GRAVITE[g]}</div>
+              <div key={g} className="text-center text-[10px] text-[#64748B]">{LABELS_GRAVITE[g]}</div>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-4 mt-4 pt-4 border-t border-[#F1F5F9]">
+      <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-[#F1F5F9]">
         {Object.entries(CONFIG_NIVEAU).map(([cle, c]) => (
           <span key={cle} className="flex items-center gap-1.5 text-xs text-[#64748B]">
             <span className="w-3 h-3 rounded shrink-0" style={{ backgroundColor: c.cellule }} />
-            {c.label}
+            {c.label} <span className="text-[#94A3B8]">({c.plage})</span>
           </span>
         ))}
       </div>
@@ -211,6 +245,11 @@ function DUERPPage() {
   const [filtreCategorie, setFiltreCategorie] = useState("");
   const [filtreNiveau,    setFiltreNiveau]    = useState("");
   const [genererEnCoursId, setGenererEnCoursId] = useState(null);
+  const [statutRevision,  setStatutRevision]  = useState(null);
+  const [marquerReviseEnCours, setMarquerReviseEnCours] = useState(false);
+  const [telechargementPdf, setTelechargementPdf] = useState(false);
+  const [risqueASupprimer, setRisqueASupprimer] = useState(null);
+  const [suppressionEnCours, setSuppressionEnCours] = useState(false);
 
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm({
     mode: "onBlur",
@@ -270,11 +309,69 @@ function DUERPPage() {
     }
   };
 
+  const chargerStatutRevision = async () => {
+    try {
+      const res = await api.get("/risques/statut-revision");
+      setStatutRevision(res.data.data);
+    } catch (e) {
+      console.error("Erreur chargement statut de révision:", e);
+    }
+  };
+
   useEffect(() => {
     charger();
     chargerMatrice();
+    chargerStatutRevision();
     api.get("/sites").then((r) => setSites(r.data.data || [])).catch(() => {});
   }, []);
+
+  const marquerRevise = async () => {
+    setMarquerReviseEnCours(true);
+    try {
+      const res = await api.post("/risques/marquer-revise");
+      setStatutRevision(res.data.data);
+      toast.success("DUERP marqué comme révisé");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de la mise à jour de la révision.");
+    } finally {
+      setMarquerReviseEnCours(false);
+    }
+  };
+
+  const telechargerPdf = async () => {
+    setTelechargementPdf(true);
+    try {
+      const res = await api.get("/risques/rapport-pdf", { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const lien = document.createElement("a");
+      lien.href = url;
+      lien.download = `duerp-registre-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(lien);
+      lien.click();
+      lien.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error("Erreur lors du téléchargement du registre PDF.");
+    } finally {
+      setTelechargementPdf(false);
+    }
+  };
+
+  const confirmerSuppression = async () => {
+    if (!risqueASupprimer) return;
+    setSuppressionEnCours(true);
+    try {
+      await api.delete(`/risques/${risqueASupprimer.id}`);
+      toast.success("Risque supprimé avec succès");
+      setRisqueASupprimer(null);
+      charger();
+      chargerMatrice();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de la suppression.");
+    } finally {
+      setSuppressionEnCours(false);
+    }
+  };
 
   const ouvrirCreation = () => {
     setErreurForm("");
@@ -349,9 +446,16 @@ function DUERPPage() {
 
   return (
     <AppLayout titre="DUERP">
-      <div className="mb-5">
-        <h1 className="text-lg font-semibold text-navy">DUERP — Évaluation des risques</h1>
-        <p className="text-xs text-[#94A3B8] mt-0.5">Tableau de bord <span className="mx-1">›</span> DUERP</p>
+      <div className="flex items-start justify-between gap-3 mb-5">
+        <div>
+          <h1 className="text-lg font-semibold text-navy">DUERP — Évaluation des risques</h1>
+          <p className="text-xs text-[#94A3B8] mt-0.5">Tableau de bord <span className="mx-1">›</span> DUERP</p>
+        </div>
+        <button onClick={telechargerPdf} disabled={telechargementPdf}
+          className="shrink-0 flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
+          <FileDown size={14} strokeWidth={2.2} />
+          {telechargementPdf ? "Génération…" : "Exporter le registre PDF"}
+        </button>
       </div>
 
       {/* ── Barre de filtres persistante ── */}
@@ -426,7 +530,12 @@ function DUERPPage() {
                         return (
                           <tr key={r.id} onClick={() => peutGerer && ouvrirModification(r)}
                             className={`hover:bg-[#F8FAFC] transition-colors ${peutGerer ? "cursor-pointer" : ""}`}>
-                            <td className="px-4 py-3 font-medium text-[#1E293B]">{r.danger}</td>
+                            <td className="px-4 py-3 font-medium">
+                              <Link to={`/duerp/${r.id}`} onClick={(e) => e.stopPropagation()}
+                                className="text-navy hover:underline">
+                                {r.danger}
+                              </Link>
+                            </td>
                             <td className="px-4 py-3 text-[#64748B]">{CATEGORIES[r.categorie] ?? r.categorie}</td>
                             <td className="px-4 py-3 text-[#64748B]">{r.zone || "—"}</td>
                             <td className="px-4 py-3 text-[#64748B]">{LABELS_PROBABILITE[r.probabilite]}</td>
@@ -436,18 +545,26 @@ function DUERPPage() {
                             <td className="px-4 py-3 text-[#64748B] max-w-[200px] truncate">{r.mesuresPrevention || "—"}</td>
                             {peutGerer && (
                               <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                                {peutGenererAction ? (
-                                  r.nombreActions > 0 ? (
-                                    <span className="text-xs text-[#94A3B8] italic">Action générée</span>
+                                <div className="flex items-center gap-2">
+                                  {peutGenererAction ? (
+                                    r.nombreActions > 0 ? (
+                                      <Link to="/actions" className="text-xs text-navy hover:underline italic">
+                                        Action {LABELS_STATUT_ACTION[r.actions?.[0]?.statut] ?? "générée"}
+                                      </Link>
+                                    ) : (
+                                      <button onClick={() => genererAction(r)} disabled={genererEnCoursId === r.id}
+                                        className="px-2.5 py-1 text-xs font-semibold rounded-md text-white bg-[#EA580C] hover:bg-[#EA580C]/90 disabled:opacity-50 transition-colors">
+                                        {genererEnCoursId === r.id ? "…" : "Générer une action"}
+                                      </button>
+                                    )
                                   ) : (
-                                    <button onClick={() => genererAction(r)} disabled={genererEnCoursId === r.id}
-                                      className="px-2.5 py-1 text-xs font-semibold rounded-md text-white bg-[#EA580C] hover:bg-[#EA580C]/90 disabled:opacity-50 transition-colors">
-                                      {genererEnCoursId === r.id ? "…" : "Générer une action"}
-                                    </button>
-                                  )
-                                ) : (
-                                  <span className="text-[#94A3B8]">—</span>
-                                )}
+                                    <span className="text-[#94A3B8]">—</span>
+                                  )}
+                                  <button onClick={() => setRisqueASupprimer(r)} title="Supprimer ce risque"
+                                    className="shrink-0 p-1.5 rounded-md text-[#94A3B8] hover:text-[#DC2626] hover:bg-red-50 transition-colors">
+                                    <Trash2 size={14} strokeWidth={2} />
+                                  </button>
+                                </div>
                               </td>
                             )}
                           </tr>
@@ -484,6 +601,7 @@ function DUERPPage() {
             </button>
           )}
           <BarreRepartition risques={risques} />
+          <StatutRevision statut={statutRevision} onMarquerRevise={marquerRevise} enCours={marquerReviseEnCours} peutGerer={peutGerer} />
           <RisquesPrioritaires risques={risques} onGenerer={genererAction} genererEnCoursId={genererEnCoursId} />
         </div>
       </div>
@@ -611,6 +729,29 @@ function DUERPPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Confirmation de suppression ── */}
+      {risqueASupprimer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={(e) => e.target === e.currentTarget && setRisqueASupprimer(null)}>
+          <div className="w-full max-w-sm bg-white rounded-lg border border-[#E2E8F0] p-6 mx-4">
+            <h2 className="text-base font-semibold text-[#1E293B] mb-2">Supprimer ce risque ?</h2>
+            <p className="text-sm text-[#64748B] mb-5">
+              « <span className="font-medium text-[#1E293B]">{risqueASupprimer.danger}</span> » sera définitivement supprimé du registre DUERP. Cette action est irréversible.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setRisqueASupprimer(null)} disabled={suppressionEnCours}
+                className="px-4 py-2 text-sm font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
+                Annuler
+              </button>
+              <button onClick={confirmerSuppression} disabled={suppressionEnCours}
+                className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-[#DC2626] hover:bg-[#DC2626]/90 disabled:opacity-50 transition-colors">
+                {suppressionEnCours ? "Suppression…" : "Supprimer"}
+              </button>
+            </div>
           </div>
         </div>
       )}

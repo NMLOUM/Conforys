@@ -83,7 +83,7 @@ const getAlertesMetier = async (entrepriseId) => {
   const finSemaine = new Date(); finSemaine.setDate(maintenant.getDate() + 7);
   const dans30Jours = new Date(); dans30Jours.setDate(maintenant.getDate() + 30);
 
-  const [epis, actionsEnRetard, incidentsCritiques, auditsSemaine, attestationsAvecExpiration] = await Promise.all([
+  const [epis, actionsEnRetard, incidentsCritiques, auditsSemaine, attestationsAvecExpiration, risquesSansAction] = await Promise.all([
     prisma.epi.findMany({
       where: { site: { entrepriseId } },
       select: {
@@ -119,6 +119,12 @@ const getAlertesMetier = async (entrepriseId) => {
         id: true, titreFormation: true, dateExpiration: true,
         beneficiaire: { select: { nom: true, prenom: true } },
       },
+    }),
+    // Risques élevés/critiques (niveauRisque ≥ 8, mêmes seuils que
+    // risqueService.calculerNiveauQualitatif) sans action de prévention générée
+    prisma.risque.findMany({
+      where: { site: { entrepriseId }, niveauRisque: { gte: 8 }, actions: { none: {} } },
+      select: { id: true, danger: true, niveauRisque: true, site: { select: { nom: true } } },
     }),
   ]);
 
@@ -201,6 +207,15 @@ const getAlertesMetier = async (entrepriseId) => {
       });
     }
   });
+
+  // Risques élevés/critiques sans action de prévention générée
+  risquesSansAction.forEach((r) => alertes.push({
+    type: "RISQUE_SANS_ACTION",
+    niveau: "URGENT",
+    libelle: `${r.danger} — aucune action de prévention`,
+    detail: r.site?.nom ?? null,
+    lien: "/duerp",
+  }));
 
   return alertes;
 };

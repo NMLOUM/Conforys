@@ -189,8 +189,8 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* â”€â”€ LIGNE 1 : Score + 4 KPIs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          {/* â”€â”€ LIGNE 1 : Score + 5 KPIs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
 
             {/* Score global */}
             <div
@@ -260,6 +260,15 @@ function Dashboard() {
               sub="Expirent dans 30 j."
               subColor={stats?.habilitationsExpirantes > 0 ? "text-[#EA580C] font-medium" : "text-[#94A3B8]"}
               valueColor={stats?.habilitationsExpirantes > 0 ? "#EA580C" : "#0D2B4E"}
+            />
+
+            {/* Risques DUERP */}
+            <KpiCard
+              label="Risques DUERP"
+              value={stats?.risquesCritiques ?? 0}
+              sub={`${stats?.risquesTotal ?? 0} recensés · ${stats?.risquesTraites ?? 0} traités`}
+              subColor={stats?.risquesCritiques > 0 ? "text-[#DC2626] font-medium" : "text-[#94A3B8]"}
+              valueColor={stats?.risquesCritiques > 0 ? "#DC2626" : "#0D2B4E"}
             />
           </div>
 
