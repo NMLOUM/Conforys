@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
-import { ShieldAlert, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Plus, Search, X, AlertTriangle } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import { useRole } from "../hooks/useRole";
@@ -42,6 +42,9 @@ const FORM_DEFAUT = {
   probabiliteResiduelle: "", graviteResiduelle: "",
 };
 
+const selectCls =
+  "px-3 py-2 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#475569] focus:outline-none focus:ring-2 focus:ring-navy/30 transition min-w-[150px]";
+
 function BadgeNiveau({ niveau }) {
   if (!niveau) return <span className="text-[#94A3B8]">—</span>;
   const c = CONFIG_NIVEAU[niveau];
@@ -53,31 +56,79 @@ function BadgeNiveau({ niveau }) {
   );
 }
 
-// ── Cartes de synthèse ────────────────────────────────────────────────────────
-function CartesSynthese({ risques }) {
+// ── Barre de répartition par niveau ──────────────────────────────────────────
+function BarreRepartition({ risques }) {
   const total = risques.length;
-  const critiquesEleves = risques.filter((r) => r.niveauQualitatif === "CRITIQUE" || r.niveauQualitatif === "ELEVE").length;
   const traites = risques.filter((r) => r.mesuresPrevention && r.mesuresPrevention.trim() !== "").length;
 
-  const cartes = [
-    { label: "Risques recensés",      valeur: total,           sub: "au total",                Icone: ShieldAlert,  accent: "#0D2B4E" },
-    { label: "Critiques / élevés",    valeur: critiquesEleves, sub: "nécessitent une action",  Icone: AlertTriangle, accent: "#DC2626" },
-    { label: "Risques traités",       valeur: traites,         sub: "avec mesures définies",   Icone: CheckCircle2,  accent: "#2E7D32" },
-  ];
+  const comptes = { FAIBLE: 0, MODERE: 0, ELEVE: 0, CRITIQUE: 0 };
+  risques.forEach((r) => { if (r.niveauQualitatif) comptes[r.niveauQualitatif]++; });
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
-      {cartes.map((c) => (
-        <div key={c.label} className="bg-white rounded-lg p-5 flex items-start justify-between"
-          style={{ border: "1px solid #E2E8F0", borderLeft: `4px solid ${c.accent}` }}>
-          <div>
-            <p className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{c.label}</p>
-            <p className="text-[28px] font-bold leading-none mt-1" style={{ color: c.accent }}>{c.valeur}</p>
-            <p className="text-[12px] text-[#94A3B8] mt-1">{c.sub}</p>
+    <div className="p-5 bg-white border border-[#E2E8F0] rounded-xl">
+      <p className="text-sm font-semibold text-navy mb-1">Répartition par niveau</p>
+      <p className="text-xs text-[#94A3B8] mb-4">
+        {total} risque{total !== 1 ? "s" : ""} · {traites} traité{traites !== 1 ? "s" : ""}
+      </p>
+
+      {total === 0 ? (
+        <p className="text-sm text-[#94A3B8]">Aucun risque enregistré.</p>
+      ) : (
+        <>
+          <div className="flex w-full h-3 rounded-full overflow-hidden bg-[#F1F5F9]">
+            {Object.entries(comptes).map(([niveau, n]) => n > 0 && (
+              <div key={niveau} style={{ width: `${(n / total) * 100}%`, backgroundColor: CONFIG_NIVEAU[niveau].texte }}
+                title={`${CONFIG_NIVEAU[niveau].label} : ${n}`} />
+            ))}
           </div>
-          <c.Icone size={20} color={c.accent} strokeWidth={1.6} className="shrink-0 mt-1" />
+          <div className="flex flex-col gap-1.5 mt-3">
+            {Object.entries(comptes).map(([niveau, n]) => (
+              <div key={niveau} className="flex items-center justify-between text-xs text-[#475569]">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: CONFIG_NIVEAU[niveau].texte }} />
+                  {CONFIG_NIVEAU[niveau].label}
+                </span>
+                <span className="font-semibold text-[#1E293B]">{n}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Risques prioritaires — élevés/critiques sans action encore générée ──────
+function RisquesPrioritaires({ risques, onGenerer, genererEnCoursId }) {
+  const prioritaires = risques
+    .filter((r) => (r.niveauQualitatif === "CRITIQUE" || r.niveauQualitatif === "ELEVE") && r.nombreActions === 0)
+    .sort((a, b) => b.niveauRisque - a.niveauRisque)
+    .slice(0, 5);
+
+  return (
+    <div className="p-5 bg-white border border-[#E2E8F0] rounded-xl">
+      <div className="flex items-center gap-2 mb-3">
+        <AlertTriangle size={16} color="#DC2626" strokeWidth={2} className="shrink-0" />
+        <p className="text-sm font-semibold text-navy">Risques prioritaires</p>
+      </div>
+      {prioritaires.length === 0 ? (
+        <p className="text-xs text-[#94A3B8]">Aucun risque élevé/critique en attente d'action.</p>
+      ) : (
+        <div className="space-y-2">
+          {prioritaires.map((r) => (
+            <div key={r.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-[#F8FAFC]">
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-[#1E293B] truncate">{r.danger}</p>
+                <div className="mt-1"><BadgeNiveau niveau={r.niveauQualitatif} /></div>
+              </div>
+              <button onClick={() => onGenerer(r)} disabled={genererEnCoursId === r.id}
+                className="shrink-0 px-2.5 py-1.5 text-[11px] font-semibold rounded-md text-white bg-[#EA580C] hover:bg-[#EA580C]/90 disabled:opacity-50 transition-colors">
+                {genererEnCoursId === r.id ? "…" : "Générer"}
+              </button>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -87,7 +138,7 @@ function MatriceRisques({ cellules, filtreCase, onFiltrer }) {
   if (!cellules.length) return null;
 
   return (
-    <div className="p-5 bg-white border border-[#E2E8F0] rounded-lg mb-5">
+    <div className="p-5 bg-white border border-[#E2E8F0] rounded-xl">
       <p className="text-sm font-semibold text-navy mb-1">Matrice des risques</p>
       <p className="text-xs text-[#94A3B8] mb-4">Probabilité × Gravité — cliquez une case pour filtrer le tableau</p>
 
@@ -102,7 +153,7 @@ function MatriceRisques({ cellules, filtreCase, onFiltrer }) {
         </div>
 
         <div className="flex-1">
-          <div className="grid grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-4 gap-2">
             {cellules.map((cell) => {
               const c = CONFIG_NIVEAU[cell.niveauQualitatif];
               const actif = filtreCase && filtreCase.probabilite === cell.probabilite && filtreCase.gravite === cell.gravite;
@@ -110,7 +161,7 @@ function MatriceRisques({ cellules, filtreCase, onFiltrer }) {
                 <button
                   key={`${cell.probabilite}-${cell.gravite}`}
                   onClick={() => onFiltrer(actif ? null : { probabilite: cell.probabilite, gravite: cell.gravite })}
-                  className="aspect-square rounded-md flex flex-col items-center justify-center transition-all"
+                  className="aspect-square rounded-lg flex flex-col items-center justify-center transition-transform hover:scale-[1.03] hover:brightness-95"
                   style={{
                     backgroundColor: c.cellule,
                     outline: actif ? `2.5px solid ${c.texte}` : "none",
@@ -124,7 +175,7 @@ function MatriceRisques({ cellules, filtreCase, onFiltrer }) {
             })}
           </div>
           {/* Libellés de l'axe gravité (horizontal) */}
-          <div className="grid grid-cols-4 gap-1.5 mt-1.5">
+          <div className="grid grid-cols-4 gap-2 mt-1.5">
             {[1, 2, 3, 4].map((g) => (
               <div key={g} className="text-center text-[11px] text-[#64748B]">{LABELS_GRAVITE[g]}</div>
             ))}
@@ -156,6 +207,9 @@ function DUERPPage() {
   const [erreurForm,  setErreurForm]  = useState("");
   const [risqueEnEdition, setRisqueEnEdition] = useState(null);
   const [filtreCase,  setFiltreCase]  = useState(null);
+  const [filtreSite,      setFiltreSite]      = useState("");
+  const [filtreCategorie, setFiltreCategorie] = useState("");
+  const [filtreNiveau,    setFiltreNiveau]    = useState("");
   const [genererEnCoursId, setGenererEnCoursId] = useState(null);
 
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm({
@@ -176,12 +230,20 @@ function DUERPPage() {
     ? calculerNiveauQualitatif(Number(probResiduelleSaisie) * Number(graviteResiduelleSaisie))
     : null;
 
-  const risquesFiltres = filtreCase
-    ? risques.filter((r) => r.probabilite === filtreCase.probabilite && r.gravite === filtreCase.gravite)
-    : risques;
+  const filtresActifs = filtreSite || filtreCategorie || filtreNiveau || filtreCase;
+
+  const risquesFiltres = risques
+    .filter((r) => !filtreSite      || r.siteId === filtreSite)
+    .filter((r) => !filtreCategorie || r.categorie === filtreCategorie)
+    .filter((r) => !filtreNiveau    || r.niveauQualitatif === filtreNiveau)
+    .filter((r) => !filtreCase      || (r.probabilite === filtreCase.probabilite && r.gravite === filtreCase.gravite));
 
   const { recherche, setRecherche, page, setPage, totalPages, filtres, affiches } =
     useTable(risquesFiltres, ["danger", "zone"]);
+
+  const reinitialiserFiltres = () => {
+    setFiltreSite(""); setFiltreCategorie(""); setFiltreNiveau(""); setFiltreCase(null);
+  };
 
   useEffect(() => {
     document.title = "CONFORYS — DUERP";
@@ -287,107 +349,144 @@ function DUERPPage() {
 
   return (
     <AppLayout titre="DUERP">
-      <div className="flex items-center justify-between mb-1">
-        <div>
-          <h1 className="text-lg font-semibold text-navy">DUERP — Évaluation des risques</h1>
-          <p className="text-xs text-[#94A3B8] mt-0.5">Tableau de bord <span className="mx-1">›</span> DUERP</p>
+      <div className="mb-5">
+        <h1 className="text-lg font-semibold text-navy">DUERP — Évaluation des risques</h1>
+        <p className="text-xs text-[#94A3B8] mt-0.5">Tableau de bord <span className="mx-1">›</span> DUERP</p>
+      </div>
+
+      {/* ── Barre de filtres persistante ── */}
+      <div className="flex flex-wrap items-end gap-3 p-4 bg-white border border-[#E2E8F0] rounded-xl mb-5">
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide">Site</label>
+          <select value={filtreSite} onChange={(e) => setFiltreSite(e.target.value)} className={selectCls}>
+            <option value="">Tous les sites</option>
+            {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
+          </select>
         </div>
-        {peutGerer && (
-          <button onClick={ouvrirCreation}
-            className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 transition-colors">
-            Nouveau risque
-          </button>
-        )}
-      </div>
-
-      <div className="my-5">
-        <CartesSynthese risques={risques} />
-        <MatriceRisques cellules={matrice} filtreCase={filtreCase} onFiltrer={setFiltreCase} />
-      </div>
-
-      <div className="flex items-center gap-3 mb-4">
-        <div className="relative flex-1 max-w-xs">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" placeholder="Rechercher par danger, zone…" value={recherche} onChange={(e) => setRecherche(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition" />
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide">Catégorie</label>
+          <select value={filtreCategorie} onChange={(e) => setFiltreCategorie(e.target.value)} className={selectCls}>
+            <option value="">Toutes catégories</option>
+            {Object.entries(CATEGORIES).map(([cle, label]) => <option key={cle} value={cle}>{label}</option>)}
+          </select>
         </div>
-        <span className="text-sm text-[#64748B] shrink-0">{filtres.length} résultat{filtres.length !== 1 ? "s" : ""}</span>
-        {filtreCase && (
-          <button onClick={() => setFiltreCase(null)} className="text-xs text-[#64748B] hover:text-navy underline shrink-0">
-            Retirer le filtre de case (P{filtreCase.probabilite} × G{filtreCase.gravite})
-          </button>
-        )}
-      </div>
-
-      {chargement ? (
-        <p className="text-sm text-[#64748B]">Chargement...</p>
-      ) : (
-        <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[920px] text-sm">
-              <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
-                <tr>
-                  {["Danger", "Catégorie", "Zone", "Probabilité", "Gravité", "Niveau", "Mesures", peutGerer ? "Action" : null].filter(Boolean).map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#F1F5F9]">
-                {affiches.length === 0 ? (
-                  <tr><td colSpan={peutGerer ? 8 : 7} className="px-4 py-12 text-center text-[#94A3B8]">
-                    {recherche || filtreCase ? "Aucun risque ne correspond aux critères." : "Aucun risque enregistré"}
-                  </td></tr>
-                ) : (
-                  affiches.map((r) => {
-                    const peutGenererAction = peutGerer && (r.niveauQualitatif === "ELEVE" || r.niveauQualitatif === "CRITIQUE");
-                    return (
-                      <tr key={r.id} onClick={() => peutGerer && ouvrirModification(r)}
-                        className={`hover:bg-[#F8FAFC] transition-colors ${peutGerer ? "cursor-pointer" : ""}`}>
-                        <td className="px-4 py-3 font-medium text-[#1E293B]">{r.danger}</td>
-                        <td className="px-4 py-3 text-[#64748B]">{CATEGORIES[r.categorie] ?? r.categorie}</td>
-                        <td className="px-4 py-3 text-[#64748B]">{r.zone || "—"}</td>
-                        <td className="px-4 py-3 text-[#64748B]">{LABELS_PROBABILITE[r.probabilite]}</td>
-                        <td className="px-4 py-3 text-[#64748B]">{LABELS_GRAVITE[r.gravite]}</td>
-                        <td className="px-4 py-3"><BadgeNiveau niveau={r.niveauQualitatif} /></td>
-                        <td className="px-4 py-3 text-[#64748B] max-w-[220px] truncate">{r.mesuresPrevention || "—"}</td>
-                        {peutGerer && (
-                          <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                            {peutGenererAction ? (
-                              r.nombreActions > 0 ? (
-                                <span className="text-xs text-[#94A3B8] italic">Action générée</span>
-                              ) : (
-                                <button onClick={() => genererAction(r)} disabled={genererEnCoursId === r.id}
-                                  className="px-2.5 py-1 text-xs font-semibold rounded-md text-white bg-[#EA580C] hover:bg-[#EA580C]/90 disabled:opacity-50 transition-colors">
-                                  {genererEnCoursId === r.id ? "…" : "Générer une action"}
-                                </button>
-                              )
-                            ) : (
-                              <span className="text-[#94A3B8]">—</span>
-                            )}
-                          </td>
-                        )}
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide">Niveau</label>
+          <select value={filtreNiveau} onChange={(e) => setFiltreNiveau(e.target.value)} className={selectCls}>
+            <option value="">Tous niveaux</option>
+            {Object.entries(CONFIG_NIVEAU).map(([cle, c]) => <option key={cle} value={cle}>{c.label}</option>)}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+          <label className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide">Recherche</label>
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none" />
+            <input type="text" placeholder="Danger, zone…" value={recherche} onChange={(e) => setRecherche(e.target.value)}
+              className="w-full pl-8 pr-3 py-2 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition" />
           </div>
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-[#E2E8F0] bg-[#F8FAFC]">
-              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                className="px-3 py-1.5 text-xs font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
-                ← Précédent
-              </button>
-              <span className="text-xs text-[#64748B]">Page {page} / {totalPages}</span>
-              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                className="px-3 py-1.5 text-xs font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
-                Suivant →
-              </button>
+        </div>
+        {filtresActifs && (
+          <button onClick={reinitialiserFiltres} className="flex items-center gap-1 text-xs text-[#64748B] hover:text-navy underline pb-2 shrink-0">
+            <X size={12} /> Réinitialiser
+          </button>
+        )}
+        <span className="text-xs text-[#94A3B8] pb-2 ml-auto shrink-0">{filtres.length} résultat{filtres.length !== 1 ? "s" : ""}</span>
+      </div>
+
+      {/* ── Disposition 2 colonnes ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* Colonne principale */}
+        <div className="lg:col-span-8 space-y-5">
+          <MatriceRisques cellules={matrice} filtreCase={filtreCase} onFiltrer={setFiltreCase} />
+
+          {chargement ? (
+            <p className="text-sm text-[#64748B]">Chargement...</p>
+          ) : (
+            <div className="border border-[#E2E8F0] rounded-xl overflow-hidden bg-white">
+              <div className="px-5 py-4 border-b border-[#E2E8F0]">
+                <p className="text-sm font-semibold text-navy">Registre des risques</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[980px] text-sm">
+                  <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
+                    <tr>
+                      {["Danger", "Catégorie", "Zone", "Probabilité", "Gravité", "Initial", "Résiduel", "Mesures", peutGerer ? "Action" : null].filter(Boolean).map((h) => (
+                        <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#F1F5F9]">
+                    {affiches.length === 0 ? (
+                      <tr><td colSpan={peutGerer ? 9 : 8} className="px-4 py-12 text-center text-[#94A3B8]">
+                        {recherche || filtresActifs ? "Aucun risque ne correspond aux critères." : "Aucun risque enregistré"}
+                      </td></tr>
+                    ) : (
+                      affiches.map((r) => {
+                        const peutGenererAction = peutGerer && (r.niveauQualitatif === "ELEVE" || r.niveauQualitatif === "CRITIQUE");
+                        return (
+                          <tr key={r.id} onClick={() => peutGerer && ouvrirModification(r)}
+                            className={`hover:bg-[#F8FAFC] transition-colors ${peutGerer ? "cursor-pointer" : ""}`}>
+                            <td className="px-4 py-3 font-medium text-[#1E293B]">{r.danger}</td>
+                            <td className="px-4 py-3 text-[#64748B]">{CATEGORIES[r.categorie] ?? r.categorie}</td>
+                            <td className="px-4 py-3 text-[#64748B]">{r.zone || "—"}</td>
+                            <td className="px-4 py-3 text-[#64748B]">{LABELS_PROBABILITE[r.probabilite]}</td>
+                            <td className="px-4 py-3 text-[#64748B]">{LABELS_GRAVITE[r.gravite]}</td>
+                            <td className="px-4 py-3"><BadgeNiveau niveau={r.niveauQualitatif} /></td>
+                            <td className="px-4 py-3"><BadgeNiveau niveau={r.niveauQualitatifResiduel} /></td>
+                            <td className="px-4 py-3 text-[#64748B] max-w-[200px] truncate">{r.mesuresPrevention || "—"}</td>
+                            {peutGerer && (
+                              <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                                {peutGenererAction ? (
+                                  r.nombreActions > 0 ? (
+                                    <span className="text-xs text-[#94A3B8] italic">Action générée</span>
+                                  ) : (
+                                    <button onClick={() => genererAction(r)} disabled={genererEnCoursId === r.id}
+                                      className="px-2.5 py-1 text-xs font-semibold rounded-md text-white bg-[#EA580C] hover:bg-[#EA580C]/90 disabled:opacity-50 transition-colors">
+                                      {genererEnCoursId === r.id ? "…" : "Générer une action"}
+                                    </button>
+                                  )
+                                ) : (
+                                  <span className="text-[#94A3B8]">—</span>
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-[#E2E8F0] bg-[#F8FAFC]">
+                  <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                    className="px-3 py-1.5 text-xs font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
+                    ← Précédent
+                  </button>
+                  <span className="text-xs text-[#64748B]">Page {page} / {totalPages}</span>
+                  <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                    className="px-3 py-1.5 text-xs font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
+                    Suivant →
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
+
+        {/* Colonne latérale */}
+        <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-6 self-start">
+          {peutGerer && (
+            <button onClick={ouvrirCreation}
+              className="w-full flex items-center justify-center gap-2 py-4 px-5 text-sm font-semibold text-white rounded-xl bg-navy hover:bg-navy/90 transition-colors shadow-sm">
+              <Plus size={18} strokeWidth={2.2} />
+              Identifier un risque
+            </button>
+          )}
+          <BarreRepartition risques={risques} />
+          <RisquesPrioritaires risques={risques} onGenerer={genererAction} genererEnCoursId={genererEnCoursId} />
+        </div>
+      </div>
 
       {/* ── Modale de création / modification ── */}
       {showModal && (
