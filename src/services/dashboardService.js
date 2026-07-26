@@ -1,7 +1,14 @@
 const prisma = require("../config/prisma");
 const { calculerNiveauAlerte } = require("./epiService");
 
-const getIncidentStats = async () => {
+const getIncidentStats = async (entrepriseId) => {
+  // Scopes de filtrage par entreprise — un modèle par chemin de relation vers
+  // User/Site (chaque module a sa propre route jusqu'à l'entreprise) :
+  const scopeIncident     = { declarePar: { entrepriseId } };
+  const scopeSite         = { site: { entrepriseId } };
+  const scopeHabilitation = { titulaire: { entrepriseId } };
+  const scopeAttestation  = { beneficiaire: { entrepriseId } };
+
   const MOIS = ["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
 
   // Bornes de temps
@@ -26,14 +33,16 @@ const getIncidentStats = async () => {
     habExpirantesCount,
     habExpirantes7j,
     tousAttestations,
+    tousRisques,
   ] = await Promise.all([
-    prisma.incident.count(),
-    prisma.incident.groupBy({ by: ["gravite"], _count: { gravite: true } }),
-    prisma.incident.groupBy({ by: ["statut"],  _count: { statut:  true } }),
-    prisma.incident.groupBy({ by: ["type"],    _count: { type:    true } }),
-    prisma.incident.count({ where: { dateDeclaration: { gte: debutMois } } }),
-    prisma.incident.count({ where: { dateDeclaration: { gte: debutMoisPrec, lte: finMoisPrec } } }),
+    prisma.incident.count({ where: scopeIncident }),
+    prisma.incident.groupBy({ by: ["gravite"], where: scopeIncident, _count: { gravite: true } }),
+    prisma.incident.groupBy({ by: ["statut"],  where: scopeIncident, _count: { statut:  true } }),
+    prisma.incident.groupBy({ by: ["type"],    where: scopeIncident, _count: { type:    true } }),
+    prisma.incident.count({ where: { ...scopeIncident, dateDeclaration: { gte: debutMois } } }),
+    prisma.incident.count({ where: { ...scopeIncident, dateDeclaration: { gte: debutMoisPrec, lte: finMoisPrec } } }),
     prisma.incident.findMany({
+      where: scopeIncident,
       take: 5, orderBy: { dateDeclaration: "desc" },
       select: {
         id: true, numeroReference: true, gravite: true, type: true,
@@ -43,10 +52,11 @@ const getIncidentStats = async () => {
       },
     }),
     prisma.incident.findMany({
-      where: { dateIncident: { gte: debut12Mois } },
+      where: { ...scopeIncident, dateIncident: { gte: debut12Mois } },
       select: { dateIncident: true, type: true },
     }),
     prisma.epi.findMany({
+      where: scopeSite,
       select: {
         id: true, designation: true, quantite: true, seuilAlerte: true,
         datePeremption: true, statut: true, frequenceInspectionJours: true,
@@ -54,23 +64,23 @@ const getIncidentStats = async () => {
         site: { select: { nom: true } },
       },
     }),
-    prisma.audit.count(),
-    prisma.audit.count({ where: { statut: "TERMINE" } }),
-    prisma.audit.count({ where: { statut: "TERMINE", dateRealisee: { gte: debutMois } } }),
+    prisma.audit.count({ where: scopeSite }),
+    prisma.audit.count({ where: { ...scopeSite, statut: "TERMINE" } }),
+    prisma.audit.count({ where: { ...scopeSite, statut: "TERMINE", dateRealisee: { gte: debutMois } } }),
     prisma.audit.findMany({
-      where: { statut: "PLANIFIE", datePrevue: { lt: maintenant } },
+      where: { ...scopeSite, statut: "PLANIFIE", datePrevue: { lt: maintenant } },
       select: { id: true, titre: true, datePrevue: true, site: { select: { nom: true } } },
     }),
     prisma.incident.findMany({
-      where: { statut: { in: ["OUVERT", "EN_COURS"] }, gravite: { in: ["GRAVE", "CRITIQUE"] } },
+      where: { ...scopeIncident, statut: { in: ["OUVERT", "EN_COURS"] }, gravite: { in: ["GRAVE", "CRITIQUE"] } },
       select: {
         id: true, numeroReference: true, gravite: true, statut: true,
         dateIncident: true, site: { select: { nom: true } },
       },
     }),
-    prisma.habilitation.count({ where: { dateExpiration: { gte: maintenant, lte: dans30Jours } } }),
+    prisma.habilitation.count({ where: { ...scopeHabilitation, dateExpiration: { gte: maintenant, lte: dans30Jours } } }),
     prisma.habilitation.findMany({
-      where: { dateExpiration: { gte: maintenant, lte: dans7Jours } },
+      where: { ...scopeHabilitation, dateExpiration: { gte: maintenant, lte: dans7Jours } },
       select: {
         id: true, intitule: true, dateExpiration: true,
         titulaire: { select: { nom: true, prenom: true } },
@@ -78,10 +88,18 @@ const getIncidentStats = async () => {
       orderBy: { dateExpiration: "asc" },
     }),
     prisma.attestation.findMany({
-      where: { dateExpiration: { not: null } },
+      where: { ...scopeAttestation, dateExpiration: { not: null } },
       select: {
         id: true, titreFormation: true, dateExpiration: true,
         beneficiaire: { select: { nom: true, prenom: true } },
+      },
+    }),
+    prisma.risque.findMany({
+      where: scopeSite,
+      select: {
+        id: true, danger: true, niveauRisque: true, mesuresPrevention: true,
+        site: { select: { nom: true } },
+        _count: { select: { actions: true } },
       },
     }),
   ]);
@@ -95,6 +113,13 @@ const getIncidentStats = async () => {
   const conformiteEpi    = tousEpis.length > 0 ? Math.round((episOk / tousEpis.length) * 100) : 100;
   const tauxConformite   = totalAudits   > 0 ? Math.round((auditsTermines / totalAudits) * 100) : 0;
   const evolutionMensuelle12 = calculerEvolution12Mois(incidents12Mois, MOIS);
+
+  // DUERP : un risque est "élevé/critique" à partir de niveauRisque = 8 (voir
+  // risqueService.calculerNiveauQualitatif — mêmes seuils, dupliqués ici pour
+  // éviter une dépendance circulaire entre services).
+  const risquesCritiques  = tousRisques.filter((r) => r.niveauRisque >= 8).length;
+  const risquesTraites    = tousRisques.filter((r) => r.mesuresPrevention && r.mesuresPrevention.trim() !== "").length;
+  const risquesSansAction = tousRisques.filter((r) => r.niveauRisque >= 8 && r._count.actions === 0);
 
   // ── Score global de sécurité ──────────────────────────────────
   const scoreAudits    = tauxConformite;
@@ -190,6 +215,14 @@ const getIncidentStats = async () => {
     detail: `${i.site?.nom} · ${new Date(i.dateIncident).toLocaleDateString("fr-FR")}`,
   }));
 
+  // DUERP : risques élevés/critiques sans action de prévention générée
+  risquesSansAction.forEach((r) => alertes.push({
+    niveau: "CRITIQUE",
+    categorie: "RISQUE_SANS_ACTION",
+    message: `${r.danger} — aucune action de prévention`,
+    detail: r.site?.nom,
+  }));
+
   return {
     // Score
     scoreGlobal,
@@ -201,6 +234,10 @@ const getIncidentStats = async () => {
     // KPIs globaux
     total, critiques, episEnAlerte, tauxConformite,
     habilitationsExpirantes: habExpirantesCount,
+    // DUERP
+    risquesTotal: tousRisques.length,
+    risquesCritiques,
+    risquesTraites,
     // Graphiques
     parGravite, parStatut, parType,
     evolutionMensuelle: evolutionMensuelle12,

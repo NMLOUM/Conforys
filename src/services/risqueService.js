@@ -3,6 +3,7 @@
 // de générer une action de prévention (réutilise ActionCorrective) pour les
 // risques élevés ou critiques.
 const prisma = require("../config/prisma");
+const { enregistrerRisque, getHistoriqueByRisque: getHistorique } = require("./historiqueService");
 
 // Erreur métier avec code HTTP — cohérent avec les autres services
 class ErreurMetier extends Error {
@@ -70,15 +71,26 @@ const getAllRisques = async (entrepriseId, { siteId, categorie, niveau } = {}) =
   return risques.map(avecNiveaux);
 };
 
-// Récupère un risque par son id
-const getRisqueById = async (id) => {
-  const risque = await prisma.risque.findUnique({ where: { id }, include: INCLUDE_RISQUE });
+// Récupère un risque par son id — scopé à l'entreprise du demandeur (renvoie
+// null si le risque n'existe pas ou appartient à une autre entreprise).
+const getRisqueById = async (id, entrepriseId) => {
+  const risque = await prisma.risque.findFirst({ where: { id, site: { entrepriseId } }, include: INCLUDE_RISQUE });
   return risque ? avecNiveaux(risque) : null;
+};
+
+// Vérifie que le site visé appartient bien à l'entreprise du demandeur —
+// empêche de rattacher un risque au site d'une autre entreprise en
+// connaissant/devinant son id.
+const verifierSite = async (siteId, entrepriseId) => {
+  const site = await prisma.site.findFirst({ where: { id: siteId, entrepriseId } });
+  if (!site) throw new ErreurMetier("Site introuvable.", 404);
 };
 
 // Crée un nouveau risque — calcule le niveau (et le niveau résiduel si la
 // cotation après mesures est renseignée)
-const createRisque = async (data, auteurId) => {
+const createRisque = async (data, auteurId, entrepriseId) => {
+  await verifierSite(data.siteId, entrepriseId);
+
   const niveauRisque = data.probabilite * data.gravite;
   const niveauResiduel = (data.probabiliteResiduelle && data.graviteResiduelle)
     ? data.probabiliteResiduelle * data.graviteResiduelle
@@ -102,14 +114,16 @@ const createRisque = async (data, auteurId) => {
     },
     include: INCLUDE_RISQUE,
   });
+  await enregistrerRisque(risque.id, auteurId, "Risque identifié", `Cotation initiale : ${niveauRisque} (${calculerNiveauQualitatif(niveauRisque)})`);
   return avecNiveaux(risque);
 };
 
 // Met à jour un risque existant — recalcule le(s) niveau(x) à partir des
 // valeurs déjà en base pour les champs non fournis (mise à jour partielle).
-const updateRisque = async (id, data) => {
-  const existant = await prisma.risque.findUnique({ where: { id } });
+const updateRisque = async (id, data, auteurId, entrepriseId) => {
+  const existant = await prisma.risque.findFirst({ where: { id, site: { entrepriseId } } });
   if (!existant) throw new ErreurMetier("Risque introuvable.", 404);
+  if (data.siteId && data.siteId !== existant.siteId) await verifierSite(data.siteId, entrepriseId);
 
   const probabilite = data.probabilite ?? existant.probabilite;
   const gravite      = data.gravite    ?? existant.gravite;
@@ -139,11 +153,21 @@ const updateRisque = async (id, data) => {
     },
     include: INCLUDE_RISQUE,
   });
+
+  if (niveauRisque !== existant.niveauRisque) {
+    await enregistrerRisque(id, auteurId, `Cotation modifiée : ${existant.niveauRisque} → ${niveauRisque}`, `${calculerNiveauQualitatif(existant.niveauRisque)} → ${calculerNiveauQualitatif(niveauRisque)}`);
+  }
+  if (data.mesuresPrevention !== undefined && data.mesuresPrevention !== existant.mesuresPrevention) {
+    await enregistrerRisque(id, auteurId, "Mesures de prévention mises à jour");
+  }
+
   return avecNiveaux(risque);
 };
 
-// Supprime un risque
-const deleteRisque = async (id) => {
+// Supprime un risque — vérifie d'abord qu'il appartient à l'entreprise du demandeur
+const deleteRisque = async (id, entrepriseId) => {
+  const existant = await prisma.risque.findFirst({ where: { id, site: { entrepriseId } } });
+  if (!existant) throw new ErreurMetier("Risque introuvable.", 404);
   return await prisma.risque.delete({ where: { id } });
 };
 
@@ -174,8 +198,8 @@ const getMatrice = async (entrepriseId, siteId) => {
 // Génère une action de prévention (ActionCorrective) pour un risque élevé ou
 // critique. Idempotent : si une action existe déjà pour ce risque, elle est
 // simplement retournée (pas de doublon).
-const genererActionDepuisRisque = async (risqueId) => {
-  const risque = await prisma.risque.findUnique({ where: { id: risqueId } });
+const genererActionDepuisRisque = async (risqueId, auteurId, entrepriseId) => {
+  const risque = await prisma.risque.findFirst({ where: { id: risqueId, site: { entrepriseId } } });
   if (!risque) throw new ErreurMetier("Risque introuvable.", 404);
 
   const niveauQualitatif = calculerNiveauQualitatif(risque.niveauRisque);
@@ -186,7 +210,7 @@ const genererActionDepuisRisque = async (risqueId) => {
   const existante = await prisma.actionCorrective.findFirst({ where: { risqueId } });
   if (existante) return existante;
 
-  return await prisma.actionCorrective.create({
+  const action = await prisma.actionCorrective.create({
     data: {
       description:   `Mesure de prévention — ${risque.danger}${risque.zone ? ` (${risque.zone})` : ""}`,
       priorite:      niveauQualitatif, // "ELEVE" ou "CRITIQUE" — mêmes libellés que PrioriteAction
@@ -196,6 +220,49 @@ const genererActionDepuisRisque = async (risqueId) => {
     },
     include: { responsable: { select: { id: true, nom: true, prenom: true } } },
   });
+  await enregistrerRisque(risqueId, auteurId, "Action de prévention générée");
+  return action;
+};
+
+// Historique d'un risque — vérifie d'abord qu'il appartient à l'entreprise du
+// demandeur (sans quoi l'id d'un risque d'une autre entreprise suffirait à en
+// lire tout l'historique de cotation).
+const getHistoriqueByRisque = async (risqueId, entrepriseId) => {
+  const risque = await prisma.risque.findFirst({ where: { id: risqueId, site: { entrepriseId } } });
+  if (!risque) throw new ErreurMetier("Risque introuvable.", 404);
+  return getHistorique(risqueId);
+};
+
+// ── Révision annuelle du DUERP ───────────────────────────────────────────────
+//
+// Obligation légale : le DUERP doit être révisé au moins une fois par an (ou à
+// chaque changement significatif). On ne stocke qu'une seule date par
+// entreprise (dernière révision formelle) ; l'échéance est dérivée à la
+// lecture (+ 1 an), jamais recalculée/stockée pour rester toujours exacte.
+const UN_AN_MS = 365 * 24 * 60 * 60 * 1000;
+
+const getStatutRevision = async (entrepriseId) => {
+  const entreprise = await prisma.entreprise.findUnique({
+    where: { id: entrepriseId },
+    select: { dateDerniereRevisionDuerp: true },
+  });
+
+  const dateDerniereRevision = entreprise?.dateDerniereRevisionDuerp ?? null;
+  const dateProchaineRevision = dateDerniereRevision
+    ? new Date(dateDerniereRevision.getTime() + UN_AN_MS)
+    : null;
+  const enRetard = !dateProchaineRevision || dateProchaineRevision.getTime() < Date.now();
+
+  return { dateDerniereRevision, dateProchaineRevision, enRetard };
+};
+
+// Marque le DUERP comme révisé aujourd'hui — repousse l'échéance d'un an.
+const marquerRevise = async (entrepriseId) => {
+  await prisma.entreprise.update({
+    where: { id: entrepriseId },
+    data: { dateDerniereRevisionDuerp: new Date() },
+  });
+  return getStatutRevision(entrepriseId);
 };
 
 module.exports = {
@@ -207,4 +274,7 @@ module.exports = {
   deleteRisque,
   getMatrice,
   genererActionDepuisRisque,
+  getHistoriqueByRisque,
+  getStatutRevision,
+  marquerRevise,
 };

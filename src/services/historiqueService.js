@@ -23,6 +23,29 @@ const getHistoriqueByIncident = async (incidentId) => {
   });
 };
 
+// ── Piste d'audit DUERP ──────────────────────────────────────────────────────
+//
+// Même principe que l'historique des incidents : une entrée immuable par
+// changement (création, cotation, mesures, génération d'action), nécessaire à
+// la traçabilité des versions successives du DUERP exigée par le Code du travail.
+const enregistrerRisque = async (risqueId, auteurId, action, details = null) => {
+  try {
+    return await prisma.historiqueRisque.create({
+      data: { risqueId, auteurId, action, details },
+    });
+  } catch (err) {
+    console.error("[HISTORIQUE RISQUE] Échec enregistrement :", err.message);
+  }
+};
+
+const getHistoriqueByRisque = async (risqueId) => {
+  return await prisma.historiqueRisque.findMany({
+    where:   { risqueId },
+    include: { auteur: { select: { id: true, nom: true, prenom: true } } },
+    orderBy: { dateAction: "desc" },
+  });
+};
+
 // ── Journal d'activité global ────────────────────────────────────────────────
 //
 // HistoriqueIncident n'a pas de champ "type" dédié : chaque entrée est un
@@ -90,4 +113,4 @@ const getHistoriqueGlobal = async (entrepriseId, { typeAction, auteurId, inciden
   };
 };
 
-module.exports = { enregistrer, getHistoriqueByIncident, getHistoriqueGlobal };
+module.exports = { enregistrer, getHistoriqueByIncident, getHistoriqueGlobal, enregistrerRisque, getHistoriqueByRisque };

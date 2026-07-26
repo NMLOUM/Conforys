@@ -31,6 +31,11 @@ model Entreprise {
   users     User[]
   sites Site[]
 
+  // Dernière date à laquelle le DUERP a été formellement révisé (obligation
+  // légale : révision au moins annuelle). Alimente le calcul de l'échéance
+  // de la prochaine révision (dateDerniereRevisionDuerp + 1 an).
+  dateDerniereRevisionDuerp DateTime? @map("date_derniere_revision_duerp")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -73,6 +78,8 @@ model User {
   attestations          Attestation[]
   // Relation : risques professionnels identifiés par cet utilisateur (DUERP)
   risquesIdentifies     Risque[]
+  // Relation : entrées d'historique DUERP dont cet utilisateur est l'auteur
+  historiqueRisques     HistoriqueRisque[] @relation("HistoriqueRisqueAuteur")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -655,8 +662,31 @@ model Risque {
   // Relation : actions de prévention générées à partir de ce risque
   actions ActionCorrective[]
 
+  // Relation : piste d'audit des modifications apportées à ce risque
+  historique HistoriqueRisque[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")
 
   @@map("risques")
+}
+
+// Piste d'audit immuable des changements apportés à un risque (création,
+// modification de cotation, mesures de prévention, génération d'action) —
+// même principe que HistoriqueIncident, nécessaire à la traçabilité exigée
+// du DUERP (obligation de conserver les versions successives du document).
+model HistoriqueRisque {
+  id     String @id @default(uuid())
+  risque Risque @relation(fields: [risqueId], references: [id], onDelete: Cascade)
+  risqueId String @map("risque_id")
+
+  auteur   User   @relation("HistoriqueRisqueAuteur", fields: [auteurId], references: [id])
+  auteurId String @map("auteur_id")
+
+  action  String  // Libellé métier libre : "Risque identifié", "Cotation modifiée : 8 → 4", "Mesures de prévention mises à jour", "Action de prévention générée"
+  details String?
+
+  dateAction DateTime @default(now()) @map("date_action")
+
+  @@map("historique_risques")
 }
