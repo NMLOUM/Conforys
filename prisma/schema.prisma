@@ -80,6 +80,8 @@ model User {
   risquesIdentifies     Risque[]
   // Relation : entrées d'historique DUERP dont cet utilisateur est l'auteur
   historiqueRisques     HistoriqueRisque[] @relation("HistoriqueRisqueAuteur")
+  // Relation : analyses de causes racines réalisées par cet utilisateur
+  analysesCauses        AnalyseCauses[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -165,6 +167,8 @@ model Incident {
   piecesJointes      PieceJointe[]
   // Relation : piste d'audit (suppression en cascade avec l'incident)
   historique         HistoriqueIncident[]
+  // Relation : analyse des causes racines (5 Pourquoi + Ishikawa), une seule par incident
+  analyseCauses      AnalyseCauses?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -242,6 +246,76 @@ model ActionCorrective {
   updatedAt DateTime @updatedAt      @map("updated_at")
 
   @@map("actions_correctives")
+}
+
+// ─────────────────────────────────────────────
+//  MODULE 2d : ANALYSE DES CAUSES RACINES (5 Pourquoi + Ishikawa 5M)
+// ─────────────────────────────────────────────
+
+// Une analyse par incident : recense le problème (l'effet), la cause racine
+// retenue à l'issue de l'analyse, et sert de parent aux causes Ishikawa et
+// aux étapes des 5 Pourquoi.
+model AnalyseCauses {
+  id          String    @id @default(uuid())
+  probleme    String                          // Pré-rempli avec incident.description à la création
+  causeRacine String?   @map("cause_racine")   // Renseignée à l'issue de l'analyse
+  valideLe    DateTime? @map("valide_le")      // Date de validation ("Valider l'analyse") — null tant que non validée
+  actionGenereeLe DateTime? @map("action_generee_le") // Empêche de générer deux fois l'action corrective depuis la même analyse
+
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  incidentId String   @unique @map("incident_id")
+
+  auteur   User   @relation(fields: [auteurId], references: [id])
+  auteurId String @map("auteur_id")
+
+  causesIshikawa CauseIshikawa[]
+  etapesPourquoi EtapePourquoi[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@map("analyses_causes")
+}
+
+// Catégories du diagramme d'Ishikawa (5M)
+enum Categorie5M {
+  MAIN_OEUVRE
+  MATERIEL
+  METHODE
+  MILIEU
+  MATIERE
+}
+
+// Une cause potentielle rattachée à l'une des 5 branches du diagramme
+// d'Ishikawa. `retenue` marque les causes cochées comme pertinentes par le
+// QHSE (mises en évidence côté frontend), sans en faire pour autant LA cause
+// racine (qui reste un champ texte libre sur AnalyseCauses.causeRacine).
+model CauseIshikawa {
+  id        String      @id @default(uuid())
+  categorie Categorie5M
+  libelle   String
+  retenue   Boolean     @default(false)
+
+  analyse   AnalyseCauses @relation(fields: [analyseId], references: [id], onDelete: Cascade)
+  analyseId String        @map("analyse_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("causes_ishikawa")
+}
+
+// Une étape de la cascade des "5 Pourquoi" (ordre 1 à 5). La dernière étape
+// renseignée représente la cause profonde, mise en évidence côté frontend.
+model EtapePourquoi {
+  id       String @id @default(uuid())
+  ordre    Int
+  question String
+  reponse  String
+
+  analyse   AnalyseCauses @relation(fields: [analyseId], references: [id], onDelete: Cascade)
+  analyseId String        @map("analyse_id")
+
+  @@map("etapes_pourquoi")
 }
 
 // ─────────────────────────────────────────────

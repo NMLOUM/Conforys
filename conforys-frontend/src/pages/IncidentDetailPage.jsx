@@ -6,6 +6,7 @@ import AppLayout from "../components/layouts/AppLayout";
 import Badge from "../components/ui/Badge";
 import { useRole } from "../hooks/useRole";
 import { useAuthStore } from "../store/authStore";
+import AnalyseCausesRacines from "../components/incidents/AnalyseCausesRacines";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -812,6 +813,11 @@ function IncidentDetailPage() {
             )}
           </div>
         )}
+      </div>
+
+      {/* ── Analyse des causes racines ── */}
+      <div className="bg-white border border-[#E2E8F0] rounded-lg p-5 mb-5">
+        <AnalyseCausesRacines incident={incident} peutGerer={isQhse} onActionCreee={chargerActions} />
       </div>
 
       {/* ── Actions correctives ── */}

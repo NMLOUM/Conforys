@@ -15,6 +15,10 @@ const { actionSchema } = require("../validators/actionValidator");
 const { getPiecesByIncident, addPieceJointe } = require("../controllers/pieceJointeController");
 const { pieceJointeSchema } = require("../validators/pieceJointeValidator");
 const { getHistorique } = require("../controllers/historiqueController");
+const {
+  getAnalyse, initialiserAnalyse, updateAnalyse, genererActionDepuisAnalyse,
+} = require("../controllers/analyseCausesController");
+const { updateAnalyseSchema } = require("../validators/analyseCausesValidator");
 
 // Lecture  →  tous les rôles authentifiés
 router.get("/",    protect, getAllIncidents);
@@ -60,6 +64,19 @@ router.post(
 
 // ── Piste d'audit (lecture seule — pas de PUT/DELETE) ─────────────────────────
 router.get("/:id/historique", protect, getHistorique);
+
+// ── Analyse des causes racines (5 Pourquoi + Ishikawa 5M) ─────────────────────
+// GET  /api/incidents/:id/analyse → lecture (tous les rôles ayant accès à l'incident)
+router.get("/:id/analyse", protect, getAnalyse);
+
+// POST /api/incidents/:id/analyse → initialise l'analyse (RESPONSABLE_QHSE)
+router.post("/:id/analyse", protect, authorize("RESPONSABLE_QHSE"), initialiserAnalyse);
+
+// PUT  /api/incidents/:id/analyse → met à jour l'analyse (RESPONSABLE_QHSE)
+router.put("/:id/analyse", protect, authorize("RESPONSABLE_QHSE"), validate(updateAnalyseSchema), updateAnalyse);
+
+// POST /api/incidents/:id/analyse/action → génère une action corrective depuis la cause racine (RESPONSABLE_QHSE)
+router.post("/:id/analyse/action", protect, authorize("RESPONSABLE_QHSE"), genererActionDepuisAnalyse);
 
 // ── Pièces jointes ────────────────────────────────────────────────────────────
 // GET  /api/incidents/:id/pieces-jointes → liste des pièces jointes d'un incident
