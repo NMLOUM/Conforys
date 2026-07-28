@@ -9,10 +9,17 @@ class ErreurMetier extends Error {
   }
 }
 
+// Include partagé : l'auteur de l'ajout, pour affichage (nom, initiales) et
+// pour la vérification de propriété à la suppression
+const INCLUDE_PIECE = {
+  ajoutePar: { select: { id: true, nom: true, prenom: true } },
+};
+
 // Récupère toutes les pièces jointes d'un incident, triées par date d'ajout
 const getPiecesByIncident = async (incidentId, entrepriseId) => {
   return await prisma.pieceJointe.findMany({
     where: { incidentId, incident: { declarePar: { entrepriseId } } },
+    include: INCLUDE_PIECE,
     orderBy: { dateAjout: "desc" },
   });
 };
@@ -24,21 +31,32 @@ const addPieceJointe = async (incidentId, data, auteurId, entrepriseId) => {
 
   const piece = await prisma.pieceJointe.create({
     data: {
-      url:       data.url,
-      nom:       data.nom  || null,
-      type:      data.type || "IMAGE",
+      url:         data.url,
+      nom:         data.nom  || null,
+      type:        data.type || "IMAGE",
+      taille:      data.taille ?? null,
       incidentId,
+      ajouteParId: auteurId,
     },
+    include: INCLUDE_PIECE,
   });
   await enregistrer(incidentId, auteurId, "Photo ajoutée", data.nom || "sans nom");
   return piece;
 };
 
 // Supprime une pièce jointe (le fichier distant sur ImgBB n'est pas supprimé —
-// ImgBB ne fournit pas d'API de suppression publique sans clé de suppression)
-const deletePieceJointe = async (id, entrepriseId) => {
+// ImgBB ne fournit pas d'API de suppression publique sans clé de suppression).
+// Autorisé pour RESPONSABLE_QHSE/ADMIN, ou pour l'utilisateur qui l'a ajoutée.
+const deletePieceJointe = async (id, entrepriseId, demandeur) => {
   const piece = await prisma.pieceJointe.findFirst({ where: { id, incident: { declarePar: { entrepriseId } } } });
   if (!piece) throw new ErreurMetier("Pièce jointe introuvable.", 404);
+
+  const estGestionnaire = demandeur.role === "RESPONSABLE_QHSE" || demandeur.role === "ADMIN";
+  const estAuteur = piece.ajouteParId === demandeur.userId;
+  if (!estGestionnaire && !estAuteur) {
+    throw new ErreurMetier("Vous ne pouvez supprimer que vos propres pièces jointes.", 403);
+  }
+
   return await prisma.pieceJointe.delete({ where: { id } });
 };
 

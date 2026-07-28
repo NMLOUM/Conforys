@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
+import { Lock, FileText, Send, Download } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import Badge from "../components/ui/Badge";
 import { useRole } from "../hooks/useRole";
 import { useAuthStore } from "../store/authStore";
-import AnalyseCausesRacines from "../components/incidents/AnalyseCausesRacines";
+import AnalyseCausesApercu from "../components/incidents/AnalyseCausesApercu";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -69,6 +70,117 @@ function Spinner({ size = 4 }) {
 const inputCls =
   "w-full px-3 py-2.5 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#1E293B]" +
   " placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D2B4E]/30 focus:border-[#0D2B4E] transition";
+
+const formatTaille = (octets) => {
+  if (!octets) return null;
+  if (octets < 1024) return `${octets} o`;
+  if (octets < 1024 * 1024) return `${Math.round(octets / 1024)} Ko`;
+  return `${(octets / 1024 / 1024).toFixed(1)} Mo`;
+};
+
+const COULEUR_PRIORITE = { FAIBLE: "#94A3B8", MOYEN: "#EA580C", ELEVE: "#DC2626", CRITIQUE: "#DC2626" };
+
+// ── Action corrective — présentation compacte (encart Actions correctives) ───
+
+function ActionCorrectiveItem({ action, isQhse, enSuppression, onCloturer, onModifier, onSupprimer }) {
+  const enRetard = estEnRetard(action);
+  const peutAgir = isQhse && action.statut !== "TERMINE" && action.statut !== "ANNULE";
+  return (
+    <div className="p-3 rounded-md hover:bg-[#F8FAFC] transition-colors">
+      <div className="flex items-start gap-2.5">
+        <span className="w-2 h-2 rounded-full mt-1.5 shrink-0"
+          style={{ backgroundColor: COULEUR_PRIORITE[action.priorite] || "#94A3B8" }} />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-[#1E293B] line-clamp-2">{action.description}</p>
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            <Badge variant={action.statut} />
+            {enRetard && <Badge variant="EN_RETARD" />}
+            <span className="text-xs text-[#64748B]">
+              {action.responsable ? `${action.responsable.prenom} ${action.responsable.nom}` : "—"}
+              {action.dateLimite && ` · éch. ${new Date(action.dateLimite).toLocaleDateString("fr-FR")}`}
+            </span>
+          </div>
+          {peutAgir && (
+            <div className="flex items-center gap-3 mt-2">
+              <button type="button" onClick={onCloturer} className="text-xs font-semibold" style={{ color: "#2E7D32" }}>
+                Clôturer
+              </button>
+              <button type="button" onClick={onModifier} className="text-xs font-medium text-[#475569] hover:text-[#0D2B4E] transition-colors">
+                Modifier
+              </button>
+            </div>
+          )}
+        </div>
+        {isQhse && (
+          <button type="button" onClick={onSupprimer} disabled={enSuppression} title="Supprimer définitivement"
+            className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-[#DC2626] hover:bg-red-50 transition-colors disabled:opacity-40 text-xs">
+            {enSuppression ? <Spinner size={3} /> : "✕"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Pièce jointe — ligne bandeau (nom / taille / date) ────────────────────────
+
+function PieceJointeRow({ piece, peutSupprimer, enSuppression, onSupprimer }) {
+  const taille = formatTaille(piece.taille);
+  return (
+    <div className="flex items-center gap-3 p-2.5 rounded-md border border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors">
+      <a href={piece.url} target="_blank" rel="noopener noreferrer"
+        className="w-9 h-9 rounded-md overflow-hidden border border-[#E2E8F0] shrink-0 bg-[#F8FAFC] flex items-center justify-center">
+        {piece.type === "DOCUMENT"
+          ? <FileText size={15} color="#64748B" />
+          : <img src={piece.url} alt="" className="w-full h-full object-cover" />}
+      </a>
+      <div className="flex-1 min-w-0">
+        <a href={piece.url} target="_blank" rel="noopener noreferrer"
+          className="text-sm text-[#1E293B] hover:text-[#0D2B4E] transition-colors truncate block">
+          {piece.nom || "Fichier"}
+        </a>
+        <p className="text-xs text-[#94A3B8]">
+          {taille && `${taille} · `}
+          {new Date(piece.dateAjout).toLocaleDateString("fr-FR")}
+          {piece.ajoutePar && ` · ${piece.ajoutePar.prenom} ${piece.ajoutePar.nom}`}
+        </p>
+      </div>
+      {peutSupprimer && (
+        <button type="button" onClick={onSupprimer} disabled={enSuppression} title="Supprimer"
+          className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-[#DC2626] hover:bg-red-50 transition-colors disabled:opacity-40 text-xs">
+          {enSuppression ? <Spinner size={3} /> : "✕"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Commentaire — ligne du fil de discussion ──────────────────────────────────
+
+function CommentaireItem({ commentaire }) {
+  const initiales = `${commentaire.auteur?.prenom?.[0] || ""}${commentaire.auteur?.nom?.[0] || ""}`.toUpperCase();
+  return (
+    <div className="flex items-start gap-2.5">
+      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+        style={{ backgroundColor: "#0D2B4E" }}>
+        {initiales || "?"}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-xs font-semibold text-[#1E293B]">
+            {commentaire.auteur ? `${commentaire.auteur.prenom} ${commentaire.auteur.nom}` : "Utilisateur"}
+          </p>
+          <p className="text-[10px] text-[#94A3B8]">
+            {new Date(commentaire.createdAt).toLocaleString("fr-FR", {
+              day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+            })}
+          </p>
+        </div>
+        <p className="text-sm text-[#475569] mt-0.5 whitespace-pre-wrap">{commentaire.contenu}</p>
+      </div>
+    </div>
+  );
+}
 
 // ── Modale "Ajouter une action corrective" ────────────────────────────────────
 
@@ -436,11 +548,12 @@ function IncidentDetailPage() {
   const user = useAuthStore((s) => s.user);
 
   // Données
-  const [incident,   setIncident]   = useState(null);
-  const [actions,    setActions]    = useState([]);
-  const [pieces,     setPieces]     = useState([]);
-  const [historique, setHistorique] = useState([]);
-  const [users,      setUsers]      = useState([]);
+  const [incident,     setIncident]     = useState(null);
+  const [actions,      setActions]      = useState([]);
+  const [pieces,       setPieces]       = useState([]);
+  const [historique,   setHistorique]   = useState([]);
+  const [commentaires, setCommentaires] = useState([]);
+  const [users,        setUsers]        = useState([]);
   const [chargement, setChargement] = useState(true);
   const [telechargementPdf, setTelechargementPdf] = useState(false);
   const [erreurPage, setErreurPage] = useState("");
@@ -461,8 +574,9 @@ function IncidentDetailPage() {
   const [uploads,         setUploads]         = useState([]);
   // IDs de pièces en cours de suppression
   const [suppressionIds,  setSuppIds]         = useState(new Set());
-  // Section historique repliée par défaut
-  const [showHistorique,  setShowHistorique]  = useState(false);
+  // Espace collaboratif — commentaires
+  const [nouveauCommentaire, setNouveauCommentaire] = useState("");
+  const [envoiCommentaire,   setEnvoiCommentaire]   = useState(false);
 
   useEffect(() => {
     document.title = "CONFORYS — Détail incident";
@@ -481,14 +595,16 @@ function IncidentDetailPage() {
       setIncident(resInc.data.data);
 
       // Chargement non-bloquant des sous-ressources
-      const [resAct, resPieces, resHist] = await Promise.allSettled([
+      const [resAct, resPieces, resHist, resComm] = await Promise.allSettled([
         api.get(`/incidents/${id}/actions`),
         api.get(`/incidents/${id}/pieces-jointes`),
         api.get(`/incidents/${id}/historique`),
+        api.get(`/incidents/${id}/commentaires`),
       ]);
       if (resAct.status    === "fulfilled") setActions(resAct.value.data.data      || []);
       if (resPieces.status === "fulfilled") setPieces(resPieces.value.data.data    || []);
       if (resHist.status   === "fulfilled") setHistorique(resHist.value.data.data  || []);
+      if (resComm.status   === "fulfilled") setCommentaires(resComm.value.data.data || []);
     } catch (e) {
       setErreurPage("Impossible de charger l'incident.");
     } finally {
@@ -604,9 +720,10 @@ function IncidentDetailPage() {
 
         // Étape 2 : enregistrement de l'URL en base via l'API
         await api.post(`/incidents/${id}/pieces-jointes`, {
-          url:  jsonImgBB.data.url,
-          nom:  fichier.name,
-          type: "IMAGE",
+          url:    jsonImgBB.data.url,
+          nom:    fichier.name,
+          type:   "IMAGE",
+          taille: fichier.size,
         });
 
         // Suppression de l'indicateur d'envoi et rafraîchissement
@@ -640,6 +757,27 @@ function IncidentDetailPage() {
 
   const retirerErreurUpload = (tempId) =>
     setUploads((prev) => prev.filter((u) => u.id !== tempId));
+
+  // ── Commentaires (espace collaboratif) ─────────────────────────────────────
+
+  const chargerCommentaires = async () => {
+    const res = await api.get(`/incidents/${id}/commentaires`);
+    setCommentaires(res.data.data || []);
+  };
+
+  const envoyerCommentaire = async () => {
+    if (!nouveauCommentaire.trim()) return;
+    setEnvoiCommentaire(true);
+    try {
+      await api.post(`/incidents/${id}/commentaires`, { contenu: nouveauCommentaire.trim() });
+      setNouveauCommentaire("");
+      await chargerCommentaires();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de l'envoi du commentaire.");
+    } finally {
+      setEnvoiCommentaire(false);
+    }
+  };
 
   const uploadsEnCours = uploads.filter((u) => u.statut === "envoi");
   const uploadsErreur  = uploads.filter((u) => u.statut === "erreur");
@@ -675,30 +813,26 @@ function IncidentDetailPage() {
     <AppLayout titre={`Incident ${incident.numeroReference}`}>
 
       {/* ── Fil d'Ariane ── */}
-      <div className="mb-5">
-        <button onClick={() => navigate("/incidents")}
-          className="text-xs text-[#64748B] hover:text-[#0D2B4E] transition-colors flex items-center gap-1">
-          ← Retour aux incidents
-        </button>
+      <div className="flex items-center gap-1.5 mb-4 text-xs text-[#64748B]">
+        <Link to="/incidents" className="hover:text-[#0D2B4E] transition-colors">Incidents</Link>
+        <span>/</span>
+        <span className="text-[#1E293B] font-medium">{incident.numeroReference}</span>
       </div>
 
-      {/* ── En-tête ── */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
+      {/* ── En-tête (sans cadre) ── */}
+      <div className="flex items-start justify-between mb-6 pb-5 border-b border-[#E2E8F0]">
+        <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-xl font-bold text-[#0D2B4E]">{incident.numeroReference}</h1>
-          <p className="text-sm text-[#64748B] mt-0.5">{LABELS_TYPE[incident.type] ?? incident.type}</p>
-        </div>
-        <div className="flex items-center gap-2">
           <Badge variant={incident.gravite} />
           <Badge variant={incident.statut} />
-          {(isQhse || isAdmin) && (
-            <button onClick={telechargerRapportPdf} disabled={telechargementPdf}
-              className="px-3 py-1.5 text-xs font-semibold text-white rounded-md disabled:opacity-50 transition-colors"
-              style={{ backgroundColor: "#0D2B4E" }}>
-              {telechargementPdf ? "Génération…" : "Télécharger le rapport PDF"}
-            </button>
-          )}
         </div>
+        {(isQhse || isAdmin) && (
+          <button onClick={telechargerRapportPdf} disabled={telechargementPdf}
+            className="shrink-0 flex items-center gap-1.5 text-sm font-semibold text-[#0D2B4E] hover:underline disabled:opacity-50 transition-colors">
+            <Download size={14} strokeWidth={2.2} />
+            {telechargementPdf ? "Génération…" : "Télécharger le PDF"}
+          </button>
+        )}
       </div>
 
       {/* ── Bandeau workflow ── */}
@@ -754,15 +888,15 @@ function IncidentDetailPage() {
         );
       })()}
 
-      {/* ── Fiche incident ── */}
-      <div className="bg-white border border-[#E2E8F0] rounded-lg p-5 mb-5">
-        <h2 className="text-sm font-semibold text-[#1E293B] mb-4">Informations</h2>
-        <div className="grid grid-cols-3 gap-x-6 gap-y-4 mb-4">
-          <LigneInfo label="Date de l'incident">{dateIncident}</LigneInfo>
+      {/* ── Informations (sans cadre) ── */}
+      <div className="mb-6 pb-6 border-b border-[#E2E8F0]">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 mb-5">
+          <LigneInfo label="Type">{LABELS_TYPE[incident.type] ?? incident.type}</LigneInfo>
           <LigneInfo label="Site">{incident.site?.nom}</LigneInfo>
-          <LigneInfo label="Déclaré par">
+          <LigneInfo label="Déclarant">
             {incident.declarePar ? `${incident.declarePar.prenom} ${incident.declarePar.nom}` : "—"}
           </LigneInfo>
+          <LigneInfo label="Date">{dateIncident}</LigneInfo>
           {incident.adresseLisible && (
             <LigneInfo label="Lieu précis">{incident.adresseLisible}</LigneInfo>
           )}
@@ -777,23 +911,24 @@ function IncidentDetailPage() {
             </LigneInfo>
           )}
         </div>
-        <div className="pt-4 border-t border-[#F1F5F9] space-y-3">
-          <LigneInfo label="Description">
-            <span className="leading-relaxed">{incident.description}</span>
-          </LigneInfo>
-          {incident.motifRejet && (
-            <div className="p-3 rounded-md bg-red-50 border border-red-200">
-              <p className="text-[10px] font-semibold text-[#DC2626] uppercase tracking-wide mb-1">
-                Motif de rejet
-              </p>
-              <p className="text-sm text-[#DC2626]">{incident.motifRejet}</p>
-            </div>
-          )}
+
+        <div>
+          <p className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide mb-1">Description</p>
+          <p className="text-sm text-[#1E293B] leading-relaxed">{incident.description}</p>
         </div>
+
+        {incident.motifRejet && (
+          <div className="mt-4 p-3 rounded-md bg-red-50 border border-red-200">
+            <p className="text-[10px] font-semibold text-[#DC2626] uppercase tracking-wide mb-1">
+              Motif de rejet
+            </p>
+            <p className="text-sm text-[#DC2626]">{incident.motifRejet}</p>
+          </div>
+        )}
 
         {/* Photo principale + GPS */}
         {(incident.photoUrl || incident.latitude) && (
-          <div className="mt-4 pt-4 border-t border-[#F1F5F9] flex items-start gap-6">
+          <div className="mt-5 flex items-start gap-6">
             {incident.photoUrl && (
               <div>
                 <p className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide mb-1.5">Photo</p>
@@ -815,254 +950,75 @@ function IncidentDetailPage() {
         )}
       </div>
 
-      {/* ── Analyse des causes racines ── */}
-      <div className="bg-white border border-[#E2E8F0] rounded-lg p-5 mb-5">
-        <AnalyseCausesRacines incident={incident} peutGerer={isQhse} onActionCreee={chargerActions} />
-      </div>
-
-      {/* ── Actions correctives ── */}
-      <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden mb-5">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2E8F0]">
-          <div>
-            <h2 className="text-sm font-semibold text-[#1E293B]">Actions correctives</h2>
-            <p className="text-xs text-[#64748B] mt-0.5">{actions.length} action(s)</p>
-          </div>
-          {isQhse && (
-            <button onClick={() => setShowAjout(true)}
-              className="px-3 py-1.5 text-xs font-semibold text-white rounded-md transition-colors"
-              style={{ backgroundColor: "#0D2B4E" }}>
-              + Ajouter une action
-            </button>
-          )}
-        </div>
-        <table className="w-full text-sm">
-          <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
-            <tr>
-              {["Description", "Priorité", "Statut", "Responsable", "Date limite", ""].map((h) => (
-                <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#F1F5F9]">
-            {actions.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-[#94A3B8] text-sm">
-                  Aucune action corrective enregistrée
-                </td>
-              </tr>
-            ) : (
-              actions.map((action) => {
-                const peutAgir      = isQhse && action.statut !== "TERMINE" && action.statut !== "ANNULE";
-                const enRetard      = estEnRetard(action);
-                const enSuppression = suppressionActionIds.has(action.id);
-                return (
-                  <tr key={action.id} className="hover:bg-[#F8FAFC] transition-colors">
-                    <td className="px-4 py-3 text-[#1E293B] max-w-xs">
-                      <p className="line-clamp-2">{action.description}</p>
-                      {action.commentaireCloture && (
-                        <p className="mt-1 text-xs text-[#64748B] italic line-clamp-1">
-                          Clôture : {action.commentaireCloture}
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3"><Badge variant={action.priorite} /></td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-1">
-                        <Badge variant={action.statut} />
-                        {enRetard && <Badge variant="EN_RETARD" />}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-[#475569] whitespace-nowrap">
-                      {action.responsable ? `${action.responsable.prenom} ${action.responsable.nom}` : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-[#64748B] whitespace-nowrap">
-                      {action.dateLimite ? new Date(action.dateLimite).toLocaleDateString("fr-FR") : "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {peutAgir && (
-                          <>
-                            <button onClick={() => setActionCloture(action)}
-                              className="px-2.5 py-1 text-xs font-semibold rounded-md text-white transition-colors"
-                              style={{ backgroundColor: "#2E7D32" }}>
-                              Clôturer
-                            </button>
-                            <button onClick={() => setActionModif(action)}
-                              className="px-2.5 py-1 text-xs font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F1F5F9] transition-colors">
-                              Modifier
-                            </button>
-                          </>
-                        )}
-                        {isQhse && (
-                          <button onClick={() => supprimerAction(action.id)} disabled={enSuppression}
-                            title="Supprimer définitivement"
-                            className="w-6 h-6 flex items-center justify-center rounded text-[#DC2626] hover:bg-red-50 transition-colors disabled:opacity-40 text-xs">
-                            {enSuppression ? <Spinner size={3} /> : "✕"}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
+      {/* ── Actions correctives + Analyse des causes (côte à côte) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6 items-start">
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-sm font-semibold text-[#1E293B]">Actions correctives</h2>
+              <p className="text-xs text-[#64748B] mt-0.5">{actions.length} action(s)</p>
+            </div>
+            {isQhse && (
+              <button onClick={() => setShowAjout(true)}
+                className="shrink-0 px-3 py-1.5 text-xs font-semibold text-white rounded-md transition-colors"
+                style={{ backgroundColor: "#0D2B4E" }}>
+                + Ajouter
+              </button>
             )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* ── Pièces jointes ── */}
-      <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2E8F0]">
-          <div>
-            <h2 className="text-sm font-semibold text-[#1E293B]">Pièces jointes</h2>
-            <p className="text-xs text-[#64748B] mt-0.5">
-              {pieces.length} fichier(s) — JPG, PNG, WebP · max 5 Mo
-            </p>
           </div>
-          {/* Label cliquable autour de l'input file caché */}
-          <label
-            className="px-3 py-1.5 text-xs font-semibold text-white rounded-md cursor-pointer transition-colors select-none"
-            style={{ backgroundColor: "#0D2B4E" }}
-          >
-            + Ajouter
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              multiple
-              onChange={handleFichiers}
-              className="sr-only"
-            />
-          </label>
-        </div>
-
-        <div className="p-5">
-          {/* Indicateurs d'uploads en cours */}
-          {uploadsEnCours.length > 0 && (
-            <div className="mb-4 space-y-2">
-              {uploadsEnCours.map((u) => (
-                <div key={u.id} className="flex items-center gap-2.5 text-xs text-[#64748B]">
-                  <Spinner size={3} />
-                  <span className="truncate max-w-xs">{u.nom}</span>
-                  <span className="text-[#94A3B8]">Envoi en cours…</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Erreurs d'upload — dismissibles */}
-          {uploadsErreur.length > 0 && (
-            <div className="mb-4 space-y-2">
-              {uploadsErreur.map((u) => (
-                <div key={u.id}
-                  className="flex items-center justify-between text-xs px-3 py-2 rounded-md bg-red-50 border border-red-100">
-                  <span className="text-[#DC2626] truncate max-w-sm">
-                    <span className="font-medium">{u.nom}</span> — {u.erreur}
-                  </span>
-                  <button onClick={() => retirerErreurUpload(u.id)}
-                    className="ml-3 text-[#94A3B8] hover:text-[#64748B] shrink-0">
-                    &#x2715;
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Grille d'images */}
-          {pieces.length === 0 && uploadsEnCours.length === 0 ? (
-            <p className="text-sm text-[#94A3B8] text-center py-8">
-              Aucune pièce jointe — cliquez sur « + Ajouter » pour en ajouter une.
-            </p>
-          ) : (
-            <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
-              {pieces.map((piece) => {
-                const enSuppression = suppressionIds.has(piece.id);
-                return (
-                  <div key={piece.id} className="group relative">
-                    {/* Miniature cliquable */}
-                    <a href={piece.url} target="_blank" rel="noopener noreferrer"
-                      className="block w-full h-20 rounded-md overflow-hidden border border-[#E2E8F0]">
-                      <img src={piece.url} alt={piece.nom || "Pièce jointe"}
-                        className="w-full h-full object-cover hover:opacity-90 transition" />
-                    </a>
-
-                    {/* Nom du fichier */}
-                    <p className="mt-1 text-[10px] text-[#64748B] truncate" title={piece.nom || ""}>
-                      {piece.nom || "image"}
-                    </p>
-
-                    {/* Bouton suppression — visible au survol pour QHSE/ADMIN */}
-                    {isQhse && (
-                      <button
-                        onClick={() => supprimerPiece(piece.id)}
-                        disabled={enSuppression}
-                        title="Supprimer"
-                        className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center rounded text-[10px]
-                          bg-[#DC2626] text-white opacity-0 group-hover:opacity-100 transition-opacity
-                          disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        {enSuppression ? (
-                          <div className="w-2.5 h-2.5 border border-white border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          "✕"
-                        )}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Piste d'audit ─────────────────────────────────────────────────── */}
-      <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden mb-5">
-        {/* En-tête cliquable — ouvre/ferme la section */}
-        <button
-          type="button"
-          onClick={() => setShowHistorique((v) => !v)}
-          className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#F8FAFC] transition-colors"
-        >
-          <div className="text-left">
-            <h2 className="text-sm font-semibold text-[#1E293B]">
-              Historique
-              {historique.length > 0 && (
-                <span className="ml-2 text-[11px] font-normal text-[#94A3B8]">
-                  {historique.length} entrée{historique.length > 1 ? "s" : ""}
-                </span>
-              )}
-            </h2>
-            <p className="text-xs text-[#64748B] mt-0.5">Piste d'audit — lecture seule</p>
-          </div>
-          {/* Chevron animé */}
-          <svg
-            className={`w-4 h-4 text-[#94A3B8] shrink-0 transition-transform duration-200 ${showHistorique ? "rotate-180" : ""}`}
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
-
-        {/* Corps — visible seulement si showHistorique */}
-        {showHistorique && (
-          <>
-            <div className="border-t border-[#E2E8F0]" />
-            {historique.length === 0 ? (
-              <p className="px-5 py-8 text-sm text-[#94A3B8] text-center">Aucune entrée d'historique.</p>
+          <div className="divide-y divide-[#E2E8F0] overflow-y-auto" style={{ maxHeight: 420 }}>
+            {actions.length === 0 ? (
+              <p className="py-10 text-center text-[#94A3B8] text-sm">
+                Aucune action corrective enregistrée
+              </p>
             ) : (
-              <ol className="px-5 py-4">
+              actions.map((action) => (
+                <ActionCorrectiveItem
+                  key={action.id}
+                  action={action}
+                  isQhse={isQhse}
+                  enSuppression={suppressionActionIds.has(action.id)}
+                  onCloturer={() => setActionCloture(action)}
+                  onModifier={() => setActionModif(action)}
+                  onSupprimer={() => supprimerAction(action.id)}
+                />
+              ))
+            )}
+          </div>
+        </div>
+
+        <AnalyseCausesApercu incident={incident} peutGerer={isQhse} />
+      </div>
+
+      {/* ── Zone basse : Historique + Espace collaboratif ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8">
+
+        {/* Historique — lecture seule, immuable */}
+        <div className="lg:pr-8 lg:border-r lg:border-[#E2E8F0]">
+          <h2 className="text-sm font-semibold text-[#1E293B]">
+            Historique
+            {historique.length > 0 && (
+              <span className="ml-2 text-[11px] font-normal text-[#94A3B8]">
+                {historique.length} entrée{historique.length > 1 ? "s" : ""}
+              </span>
+            )}
+          </h2>
+          <p className="flex items-center gap-1 text-[11px] text-[#94A3B8] mt-0.5 mb-4">
+            <Lock size={10} /> Immuable — preuve de traçabilité
+          </p>
+          <div className="overflow-y-auto" style={{ maxHeight: 520 }}>
+            {historique.length === 0 ? (
+              <p className="text-sm text-[#94A3B8] py-8">Aucune entrée d'historique.</p>
+            ) : (
+              <ol>
                 {historique.map((entree, i) => {
                   const isLast = i === historique.length - 1;
                   return (
-                    <li key={entree.id} className="flex gap-4">
-                      {/* Point + ligne verticale */}
+                    <li key={entree.id} className="flex gap-3">
                       <div className="flex flex-col items-center shrink-0">
                         <div className="w-2.5 h-2.5 rounded-full bg-[#0D2B4E] border-2 border-white ring-1 ring-[#CBD5E1] mt-1 shrink-0" />
                         {!isLast && <div className="w-px flex-1 bg-[#E2E8F0] my-1" />}
                       </div>
-                      {/* Contenu */}
                       <div className="pb-4">
                         <p className="text-sm font-medium text-[#1E293B] leading-snug">{entree.action}</p>
                         {entree.details && (
@@ -1082,8 +1038,106 @@ function IncidentDetailPage() {
                 })}
               </ol>
             )}
-          </>
-        )}
+          </div>
+        </div>
+
+        {/* Espace collaboratif — pièces jointes + commentaires */}
+        <div>
+          <h2 className="text-sm font-semibold text-[#1E293B] mb-4">Espace collaboratif</h2>
+
+          {/* Pièces jointes */}
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide">
+              Pièces jointes ({pieces.length})
+            </p>
+            <label
+              className="px-3 py-1.5 text-xs font-semibold text-white rounded-md cursor-pointer transition-colors select-none"
+              style={{ backgroundColor: "#0D2B4E" }}
+            >
+              + Ajouter
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                onChange={handleFichiers}
+                className="sr-only"
+              />
+            </label>
+          </div>
+
+          {uploadsEnCours.length > 0 && (
+            <div className="mb-3 space-y-2">
+              {uploadsEnCours.map((u) => (
+                <div key={u.id} className="flex items-center gap-2.5 text-xs text-[#64748B]">
+                  <Spinner size={3} />
+                  <span className="truncate max-w-xs">{u.nom}</span>
+                  <span className="text-[#94A3B8]">Envoi en cours…</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {uploadsErreur.length > 0 && (
+            <div className="mb-3 space-y-2">
+              {uploadsErreur.map((u) => (
+                <div key={u.id}
+                  className="flex items-center justify-between text-xs px-3 py-2 rounded-md bg-red-50 border border-red-100">
+                  <span className="text-[#DC2626] truncate max-w-sm">
+                    <span className="font-medium">{u.nom}</span> — {u.erreur}
+                  </span>
+                  <button onClick={() => retirerErreurUpload(u.id)}
+                    className="ml-3 text-[#94A3B8] hover:text-[#64748B] shrink-0">
+                    &#x2715;
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {pieces.length === 0 && uploadsEnCours.length === 0 ? (
+            <p className="text-sm text-[#94A3B8] py-3">
+              Aucune pièce jointe — cliquez sur « + Ajouter » pour en ajouter une.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {pieces.map((piece) => (
+                <PieceJointeRow
+                  key={piece.id}
+                  piece={piece}
+                  peutSupprimer={isQhse || piece.ajouteParId === user?.id}
+                  enSuppression={suppressionIds.has(piece.id)}
+                  onSupprimer={() => supprimerPiece(piece.id)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Commentaires */}
+          <div className="mt-6 pt-5 border-t border-[#E2E8F0]">
+            <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-3">
+              Commentaires ({commentaires.length})
+            </p>
+
+            {commentaires.length === 0 ? (
+              <p className="text-sm text-[#94A3B8] mb-4">Aucun commentaire pour le moment.</p>
+            ) : (
+              <div className="space-y-4 mb-4 overflow-y-auto" style={{ maxHeight: 340 }}>
+                {commentaires.map((c) => <CommentaireItem key={c.id} commentaire={c} />)}
+              </div>
+            )}
+
+            <div className="flex items-start gap-2">
+              <textarea value={nouveauCommentaire} onChange={(e) => setNouveauCommentaire(e.target.value)}
+                rows={2} placeholder="Ajouter un commentaire…"
+                className={`${inputCls} resize-none flex-1`} />
+              <button type="button" onClick={envoyerCommentaire} disabled={envoiCommentaire || !nouveauCommentaire.trim()}
+                className="shrink-0 flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-white rounded-md disabled:opacity-50 transition-colors"
+                style={{ backgroundColor: "#0D2B4E" }}>
+                <Send size={13} strokeWidth={2.2} /> Envoyer
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ── Modales ── */}

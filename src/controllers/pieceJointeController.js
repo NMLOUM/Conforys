@@ -24,7 +24,10 @@ const addPieceJointe = async (req, res) => {
 // DELETE /api/pieces-jointes/:id
 const deletePieceJointe = async (req, res) => {
   try {
-    await pieceJointeService.deletePieceJointe(req.params.id, req.user.entrepriseId);
+    await pieceJointeService.deletePieceJointe(req.params.id, req.user.entrepriseId, {
+      userId: req.user.userId,
+      role: req.user.role,
+    });
     res.status(200).json({ success: true, message: "Pièce jointe supprimée." });
   } catch (error) {
     handleErreur(res, error);

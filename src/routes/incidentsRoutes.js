@@ -14,6 +14,8 @@ const { getActionsByIncident, createAction } = require("../controllers/actionCon
 const { actionSchema } = require("../validators/actionValidator");
 const { getPiecesByIncident, addPieceJointe } = require("../controllers/pieceJointeController");
 const { pieceJointeSchema } = require("../validators/pieceJointeValidator");
+const { getCommentaires, addCommentaire } = require("../controllers/commentaireController");
+const { commentaireSchema } = require("../validators/commentaireValidator");
 const { getHistorique } = require("../controllers/historiqueController");
 const {
   getAnalyse, initialiserAnalyse, updateAnalyse, genererActionDepuisAnalyse,
@@ -89,5 +91,12 @@ router.post(
   validate(pieceJointeSchema),
   addPieceJointe
 );
+
+// ── Commentaires (espace collaboratif) ────────────────────────────────────────
+// GET  /api/incidents/:id/commentaires → fil de discussion (tous les rôles ayant accès à l'incident)
+router.get("/:id/commentaires", protect, getCommentaires);
+
+// POST /api/incidents/:id/commentaires → ajouter un commentaire
+router.post("/:id/commentaires", protect, validate(commentaireSchema), addCommentaire);
 
 module.exports = router;

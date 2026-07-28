@@ -9,6 +9,7 @@ const pieceJointeSchema = z.object({
   type: z
     .enum(["IMAGE", "DOCUMENT"], { errorMap: () => ({ message: "Type invalide." }) })
     .optional(),
+  taille: z.coerce.number().int().positive().optional().or(z.null()),
 });
 
 module.exports = { pieceJointeSchema };

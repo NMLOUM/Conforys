@@ -82,6 +82,10 @@ model User {
   historiqueRisques     HistoriqueRisque[] @relation("HistoriqueRisqueAuteur")
   // Relation : analyses de causes racines réalisées par cet utilisateur
   analysesCauses        AnalyseCauses[]
+  // Relation : pièces jointes ajoutées par cet utilisateur (espace collaboratif)
+  piecesJointesAjoutees PieceJointe[] @relation("PiecesJointesAjoutees")
+  // Relation : commentaires postés par cet utilisateur (espace collaboratif)
+  commentaires          Commentaire[] @relation("CommentairesAuteur")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -169,6 +173,8 @@ model Incident {
   historique         HistoriqueIncident[]
   // Relation : analyse des causes racines (5 Pourquoi + Ishikawa), une seule par incident
   analyseCauses      AnalyseCauses?
+  // Relation : commentaires de l'espace collaboratif (suppression en cascade)
+  commentaires       Commentaire[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -332,14 +338,36 @@ model PieceJointe {
   url      String                              // URL hébergée sur ImgBB
   nom      String?                             // Nom original du fichier
   type     TypePieceJointe @default(IMAGE)
+  taille   Int?                                // Taille en octets, si connue (affichage espace collaboratif)
 
   // Relation : liée à un incident (suppression en cascade)
   incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
   incidentId String   @map("incident_id")
 
+  // Relation : utilisateur ayant ajouté la pièce — nécessaire pour autoriser
+  // sa propre suppression sans être QHSE/ADMIN (voir pieceJointeService)
+  ajoutePar   User?   @relation("PiecesJointesAjoutees", fields: [ajouteParId], references: [id])
+  ajouteParId String? @map("ajoute_par_id")
+
   dateAjout DateTime @default(now()) @map("date_ajout")
 
   @@map("pieces_jointes")
+}
+
+// ── Commentaires (espace collaboratif d'un incident) ─────────────────────────
+model Commentaire {
+  id      String @id @default(uuid())
+  contenu String
+
+  incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  incidentId String   @map("incident_id")
+
+  auteur   User   @relation("CommentairesAuteur", fields: [auteurId], references: [id])
+  auteurId String @map("auteur_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("commentaires")
 }
 
 // ─────────────────────────────────────────────
