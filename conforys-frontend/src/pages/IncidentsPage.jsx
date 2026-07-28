@@ -1,8 +1,9 @@
 import { useState, useEffect, Fragment } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
+import { Plus, AlertTriangle, ShieldAlert, CheckCircle2, Clock, Download } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import { useAuthStore } from "../store/authStore";
@@ -802,10 +803,44 @@ function BoutonsAction({ incident, user, isQhse, enCours, onAction, onRejeter })
   return null;
 }
 
+// ── Carte KPI (en-tête de la page) ───────────────────────────────────────────
+function CarteKpi({ icon: Icon, label, value, couleur = "#0D2B4E", alerte = false }) {
+  return (
+    <div
+      className="flex-1 min-w-[190px] p-4 bg-white border border-[#E2E8F0] rounded-lg flex items-center gap-3"
+      style={alerte ? { borderLeft: `3px solid ${couleur}` } : undefined}
+    >
+      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: `${couleur}1A` }}>
+        <Icon size={16} color={couleur} strokeWidth={2} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wide truncate">{label}</p>
+        <p className="text-xl font-bold leading-tight" style={{ color: couleur }}>{value}</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Avatar initiales (déclarant) ──────────────────────────────────────────────
+function AvatarInitiales({ prenom, nom }) {
+  if (!prenom && !nom) return <span className="text-[#94A3B8]">—</span>;
+  const initiales = `${prenom?.[0] ?? ""}${nom?.[0] ?? ""}`.toUpperCase();
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+        style={{ backgroundColor: "#0D2B4E" }}>
+        {initiales || "?"}
+      </div>
+      <span className="text-sm text-[#1E293B] truncate">{prenom} {nom}</span>
+    </div>
+  );
+}
+
 // ── Page principale ───────────────────────────────────────────────────────────
 
 function IncidentsPage() {
   const user = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
   const { isQhse } = useRole();
 
   const [incidents,      setIncidents]      = useState([]);
@@ -825,6 +860,11 @@ function IncidentsPage() {
   const [page,       setPage]       = useState(1);
   const [total,      setTotal]      = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+
+  // KPI d'en-tête — calculés à partir de données réelles (dashboard + actions
+  // + incidents clôturés), indépendamment de la pagination du tableau
+  const [kpi, setKpi] = useState({ ouverts: 0, critiques: 0, actionsCloturees: 0, delaiMoyen: null });
+  const [exportEnCours, setExportEnCours] = useState(false);
 
   useEffect(() => {
     document.title = "CONFORYS — Incidents";
@@ -850,8 +890,42 @@ function IncidentsPage() {
     }
   };
 
+  // Statistiques réelles des cartes KPI — appels en lecture seule, séparés du
+  // tableau paginé pour ne pas fausser les chiffres avec les seuls incidents
+  // affichés à l'écran.
+  const chargerKpi = async () => {
+    try {
+      const [resDashboard, resActions, resClotures] = await Promise.all([
+        api.get("/dashboard/incidents"),
+        api.get("/actions"),
+        api.get("/incidents", { params: { statut: "CLOS", limit: 500 } }),
+      ]);
+
+      const parStatut  = resDashboard.data.data?.parStatut  || [];
+      const parGravite = resDashboard.data.data?.parGravite || [];
+      const ouverts = parStatut
+        .filter((s) => s.statut === "OUVERT" || s.statut === "EN_COURS")
+        .reduce((somme, s) => somme + (s._count?.statut ?? 0), 0);
+      const critiques = parGravite.find((g) => g.gravite === "CRITIQUE")?._count?.gravite ?? 0;
+
+      const actionsCloturees = (resActions.data.data || [])
+        .filter((a) => a.incidentId && a.statut === "TERMINE").length;
+
+      const clotures = resClotures.data.data || [];
+      const delais = clotures
+        .filter((i) => i.dateCloture && i.dateDeclaration)
+        .map((i) => (new Date(i.dateCloture) - new Date(i.dateDeclaration)) / (1000 * 60 * 60 * 24));
+      const delaiMoyen = delais.length > 0 ? delais.reduce((a, b) => a + b, 0) / delais.length : null;
+
+      setKpi({ ouverts, critiques, actionsCloturees, delaiMoyen });
+    } catch (e) {
+      console.error("Erreur chargement KPI incidents:", e);
+    }
+  };
+
   useEffect(() => {
     charger();
+    chargerKpi();
     api.get("/sites").then((r) => setSites(r.data.data || [])).catch(() => {});
   }, []);
 
@@ -910,6 +984,48 @@ function IncidentsPage() {
     setIncidentRejet(null);
   };
 
+  // Export CSV — reprend les filtres actifs, récupère l'ensemble des
+  // incidents correspondants (pas seulement la page affichée) et génère le
+  // fichier entièrement côté client, sans nouvel endpoint.
+  const exporterCsv = async () => {
+    setExportEnCours(true);
+    try {
+      const params = { page: 1, limit: 1000 };
+      if (filtreStatut)  params.statut  = filtreStatut;
+      if (filtreType)    params.type    = filtreType;
+      if (filtreGravite) params.gravite = filtreGravite;
+      const res = await api.get("/incidents", { params });
+      const lignes = res.data.data || [];
+
+      const entetes = ["Référence", "Date", "Type", "Gravité", "Statut", "Déclarant", "Lieu"];
+      const echapper = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+      const corps = lignes.map((inc) => [
+        inc.numeroReference,
+        inc.dateIncident ? new Date(inc.dateIncident).toLocaleDateString("fr-FR") : "",
+        LABELS_TYPE[inc.type] ?? inc.type,
+        inc.gravite,
+        inc.statut,
+        inc.declarePar ? `${inc.declarePar.prenom} ${inc.declarePar.nom}` : "",
+        inc.adresseLisible || "",
+      ].map(echapper).join(","));
+      const csv = "﻿" + [entetes.map(echapper).join(","), ...corps].join("\r\n");
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = window.URL.createObjectURL(blob);
+      const lien = document.createElement("a");
+      lien.href = url;
+      lien.download = `incidents-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(lien);
+      lien.click();
+      lien.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error("Erreur lors de l'export des incidents.");
+    } finally {
+      setExportEnCours(false);
+    }
+  };
+
   const selectCls =
     "px-3 py-2 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#1E293B]" +
     " focus:outline-none focus:ring-2 focus:ring-[#0D2B4E]/30 focus:border-[#0D2B4E] transition";
@@ -918,18 +1034,29 @@ function IncidentsPage() {
 
   return (
     <AppLayout titre="Incidents">
-      {/* ── Barre supérieure ── */}
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-[#64748B]">
-          {chargement ? "Chargement…" : `${total} incident(s)`}
-        </p>
+      {/* ── En-tête ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <div>
+          <h1 className="text-xl font-bold text-[#0D2B4E]">Gestion des incidents</h1>
+          <p className="text-sm text-[#64748B] mt-0.5">Suivi des événements et risques QHSE</p>
+        </div>
         <button
           onClick={() => setShowWizard(true)}
-          className="px-4 py-2 text-sm font-semibold text-white rounded-md transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-md transition-colors"
           style={{ backgroundColor: "#0D2B4E" }}
         >
-          Nouvel incident
+          <Plus size={16} strokeWidth={2.2} />
+          Déclarer un incident
         </button>
+      </div>
+
+      {/* ── Cartes KPI ── */}
+      <div className="flex flex-wrap gap-3 mb-5">
+        <CarteKpi icon={AlertTriangle} label="Incidents ouverts" value={kpi.ouverts} />
+        <CarteKpi icon={ShieldAlert} label="Gravité critique" value={kpi.critiques} couleur="#DC2626" alerte />
+        <CarteKpi icon={CheckCircle2} label="Actions clôturées" value={kpi.actionsCloturees} couleur="#2E7D32" />
+        <CarteKpi icon={Clock} label="Délai de traitement moyen"
+          value={kpi.delaiMoyen != null ? `${kpi.delaiMoyen.toFixed(1)} j` : "—"} couleur="#475569" />
       </div>
 
       {/* ── Barre de filtres ── */}
@@ -979,6 +1106,19 @@ function IncidentsPage() {
             Réinitialiser les filtres
           </button>
         )}
+
+        <div className="ml-auto flex items-center gap-3">
+          <p className="text-xs text-[#94A3B8]">{chargement ? "Chargement…" : `${total} incident(s)`}</p>
+          <button
+            onClick={exporterCsv}
+            disabled={exportEnCours}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-md border disabled:opacity-50 transition-colors hover:bg-[#F8FAFC]"
+            style={{ borderColor: "#E2E8F0", color: "#0D2B4E" }}
+          >
+            <Download size={14} strokeWidth={2.2} />
+            {exportEnCours ? "Export…" : "Exporter"}
+          </button>
+        </div>
       </div>
 
       {/* ── Bandeau d'erreur workflow ── */}
@@ -1000,10 +1140,10 @@ function IncidentsPage() {
       ) : (
         <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white">
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[700px] text-sm">
+          <table className="w-full min-w-[760px] text-sm">
             <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
               <tr>
-                {["Référence", "Type", "Gravité", "Statut", "Date", "Lieu", "Actions"].map((h) => (
+                {["Référence", "Date", "Type", "Gravité", "Statut", "Déclarant", "Actions"].map((h) => (
                   <th
                     key={h}
                     className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide"
@@ -1028,14 +1168,17 @@ function IncidentsPage() {
                     ? actionEnCours.action
                     : null;
                   return (
-                    <tr key={inc.id} className="hover:bg-[#F8FAFC] transition-colors">
+                    <tr key={inc.id} onClick={() => navigate(`/incidents/${inc.id}`)}
+                      className="group hover:bg-[#F8FAFC] transition-colors cursor-pointer">
                       <td className="px-4 py-3 text-xs whitespace-nowrap">
-                        <Link
-                          to={`/incidents/${inc.id}`}
-                          className="font-semibold text-[#0D2B4E] hover:underline"
-                        >
+                        <span className="font-semibold text-[#0D2B4E] group-hover:underline">
                           {inc.numeroReference}
-                        </Link>
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-[#64748B] whitespace-nowrap">
+                        {inc.dateIncident
+                          ? new Date(inc.dateIncident).toLocaleDateString("fr-FR")
+                          : "—"}
                       </td>
                       <td className="px-4 py-3 text-[#475569]">
                         {LABELS_TYPE[inc.type] ?? inc.type}
@@ -1046,15 +1189,10 @@ function IncidentsPage() {
                       <td className="px-4 py-3">
                         <Badge variant={inc.statut} />
                       </td>
-                      <td className="px-4 py-3 text-[#64748B] whitespace-nowrap">
-                        {inc.dateIncident
-                          ? new Date(inc.dateIncident).toLocaleDateString("fr-FR")
-                          : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-[#64748B]">
-                        {inc.adresseLisible || "—"}
-                      </td>
                       <td className="px-4 py-3">
+                        <AvatarInitiales prenom={inc.declarePar?.prenom} nom={inc.declarePar?.nom} />
+                      </td>
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <BoutonsAction
                           incident={inc}
                           user={user}
@@ -1076,9 +1214,9 @@ function IncidentsPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-[#E2E8F0] bg-[#F8FAFC]">
               <p className="text-xs text-[#64748B]">
-                Page {page} / {totalPages} — {total} résultat(s)
+                {Math.min((page - 1) * 20 + 1, total)}–{Math.min(page * 20, total)} sur {total} incidents
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => changerPage(page - 1)}
                   disabled={page === 1}
@@ -1086,6 +1224,29 @@ function IncidentsPage() {
                 >
                   ← Précédent
                 </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                  .reduce((acc, p, i, arr) => {
+                    if (i > 0 && p - arr[i - 1] > 1) acc.push("…");
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, i) =>
+                    p === "…" ? (
+                      <span key={`ellipse-${i}`} className="px-1.5 text-xs text-[#94A3B8]">…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => changerPage(p)}
+                        className="w-7 h-7 flex items-center justify-center text-xs font-medium rounded-md transition-colors"
+                        style={p === page
+                          ? { backgroundColor: "#0D2B4E", color: "white" }
+                          : { color: "#475569" }}
+                      >
+                        {p}
+                      </button>
+                    )
+                  )}
                 <button
                   onClick={() => changerPage(page + 1)}
                   disabled={page === totalPages}
