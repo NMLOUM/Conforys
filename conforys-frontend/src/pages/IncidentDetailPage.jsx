@@ -86,7 +86,7 @@ function ActionCorrectiveItem({ action, isQhse, enSuppression, onCloturer, onMod
   const enRetard = estEnRetard(action);
   const peutAgir = isQhse && action.statut !== "TERMINE" && action.statut !== "ANNULE";
   return (
-    <div className="p-3 rounded-md hover:bg-[#F8FAFC] transition-colors">
+    <div className="p-3 rounded-md hover:bg-white transition-colors">
       <div className="flex items-start gap-2.5">
         <span className="w-2 h-2 rounded-full mt-1.5 shrink-0"
           style={{ backgroundColor: COULEUR_PRIORITE[action.priorite] || "#94A3B8" }} />
@@ -127,7 +127,7 @@ function ActionCorrectiveItem({ action, isQhse, enSuppression, onCloturer, onMod
 function PieceJointeRow({ piece, peutSupprimer, enSuppression, onSupprimer }) {
   const taille = formatTaille(piece.taille);
   return (
-    <div className="flex items-center gap-3 p-2.5 rounded-md border border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors">
+    <div className="flex items-center gap-3 p-2.5 rounded-md border border-[#E2E8F0] bg-white hover:bg-[#F1F5F9] transition-colors">
       <a href={piece.url} target="_blank" rel="noopener noreferrer"
         className="w-9 h-9 rounded-md overflow-hidden border border-[#E2E8F0] shrink-0 bg-[#F8FAFC] flex items-center justify-center">
         {piece.type === "DOCUMENT"
@@ -888,74 +888,70 @@ function IncidentDetailPage() {
         );
       })()}
 
-      {/* ── Informations (sans cadre) ── */}
-      <div className="mb-6 pb-6 border-b border-[#E2E8F0]">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 mb-5">
-          <LigneInfo label="Type">{LABELS_TYPE[incident.type] ?? incident.type}</LigneInfo>
-          <LigneInfo label="Site">{incident.site?.nom}</LigneInfo>
-          <LigneInfo label="Déclarant">
-            {incident.declarePar ? `${incident.declarePar.prenom} ${incident.declarePar.nom}` : "—"}
-          </LigneInfo>
-          <LigneInfo label="Date">{dateIncident}</LigneInfo>
-          {incident.adresseLisible && (
-            <LigneInfo label="Lieu précis">{incident.adresseLisible}</LigneInfo>
-          )}
-          {incident.validePar && (
-            <LigneInfo label="Validé par">
-              {`${incident.validePar.prenom} ${incident.validePar.nom}`}
+      {/* ── Informations (sans cadre, fond léger pour regrouper) ── */}
+      <div className="mb-6 p-5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-stretch gap-8">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-base font-semibold text-[#1E293B] mb-4">Informations</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 mb-5">
+            <LigneInfo label="Type">{LABELS_TYPE[incident.type] ?? incident.type}</LigneInfo>
+            <LigneInfo label="Site">{incident.site?.nom}</LigneInfo>
+            <LigneInfo label="Déclarant">
+              {incident.declarePar ? `${incident.declarePar.prenom} ${incident.declarePar.nom}` : "—"}
             </LigneInfo>
-          )}
-          {incident.dateCloture && (
-            <LigneInfo label="Date de clôture">
-              {new Date(incident.dateCloture).toLocaleDateString("fr-FR")}
-            </LigneInfo>
-          )}
-        </div>
-
-        <div>
-          <p className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide mb-1">Description</p>
-          <p className="text-sm text-[#1E293B] leading-relaxed">{incident.description}</p>
-        </div>
-
-        {incident.motifRejet && (
-          <div className="mt-4 p-3 rounded-md bg-red-50 border border-red-200">
-            <p className="text-[10px] font-semibold text-[#DC2626] uppercase tracking-wide mb-1">
-              Motif de rejet
-            </p>
-            <p className="text-sm text-[#DC2626]">{incident.motifRejet}</p>
-          </div>
-        )}
-
-        {/* Photo principale + GPS */}
-        {(incident.photoUrl || incident.latitude) && (
-          <div className="mt-5 flex items-start gap-6">
-            {incident.photoUrl && (
-              <div>
-                <p className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide mb-1.5">Photo</p>
-                <a href={incident.photoUrl} target="_blank" rel="noopener noreferrer">
-                  <img src={incident.photoUrl} alt="Photo de l'incident"
-                    className="h-24 rounded-md object-cover border border-[#E2E8F0] hover:opacity-90 transition" />
-                </a>
-              </div>
+            <LigneInfo label="Date">{dateIncident}</LigneInfo>
+            {incident.adresseLisible && (
+              <LigneInfo label="Lieu précis">{incident.adresseLisible}</LigneInfo>
+            )}
+            {incident.validePar && (
+              <LigneInfo label="Validé par">
+                {`${incident.validePar.prenom} ${incident.validePar.nom}`}
+              </LigneInfo>
+            )}
+            {incident.dateCloture && (
+              <LigneInfo label="Date de clôture">
+                {new Date(incident.dateCloture).toLocaleDateString("fr-FR")}
+              </LigneInfo>
             )}
             {incident.latitude && incident.longitude && (
-              <div>
-                <p className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide mb-1.5">
-                  Coordonnées GPS
-                </p>
-                <p className="text-sm text-[#1E293B]">{incident.latitude}, {incident.longitude}</p>
-              </div>
+              <LigneInfo label="Coordonnées GPS">{incident.latitude}, {incident.longitude}</LigneInfo>
             )}
+          </div>
+
+          <div>
+            <p className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide mb-1">Description</p>
+            <p className="text-sm text-[#1E293B] leading-relaxed">{incident.description}</p>
+          </div>
+
+          {incident.motifRejet && (
+            <div className="mt-4 p-3 rounded-md bg-red-50 border border-red-200">
+              <p className="text-[10px] font-semibold text-[#DC2626] uppercase tracking-wide mb-1">
+                Motif de rejet
+              </p>
+              <p className="text-sm text-[#DC2626]">{incident.motifRejet}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Photo principale — encadrée, proportions d'origine conservées (pas de recadrage) */}
+        {incident.photoUrl && (
+          <div className="shrink-0 w-96 rounded-lg overflow-hidden border border-[#E2E8F0] bg-[#F1F5F9]">
+            <a href={incident.photoUrl} target="_blank" rel="noopener noreferrer" className="block">
+              <img src={incident.photoUrl} alt="Photo de l'incident"
+                className="w-full h-auto hover:opacity-90 transition" />
+            </a>
+            <p className="px-3 py-2 text-[11px] text-[#64748B] text-center border-t border-[#E2E8F0]">
+              Photo jointe à la déclaration
+            </p>
           </div>
         )}
       </div>
 
       {/* ── Actions correctives + Analyse des causes (côte à côte) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6 items-start">
-        <div>
+        <div className="p-5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-sm font-semibold text-[#1E293B]">Actions correctives</h2>
+              <h2 className="text-base font-semibold text-[#1E293B]">Actions correctives</h2>
               <p className="text-xs text-[#64748B] mt-0.5">{actions.length} action(s)</p>
             </div>
             {isQhse && (
@@ -994,8 +990,8 @@ function IncidentDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-8">
 
         {/* Historique — lecture seule, immuable */}
-        <div className="lg:pr-8 lg:border-r lg:border-[#E2E8F0]">
-          <h2 className="text-sm font-semibold text-[#1E293B]">
+        <div className="p-5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
+          <h2 className="text-base font-semibold text-[#1E293B]">
             Historique
             {historique.length > 0 && (
               <span className="ml-2 text-[11px] font-normal text-[#94A3B8]">
@@ -1042,8 +1038,8 @@ function IncidentDetailPage() {
         </div>
 
         {/* Espace collaboratif — pièces jointes + commentaires */}
-        <div>
-          <h2 className="text-sm font-semibold text-[#1E293B] mb-4">Espace collaboratif</h2>
+        <div className="p-5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
+          <h2 className="text-base font-semibold text-[#1E293B] mb-4">Espace collaboratif</h2>
 
           {/* Pièces jointes */}
           <div className="flex items-center justify-between mb-3">

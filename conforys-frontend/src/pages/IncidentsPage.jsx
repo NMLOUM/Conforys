@@ -3,7 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
-import { Plus, AlertTriangle, ShieldAlert, CheckCircle2, Clock, Download } from "lucide-react";
+import {
+  Plus, AlertTriangle, ShieldAlert, CheckCircle2, Clock, Download,
+  Siren, Leaf, Camera, ImagePlus, Crosshair, ArrowLeft, ArrowRight, Check,
+} from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import { useAuthStore } from "../store/authStore";
@@ -21,15 +24,15 @@ const ETAPES_WIZARD = [
 ];
 
 const CONFIGS_TYPE = [
-  { value: "ACCIDENT",                 label: "Accident",                 desc: "Blessure physique survenue sur une personne" },
-  { value: "PRESQU_ACCIDENT",          label: "Presqu'accident",          desc: "Événement sans blessure mais à fort potentiel" },
-  { value: "SITUATION_DANGEREUSE",     label: "Situation dangereuse",     desc: "Condition pouvant provoquer un accident" },
-  { value: "INCIDENT_ENVIRONNEMENTAL", label: "Incident environnemental", desc: "Impact direct sur l'environnement naturel" },
+  { value: "ACCIDENT",                 label: "Accident",                 desc: "Blessure physique survenue sur une personne",   icon: Siren,        color: "#DC2626" },
+  { value: "PRESQU_ACCIDENT",          label: "Presqu'accident",          desc: "Événement sans blessure mais à fort potentiel", icon: ShieldAlert,  color: "#EA580C" },
+  { value: "SITUATION_DANGEREUSE",     label: "Situation dangereuse",     desc: "Condition pouvant provoquer un accident",       icon: AlertTriangle, color: "#CA8A04" },
+  { value: "INCIDENT_ENVIRONNEMENTAL", label: "Incident environnemental", desc: "Impact direct sur l'environnement naturel",     icon: Leaf,          color: "#2E7D32" },
 ];
 
 const CONFIGS_GRAVITE = [
   { value: "FAIBLE",   label: "Faible",   color: "#2E7D32", bg: "#F0FDF4" },
-  { value: "MOYEN",    label: "Moyen",    color: "#92400E", bg: "#FFFBEB" },
+  { value: "MOYEN",    label: "Moyen",    color: "#CA8A04", bg: "#FEFCE8" },
   { value: "GRAVE",    label: "Grave",    color: "#EA580C", bg: "#FFF7ED" },
   { value: "CRITIQUE", label: "Critique", color: "#DC2626", bg: "#FEF2F2" },
 ];
@@ -49,16 +52,17 @@ function StepperIndicateur({ etape }) {
             <div className="flex flex-col items-center" style={{ minWidth: "60px" }}>
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors"
-                style={{
-                  backgroundColor: done ? "#2E7D32" : active ? "#0D2B4E" : "#F1F5F9",
-                  color: done || active ? "white" : "#94A3B8",
-                }}
+                style={
+                  done || active
+                    ? { backgroundColor: "#0D2B4E", color: "white" }
+                    : { backgroundColor: "white", color: "#0D2B4E", border: "2px solid #0D2B4E" }
+                }
               >
-                {done ? "✓" : info.num}
+                {done ? <Check size={14} strokeWidth={3} /> : info.num}
               </div>
               <span
                 className="mt-1.5 text-[10px] font-semibold uppercase tracking-wide text-center"
-                style={{ color: active ? "#0D2B4E" : done ? "#2E7D32" : "#94A3B8" }}
+                style={{ color: "#0D2B4E" }}
               >
                 {info.label}
               </span>
@@ -66,7 +70,7 @@ function StepperIndicateur({ etape }) {
             {i < ETAPES_WIZARD.length - 1 && (
               <div
                 className="flex-1 h-px mt-4 transition-colors"
-                style={{ backgroundColor: done ? "#2E7D32" : "#E2E8F0" }}
+                style={{ backgroundColor: done ? "#0D2B4E" : "#E2E8F0" }}
               />
             )}
           </Fragment>
@@ -83,22 +87,35 @@ function Etape1({ valeurs, setValue, errors }) {
     <div className="pt-1">
       <p className="text-sm text-[#64748B] mb-4">Sélectionnez le type d'incident à déclarer.</p>
       <div className="grid grid-cols-2 gap-3">
-        {CONFIGS_TYPE.map(({ value, label, desc }) => {
+        {CONFIGS_TYPE.map(({ value, label, desc, icon: Icon, color }) => {
           const selected = valeurs.type === value;
           return (
             <button
               key={value}
               type="button"
               onClick={() => setValue("type", value, { shouldValidate: true })}
-              className="text-left p-4 rounded-lg border-2 transition-all"
+              className="relative text-left p-4 rounded-xl border-2 transition-all"
               style={{
-                borderColor: selected ? "#0D2B4E" : "#E2E8F0",
-                backgroundColor: selected ? "rgba(13, 43, 78, 0.04)" : "white",
+                borderColor: selected ? color : "#E2E8F0",
+                backgroundColor: selected ? `${color}0D` : "white",
+                boxShadow: selected ? `0 1px 3px ${color}33` : "0 1px 2px rgba(15,23,42,0.03)",
               }}
             >
+              {selected && (
+                <div className="absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: color }}>
+                  <Check size={11} color="white" strokeWidth={3} />
+                </div>
+              )}
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center mb-3"
+                style={{ backgroundColor: `${color}1A` }}
+              >
+                <Icon size={19} color={color} strokeWidth={2} />
+              </div>
               <p
                 className="text-sm font-semibold mb-1"
-                style={{ color: selected ? "#0D2B4E" : "#1E293B" }}
+                style={{ color: selected ? color : "#1E293B" }}
               >
                 {label}
               </p>
@@ -171,12 +188,17 @@ function Etape2({ valeurs, setValue, errors, register, sites }) {
         <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
           Description *
         </label>
-        <textarea
-          {...register("description")}
-          rows={4}
-          placeholder="Décrivez l'incident avec précision (min. 10 caractères)…"
-          className={`${inputCls("description")} resize-none`}
-        />
+        <div className="relative">
+          <textarea
+            {...register("description")}
+            rows={4}
+            placeholder="Décrivez l'incident avec précision (min. 10 caractères)…"
+            className={`${inputCls("description")} resize-none pb-6`}
+          />
+          <span className="absolute bottom-2 right-3 text-[11px] text-[#94A3B8] pointer-events-none">
+            {(valeurs.description || "").length} caractères
+          </span>
+        </div>
         {errors.description && (
           <p className="mt-1 text-xs text-[#DC2626]">{errors.description.message}</p>
         )}
@@ -215,16 +237,6 @@ function Etape2({ valeurs, setValue, errors, register, sites }) {
 }
 
 // ── Étape 3 — Photo & Géolocalisation ────────────────────────────────────────
-
-function IcôneCible() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 1v4M12 19v4M1 12h4M19 12h4" />
-    </svg>
-  );
-}
 
 function Spinner() {
   return (
@@ -312,6 +324,11 @@ function Etape3({ media, onChange }) {
   return (
     <div className="space-y-6 pt-1">
 
+      <p className="text-sm text-[#64748B]">
+        Vous pouvez ajouter une photo et la localisation si elles sont disponibles —
+        cette étape est facultative, vous pouvez continuer sans.
+      </p>
+
       {/* ── Photo ── */}
       <div>
         <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-2">
@@ -319,37 +336,39 @@ function Etape3({ media, onChange }) {
           <span className="font-normal normal-case text-[#94A3B8]">(facultatif)</span>
         </p>
 
-        {/* Zone de sélection / capture */}
-        <label
-          className="flex items-center gap-3 px-4 py-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors select-none"
-          style={{
-            borderColor: apercu && media.photoUrl ? "#0D2B4E" : "#E2E8F0",
-            backgroundColor: apercu && media.photoUrl ? "rgba(13,43,78,0.03)" : "#FAFAFA",
-          }}
-        >
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleFichier}
-            disabled={uploading}
-            className="sr-only"
-          />
-          {uploading ? (
-            <div className="flex items-center gap-2 text-sm text-[#64748B]">
-              <Spinner />
-              Envoi de la photo…
-            </div>
-          ) : apercu && media.photoUrl ? (
-            <span className="text-sm font-medium text-[#0D2B4E]">
-              Photo envoyée — cliquer pour changer
-            </span>
-          ) : (
-            <span className="text-sm text-[#64748B]">
-              Sélectionner ou prendre une photo
-            </span>
-          )}
-        </label>
+        {uploading ? (
+          <div className="flex items-center gap-2 text-sm text-[#64748B] px-4 py-3 rounded-lg border border-[#E2E8F0] bg-[#FAFAFA]">
+            <Spinner />
+            Envoi de la photo…
+          </div>
+        ) : apercu && media.photoUrl ? (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg border" style={{ borderColor: "#0D2B4E", backgroundColor: "rgba(13,43,78,0.03)" }}>
+            <span className="text-sm font-medium text-[#0D2B4E] flex-1">Photo envoyée</span>
+            <label className="text-xs font-semibold text-[#0D2B4E] hover:underline cursor-pointer">
+              Changer
+              <input type="file" accept="image/*" onChange={handleFichier} className="sr-only" />
+            </label>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <label
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-lg cursor-pointer select-none transition-colors hover:opacity-90"
+              style={{ backgroundColor: "#0D2B4E" }}
+            >
+              <Camera size={16} strokeWidth={2} />
+              Capturer
+              <input type="file" accept="image/*" capture="environment" onChange={handleFichier} className="sr-only" />
+            </label>
+            <label
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg border cursor-pointer select-none transition-colors hover:bg-[#F8FAFC]"
+              style={{ borderColor: "#0D2B4E", color: "#0D2B4E" }}
+            >
+              <ImagePlus size={16} strokeWidth={2} />
+              Importer
+              <input type="file" accept="image/*" onChange={handleFichier} className="sr-only" />
+            </label>
+          </div>
+        )}
 
         {/* Aperçu miniature */}
         {apercu && (
@@ -398,7 +417,7 @@ function Etape3({ media, onChange }) {
             </>
           ) : (
             <>
-              <IcôneCible />
+              <Crosshair size={15} strokeWidth={2} />
               {positionOk ? "Mettre à jour ma position" : "Localiser ma position"}
             </>
           )}
@@ -448,7 +467,7 @@ function Etape4({ valeurs, sites, media }) {
       <p className="text-sm text-[#64748B]">
         Vérifiez les informations avant de soumettre la déclaration.
       </p>
-      <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-4 py-1">
+      <div className="bg-white border border-[#E2E8F0] rounded-xl px-4 py-1 shadow-sm">
         <Ligne label="Type">{typeConfig?.label ?? valeurs.type}</Ligne>
         <Ligne label="Gravité">
           {graviteConf ? (
@@ -463,7 +482,11 @@ function Etape4({ valeurs, sites, media }) {
         <Ligne label="Site">{siteName}</Ligne>
         <Ligne label="Lieu">{valeurs.adresseLisible || "—"}</Ligne>
         <Ligne label="Description">{valeurs.description}</Ligne>
-        {media?.photoUrl && <Ligne label="Photo">{media.photoUrl}</Ligne>}
+        {media?.photoUrl && (
+          <Ligne label="Photo">
+            <img src={media.photoUrl} alt="Aperçu" className="h-14 rounded-md object-cover border border-[#E2E8F0]" />
+          </Ligne>
+        )}
         {(media?.latitude || media?.longitude) && (
           <Ligne label="Coordonnées">
             {[media.latitude, media.longitude].filter(Boolean).join(", ")}
@@ -477,10 +500,11 @@ function Etape4({ valeurs, sites, media }) {
 // ── Wizard principal ──────────────────────────────────────────────────────────
 
 function IncidentWizard({ sites, onSuccess, onClose }) {
+  const navigate = useNavigate();
   const [etape, setEtape] = useState(1);
   const [media, setMedia] = useState({ photoUrl: "", latitude: "", longitude: "" });
   const [erreurSoumission, setErreurSoumission] = useState("");
-  const [confirmerVisible, setConfirmerVisible] = useState(false);
+  const [incidentCree, setIncidentCree] = useState(null);
 
   const form = useForm({
     mode: "onBlur",
@@ -523,10 +547,11 @@ function IncidentWizard({ sites, onSuccess, onClose }) {
         ...(media.latitude  && { latitude:  parseFloat(media.latitude) }),
         ...(media.longitude && { longitude: parseFloat(media.longitude) }),
       };
-      await api.post("/incidents", payload);
-      setConfirmerVisible(false);
+      const res = await api.post("/incidents", payload);
       toast.success("Incident déclaré avec succès");
-      onSuccess();
+      // Affiche l'écran de succès plutôt que de fermer directement — le
+      // déclarant doit encore choisir où aller (fiche ou liste).
+      setIncidentCree(res.data.data);
     } catch (err) {
       const msg = err.response?.data?.message || "Erreur lors de la déclaration.";
       setErreurSoumission(msg);
@@ -534,13 +559,66 @@ function IncidentWizard({ sites, onSuccess, onClose }) {
     }
   };
 
+  const voirIncident = () => {
+    onClose();
+    navigate(`/incidents/${incidentCree.id}`);
+  };
+
+  const retourListe = () => onSuccess();
+
+  // ── Écran de succès post-soumission ──
+  if (incidentCree) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="w-full max-w-md bg-white rounded-xl border border-[#E2E8F0] shadow-lg mx-4 p-6">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4"
+              style={{ backgroundColor: "rgba(46, 125, 50, 0.1)" }}>
+              <CheckCircle2 size={26} color="#2E7D32" strokeWidth={2} />
+            </div>
+            <h2 className="text-base font-semibold text-[#1E293B] mb-1">Incident déclaré avec succès</h2>
+            <p className="text-sm text-[#64748B] leading-relaxed max-w-xs">
+              Enregistré en brouillon — vous pourrez le soumettre pour traitement depuis sa fiche.
+            </p>
+            <div className="mt-5 px-6 py-3 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] flex flex-col items-center">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[#94A3B8] mb-0.5">
+                Référence du dossier
+              </span>
+              <span className="text-xl font-bold text-[#0D2B4E] tracking-tight">
+                {incidentCree.numeroReference}
+              </span>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-6">
+            <button
+              type="button"
+              onClick={retourListe}
+              className="flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg border transition-colors hover:bg-[#F8FAFC]"
+              style={{ borderColor: "#0D2B4E", color: "#0D2B4E" }}
+            >
+              Retour à la liste
+            </button>
+            <button
+              type="button"
+              onClick={voirIncident}
+              className="flex-1 px-4 py-2.5 text-sm font-semibold text-white rounded-lg transition-colors hover:opacity-90"
+              style={{ backgroundColor: "#0D2B4E" }}
+            >
+              Voir l'incident
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
-        className="w-full max-w-2xl bg-white rounded-lg border border-[#E2E8F0] mx-4 flex flex-col relative"
+        className="w-full max-w-2xl bg-white rounded-xl border border-[#E2E8F0] shadow-lg mx-4 flex flex-col relative"
         style={{ maxHeight: "90vh" }}
       >
         {/* En-tête */}
@@ -587,56 +665,9 @@ function IncidentWizard({ sites, onSuccess, onClose }) {
           </form>
         </div>
 
-        {/* Modale de confirmation de déclaration */}
-        {confirmerVisible && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 rounded-lg">
-            <div className="bg-white rounded-lg border border-[#E2E8F0] shadow-xl mx-6 p-6 w-full max-w-sm">
-              <div className="flex items-start gap-3 mb-4">
-                <div className="w-9 h-9 rounded-full bg-[#2E7D32]/10 flex items-center justify-center shrink-0">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2E7D32" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-[#1E293B]">Confirmer la déclaration</h3>
-                  <p className="text-xs text-[#64748B] mt-1">
-                    Une fois soumis, l'incident sera transmis au Responsable QHSE pour validation. Cette action est irréversible.
-                  </p>
-                </div>
-              </div>
-              {erreurSoumission && (
-                <p className="text-xs text-[#DC2626] mb-3 bg-[#FEF2F2] border border-[#FECACA] rounded px-3 py-2">{erreurSoumission}</p>
-              )}
-              <div className="flex gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={() => { setConfirmerVisible(false); setErreurSoumission(""); }}
-                  disabled={isSubmitting}
-                  className="px-4 py-2 text-sm font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors disabled:opacity-50"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={handleSubmit(onSubmit)}
-                  className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-[#2E7D32] hover:bg-[#2E7D32]/90 disabled:opacity-50 transition-colors"
-                >
-                  {isSubmitting ? (
-                    <span className="flex items-center gap-2">
-                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Envoi en cours…
-                    </span>
-                  ) : "Confirmer"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Pied de page — navigation */}
         <div className="px-6 py-4 border-t border-[#F1F5F9] shrink-0">
-          {!confirmerVisible && erreurSoumission && (
+          {erreurSoumission && (
             <p className="text-xs text-[#DC2626] mb-3">{erreurSoumission}</p>
           )}
           <div className="flex items-center justify-between">
@@ -645,8 +676,10 @@ function IncidentWizard({ sites, onSuccess, onClose }) {
                 <button
                   type="button"
                   onClick={reculer}
-                  className="px-4 py-2 text-sm font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg border transition-colors hover:bg-[#F8FAFC]"
+                  style={{ borderColor: "#0D2B4E", color: "#0D2B4E" }}
                 >
+                  <ArrowLeft size={15} strokeWidth={2.2} />
                   Précédent
                 </button>
               )}
@@ -656,18 +689,26 @@ function IncidentWizard({ sites, onSuccess, onClose }) {
                 <button
                   type="button"
                   onClick={avancer}
-                  className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-[#0D2B4E] hover:bg-[#0D2B4E]/90 transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors hover:opacity-90"
+                  style={{ backgroundColor: "#0D2B4E" }}
                 >
-                  Suivant
+                  Continuer
+                  <ArrowRight size={15} strokeWidth={2.2} />
                 </button>
               ) : (
                 <button
                   type="button"
                   disabled={isSubmitting}
-                  onClick={() => setConfirmerVisible(true)}
-                  className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-[#2E7D32] hover:bg-[#2E7D32]/90 disabled:opacity-50 transition-colors"
+                  onClick={handleSubmit(onSubmit)}
+                  className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50 transition-colors hover:opacity-90"
+                  style={{ backgroundColor: "#0D2B4E" }}
                 >
-                  Déclarer l'incident
+                  {isSubmitting ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Envoi en cours…
+                    </span>
+                  ) : "Confirmer la déclaration"}
                 </button>
               )}
             </div>
