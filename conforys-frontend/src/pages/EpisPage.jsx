@@ -1,15 +1,34 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Chart from "react-apexcharts";
 import toast from "react-hot-toast";
-import { HardHat, Hand, Footprints, Shirt, ShieldCheck } from "lucide-react";
+import {
+  HardHat, Hand, Footprints, Shirt, ShieldCheck, Filter, Plus, Search, BarChart3,
+} from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import Badge from "../components/ui/Badge";
 import { useRole } from "../hooks/useRole";
 import { useTable } from "../hooks/useTable";
 import { epiSchema } from "../validators/epiSchema";
+
+// ── Charte du mockup "EPI Inventory" ─────────────────────────────────────────
+const C = {
+  primary:           "#031635",
+  primaryContainer:  "#1a2b4b",
+  secondary:         "#974900",
+  secondaryContainer: "#fc7d00",
+  secondaryFixed:    "#ffdbc7",
+  onSecondaryContainer: "#5b2900",
+  outlineVariant:    "#c5c6cf",
+  onSurfaceVariant:  "#64748B",
+  surface:           "#f8f9ff",
+  surfaceContainerLow: "#eff4ff",
+  surfaceContainerHighest: "#d3e4fe",
+  error:             "#ba1a1a",
+  errorContainer:    "#ffdad6",
+  success:           "#2E7D32",
+};
 
 const FORM_DEFAUT = {
   designation: "", type: "", reference: "", photoUrl: "", quantite: "", seuilAlerte: "",
@@ -37,9 +56,9 @@ const calculerProchaineInspection = (epi) => {
 
 // ── Icône par défaut selon le type d'EPI (repli quand il n'y a pas de photo) ──
 
-function iconeParType(type) {
+function iconeParType(type, size = 28) {
   const t = (type || "").toLowerCase();
-  const props = { size: 20, color: "#0D2B4E", strokeWidth: 1.6 };
+  const props = { size, color: C.primary, strokeWidth: 1.6 };
   if (t.includes("casque") || t.includes("tête")) return <HardHat {...props} />;
   if (t.includes("gant")) return <Hand {...props} />;
   if (t.includes("chaussure") || t.includes("botte") || t.includes("pied")) return <Footprints {...props} />;
@@ -47,89 +66,100 @@ function iconeParType(type) {
   return <ShieldCheck {...props} />;
 }
 
-// ── Vignette EPI — photo si disponible, sinon icône par défaut ──────────────
+function Spinner({ size = 4 }) {
+  return <div className={`w-${size} h-${size} border-2 border-white/60 border-t-transparent rounded-full animate-spin shrink-0`} />;
+}
 
-function VignetteEpi({ photoUrl, type }) {
+// ── Bandeau visuel EPI — photo si disponible, sinon fond coloré + icône ──────
+
+function BandeauEpi({ photoUrl, type }) {
   if (photoUrl) {
-    return (
-      <img
-        src={photoUrl}
-        alt={type || "EPI"}
-        className="w-10 h-10 rounded-lg object-cover shrink-0 border border-[#E2E8F0]"
-      />
-    );
+    return <img src={photoUrl} alt={type || "EPI"} className="w-full h-full object-cover" />;
   }
   return (
-    <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "#F8FAFC" }}>
-      {iconeParType(type)}
+    <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: C.surfaceContainerLow }}>
+      {iconeParType(type, 36)}
     </div>
   );
 }
 
-// ── Jauge circulaire — toujours en vert (taux d'EPI conformes/disponibles) ──
+// ── Anneau de progression (SVG statique, façon mockup) ───────────────────────
 
-function JaugeStock({ taux }) {
-  const options = {
-    chart: { type: "radialBar", animations: { enabled: false } },
-    colors: ["#2E7D32"],
-    plotOptions: {
-      radialBar: {
-        hollow: { size: "68%" },
-        track: { background: "#F1F5F9" },
-        dataLabels: {
-          name: { show: false },
-          value: { fontSize: "20px", fontWeight: 700, color: "#1E293B", offsetY: 6, formatter: (v) => `${Math.round(v)}%` },
-        },
-      },
-    },
-    stroke: { lineCap: "round" },
-  };
-  return <Chart type="radialBar" options={options} series={[taux]} height={130} />;
+function AnneauProgression({ taux, couleur }) {
+  const circonference = 2 * Math.PI * 15.9155;
+  return (
+    <div className="w-28 h-28 relative shrink-0">
+      <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+          fill="transparent" stroke={C.surfaceContainerHighest} strokeWidth="3" />
+        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+          fill="transparent" stroke={couleur} strokeWidth="3" strokeLinecap="round"
+          strokeDasharray={`${(taux / 100) * circonference}, ${circonference}`} />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-xl font-bold" style={{ color: C.primary }}>{taux}%</span>
+      </div>
+    </div>
+  );
 }
 
-// ── Cartes de synthèse ────────────────────────────────────────────────────────
+// ── Cartes de synthèse (bento) ────────────────────────────────────────────────
 
 function CarteEtatStock({ epis }) {
   const total = epis.length;
   const nbOk = epis.filter((e) => e.niveauAlerte === "OK").length;
-  const nbAlerte = epis.filter((e) => e.niveauAlerte === "ALERTE").length;
+  const nbAlerte = epis.filter((e) => e.quantite <= e.seuilAlerte).length;
   const niveauOptimal = total === 0 ? 100 : Math.round((nbOk / total) * 100);
 
   return (
-    <div className="p-5 rounded-lg border border-[#E2E8F0] bg-white">
-      <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-3">État du stock</p>
-      <p className="text-3xl font-bold text-navy">{niveauOptimal}%</p>
-      <p className="text-xs text-[#94A3B8] mt-1 mb-3">Niveau optimal de l'inventaire</p>
-      <div className="flex items-center gap-2 pt-3 border-t border-[#F1F5F9]">
-        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: nbAlerte > 0 ? "#DC2626" : "#2E7D32" }} />
-        <p className="text-sm" style={{ color: nbAlerte > 0 ? "#DC2626" : "#475569" }}>
-          <span className="font-semibold">{nbAlerte}</span> EPI en alerte de stock
-        </p>
+    <div className="lg:col-span-4 bg-white rounded-xl p-5 flex flex-col gap-4">
+      <div className="flex justify-between items-start">
+        <h3 className="text-base font-semibold text-[#1E293B]">État du stock</h3>
+        <BarChart3 size={18} color={C.secondary} />
+      </div>
+      <div className="space-y-2">
+        <div className="flex justify-between items-center text-sm">
+          <span style={{ color: C.onSurfaceVariant }}>Niveau optimal</span>
+          <span className="font-bold" style={{ color: C.primary }}>{niveauOptimal}%</span>
+        </div>
+        <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: C.surfaceContainerHighest }}>
+          <div className="h-full rounded-full" style={{ width: `${niveauOptimal}%`, backgroundColor: C.primary }} />
+        </div>
+        <div className="flex justify-between items-center text-sm pt-1">
+          <span style={{ color: C.onSurfaceVariant }}>Alerte de stock</span>
+          <span className="font-bold" style={{ color: nbAlerte > 0 ? C.secondary : C.onSurfaceVariant }}>
+            {nbAlerte} article{nbAlerte !== 1 ? "s" : ""}
+          </span>
+        </div>
       </div>
     </div>
   );
 }
 
-function CarteRepartition({ epis }) {
+function CarteRepartitionGlobale({ epis, affectations }) {
   const total = epis.length;
   const nbOk = epis.filter((e) => e.niveauAlerte === "OK").length;
   const nbAlerte = epis.filter((e) => e.niveauAlerte !== "OK").length;
   const taux = total === 0 ? 100 : Math.round((nbOk / total) * 100);
+  const uniteAffectees = affectations.filter((a) => a.statut === "ACTIVE").length;
 
   return (
-    <div className="p-5 rounded-lg border border-[#E2E8F0] bg-white flex items-center justify-between gap-4">
-      <div>
-        <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-3">Répartition</p>
-        <div className="space-y-1.5">
-          <p className="text-sm text-[#1E293B]">
-            <span className="font-semibold text-navy">{total}</span> EPI au total
-          </p>
-          <p className="text-sm text-[#1E293B]">
-            <span className="font-semibold" style={{ color: nbAlerte > 0 ? "#DC2626" : "#2E7D32" }}>{nbAlerte}</span> en alerte
-          </p>
+    <div className="lg:col-span-8 bg-white rounded-xl p-5 flex items-center justify-between gap-6">
+      <div className="flex-1">
+        <h3 className="text-base font-semibold text-[#1E293B]">Répartition globale</h3>
+        <p className="text-sm mt-0.5" style={{ color: C.onSurfaceVariant }}>Équipements actuellement en circulation dans l'entreprise.</p>
+        <div className="mt-4 flex gap-8">
+          <div>
+            <p className="text-xl font-bold" style={{ color: C.primary }}>{uniteAffectees}</p>
+            <p className="text-[11px] uppercase tracking-wider font-semibold" style={{ color: C.onSurfaceVariant }}>Unités affectées</p>
+          </div>
+          <div className="border-l pl-8" style={{ borderColor: C.outlineVariant }}>
+            <p className="text-xl font-bold" style={{ color: nbAlerte > 0 ? C.secondary : C.onSurfaceVariant }}>{nbAlerte}</p>
+            <p className="text-[11px] uppercase tracking-wider font-semibold" style={{ color: C.onSurfaceVariant }}>En alerte</p>
+          </div>
         </div>
       </div>
-      <JaugeStock taux={taux} />
+      <AnneauProgression taux={taux} couleur={C.secondary} />
     </div>
   );
 }
@@ -142,7 +172,7 @@ function AvatarInitiales({ prenom, nom }) {
     <div
       title={`${prenom ?? ""} ${nom ?? ""}`.trim()}
       className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 border-2 border-white -ml-2 first:ml-0"
-      style={{ backgroundColor: "#0D2B4E" }}
+      style={{ backgroundColor: C.primary }}
     >
       {init}
     </div>
@@ -151,82 +181,73 @@ function AvatarInitiales({ prenom, nom }) {
 
 // ── Carte individuelle d'un EPI ────────────────────────────────────────────────
 
-function CarteEpi({ epi, peutGerer, affectationsActives, onModifier, onAffecter, onInspecter }) {
+function CarteEpi({ epi, affectationsActives }) {
   const perime = estPerime(epi.datePeremption);
   const enAlerteStock = epi.quantite <= epi.seuilAlerte;
   const derniereInspection = formatDateAffichage(epi.derniereInspection);
   const prochaineInspection = calculerProchaineInspection(epi);
-  const peremption = formatDateAffichage(epi.datePeremption);
   const MAX_AVATARS = 4;
 
-  return (
-    <div className="p-4 rounded-lg border border-[#E2E8F0] bg-white">
-      <div className="flex items-start justify-between mb-3">
-        <VignetteEpi photoUrl={epi.photoUrl} type={epi.type} />
-        <Badge variant={epi.niveauAlerte} />
-      </div>
-      <p className="text-sm font-semibold text-[#1E293B]">{epi.designation}</p>
-      <p className="text-xs text-[#94A3B8] mb-3">{epi.type}{epi.reference ? ` · ${epi.reference}` : ""}</p>
+  const statutLabel = perime ? "Périmé" : enAlerteStock ? "Stock faible" : "En stock";
+  const statutBg = perime ? C.errorContainer : enAlerteStock ? C.secondaryFixed : "#dcf5e3";
+  const statutFg = perime ? C.error : enAlerteStock ? C.onSecondaryContainer : "#1b5e20";
 
-      <div className="space-y-1.5 text-xs">
-        <div className="flex items-center justify-between">
-          <span className="text-[#64748B]">Stock</span>
-          <span className="font-semibold" style={{ color: enAlerteStock ? "#DC2626" : "#1E293B" }}>
-            {epi.quantite}/{epi.seuilAlerte}
-          </span>
+  return (
+    <div className="bg-white rounded-xl overflow-hidden flex flex-col"
+      style={enAlerteStock ? { outline: `2px solid ${C.secondary}` } : undefined}>
+      <div className="h-32 relative">
+        <BandeauEpi photoUrl={epi.photoUrl} type={epi.type} />
+        <span className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+          style={{ backgroundColor: statutBg, color: statutFg }}>
+          {statutLabel}
+        </span>
+      </div>
+      <div className="p-4 flex-1 flex flex-col">
+        <div className="flex justify-between items-start gap-2">
+          <div>
+            <h4 className="font-semibold text-sm text-[#1E293B]">{epi.designation}</h4>
+            <p className="text-xs" style={{ color: C.onSurfaceVariant }}>{epi.type}{epi.reference ? ` · ${epi.reference}` : ""}</p>
+          </div>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-[#64748B]">Dernière inspection</span>
-          <span className="text-[#1E293B]">{derniereInspection ?? "Non inspecté"}</span>
+        <div className="flex justify-between items-end border-t pt-3 mt-3" style={{ borderColor: C.outlineVariant }}>
+          <div>
+            <p className="text-xs" style={{ color: C.onSurfaceVariant }}>Stock</p>
+            <p className="text-sm font-bold" style={{ color: enAlerteStock ? C.secondary : C.primary }}>{epi.quantite} / {epi.seuilAlerte}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs" style={{ color: C.onSurfaceVariant }}>Dernière inspection</p>
+            <p className="text-sm font-semibold" style={{ color: "#1E293B" }}>{derniereInspection ?? "Non inspecté"}</p>
+          </div>
         </div>
         {prochaineInspection && (
-          <div className="flex items-center justify-between">
-            <span className="text-[#64748B]">Prochaine inspection</span>
-            <span className="font-semibold" style={{ color: epi.niveauAlerte !== "OK" ? "#DC2626" : "#1E293B" }}>
-              {prochaineInspection}
-            </span>
+          <p className="text-xs mt-1.5 font-semibold" style={{ color: epi.niveauAlerte !== "OK" ? C.error : C.onSurfaceVariant }}>
+            Prochaine inspection : {prochaineInspection}
+          </p>
+        )}
+
+        {affectationsActives.length > 0 && (
+          <div className="flex items-center mt-3">
+            <div className="flex">
+              {affectationsActives.slice(0, MAX_AVATARS).map((a) => (
+                <AvatarInitiales key={a.id} prenom={a.employe.prenom} nom={a.employe.nom} />
+              ))}
+            </div>
+            {affectationsActives.length > MAX_AVATARS && (
+              <span className="ml-1.5 text-[10px] font-semibold" style={{ color: C.onSurfaceVariant }}>
+                +{affectationsActives.length - MAX_AVATARS}
+              </span>
+            )}
           </div>
         )}
-        <div className="flex items-center justify-between">
-          <span className="text-[#64748B]">Péremption</span>
-          {perime ? <Badge variant="PERIME" /> : <span className="text-[#1E293B]">{peremption ?? "—"}</span>}
-        </div>
+
       </div>
-
-      {affectationsActives.length > 0 && (
-        <div className="flex items-center mt-3 pt-3 border-t border-[#F1F5F9]">
-          <div className="flex">
-            {affectationsActives.slice(0, MAX_AVATARS).map((a) => (
-              <AvatarInitiales key={a.id} prenom={a.employe.prenom} nom={a.employe.nom} />
-            ))}
-          </div>
-          {affectationsActives.length > MAX_AVATARS && (
-            <span className="ml-1.5 text-[10px] font-semibold text-[#64748B]">
-              +{affectationsActives.length - MAX_AVATARS}
-            </span>
-          )}
-        </div>
-      )}
-
-      {peutGerer && (
-        <div className="flex gap-2 mt-3">
-          <button onClick={() => onModifier(epi)}
-            className="flex-1 px-3 py-1.5 text-xs font-medium text-navy border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
-            Modifier
-          </button>
-          <button onClick={() => onInspecter(epi)}
-            className="flex-1 px-3 py-1.5 text-xs font-medium text-navy border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
-            Inspecter
-          </button>
-          <button onClick={() => onAffecter(epi)} disabled={epi.quantite <= 0}
-            className="flex-1 px-3 py-1.5 text-xs font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-            Affecter
-          </button>
-        </div>
-      )}
     </div>
   );
 }
+
+const inputClsFull =
+  "w-full px-3 py-2.5 text-sm border rounded-lg bg-white text-[#1E293B] placeholder-[#94A3B8] " +
+  "focus:outline-none focus:ring-2 transition";
 
 // ── Page principale ───────────────────────────────────────────────────────────
 
@@ -259,16 +280,12 @@ function EpisPage() {
   const [formAffectation,   setFormAffectation]   = useState({ employeId: "", poste: "" });
   const [erreurAffectation, setErreurAffectation] = useState("");
   const [envoiAffectation,  setEnvoiAffectation]  = useState(false);
-  const [rendreEnCours,     setRendreEnCours]     = useState(null);
-  const [filtreJournalEpi,  setFiltreJournalEpi]  = useState(null);
 
-  // ── Historique des inspections ────────────────────────────────────────────
-  const [inspections,          setInspections]          = useState([]);
+  // ── Enregistrement des inspections ────────────────────────────────────────
   const [showModalInspection,  setShowModalInspection]  = useState(false);
   const [epiAInspecter,        setEpiAInspecter]        = useState(null);
   const [formInspection,       setFormInspection]       = useState(FORM_INSPECTION_DEFAUT);
   const [envoiInspection,      setEnvoiInspection]      = useState(false);
-  const [filtreJournalInspection, setFiltreJournalInspection] = useState(null);
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
     mode: "onBlur",
@@ -308,22 +325,12 @@ function EpisPage() {
     }
   };
 
-  const chargerInspections = async () => {
-    try {
-      const res = await api.get("/inspections");
-      setInspections(res.data.data || []);
-    } catch (e) {
-      console.error("Erreur chargement inspections:", e);
-    }
-  };
-
   useEffect(() => {
     charger();
     api.get("/sites").then((r) => setSites(r.data.data || [])).catch(() => {});
     if (peutGerer) {
       api.get("/users").then((r) => setUsers(r.data.data || [])).catch(() => {});
       chargerAffectations();
-      chargerInspections();
     }
   }, []);
 
@@ -356,20 +363,6 @@ function EpisPage() {
     }
   };
 
-  const rendreAffectation = async (affectationId) => {
-    setRendreEnCours(affectationId);
-    try {
-      await api.put(`/affectations/${affectationId}/rendre`);
-      toast.success("EPI rendu avec succès");
-      charger();
-      chargerAffectations();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Erreur lors de la restitution.");
-    } finally {
-      setRendreEnCours(null);
-    }
-  };
-
   const affectationsActivesParEpi = (epiId) =>
     affectations.filter((a) => a.epiId === epiId && a.statut === "ACTIVE");
 
@@ -386,7 +379,6 @@ function EpisPage() {
       toast.success("Inspection enregistrée avec succès");
       setShowModalInspection(false);
       charger();
-      chargerInspections();
     } catch (err) {
       toast.error(err.response?.data?.message || "Erreur lors de l'enregistrement de l'inspection.");
     } finally {
@@ -491,539 +483,395 @@ function EpisPage() {
   };
 
   const inputCls = (name) =>
-    `w-full px-3 py-2.5 text-sm border rounded-md bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition ${
-      errors[name] ? "border-[#DC2626]" : "border-[#E2E8F0]"
-    }`;
-  const selectCls =
-    "px-3 py-2 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#475569] focus:outline-none focus:ring-2 focus:ring-navy/30 transition";
+    `${inputClsFull} ${errors[name] ? "border-[#ba1a1a]" : ""}`;
 
   const filtresActifs = filtreStatut || filtreSite;
 
   return (
     <AppLayout titre="Gestion des EPI">
-      {/* ── En-tête ── */}
-      <div className="flex items-center justify-between mb-1">
-        <div>
-          <h1 className="text-lg font-semibold text-navy">Gestion des EPI</h1>
-          <p className="text-xs text-[#94A3B8] mt-0.5">Tableau de bord <span className="mx-1">›</span> Gestion des EPI</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowFiltres((v) => !v)}
-            className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors ${
-              showFiltres ? "border-navy text-navy bg-navy/5" : "border-[#E2E8F0] text-[#475569] hover:bg-[#F8FAFC]"
-            }`}
-          >
-            Filtrer
-          </button>
-          {peutGerer && (
-            <button onClick={ouvrirCreation}
-              className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 transition-colors">
-              Nouvel EPI
+      <div>
+
+        {/* ── En-tête ── */}
+        <div className="flex items-end justify-between mb-6">
+          <div>
+            <p className="text-xs text-[#94A3B8] mb-1">Tableau de bord <span className="mx-1">›</span> Gestion des EPI</p>
+            <h2 className="text-lg font-semibold text-navy">Inventaire des équipements de protection</h2>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setShowFiltres((v) => !v)}
+              className="px-4 py-2 text-sm font-semibold rounded-lg border flex items-center gap-2 transition-colors"
+              style={showFiltres
+                ? { backgroundColor: C.surfaceContainerLow, borderColor: C.primary, color: C.primary }
+                : { borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>
+              <Filter size={15} /> Filtrer
             </button>
-          )}
-        </div>
-      </div>
-
-      {/* ── Cartes de synthèse ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-5">
-        <CarteEtatStock epis={epis} />
-        <CarteRepartition epis={epis} />
-      </div>
-
-      {/* ── Panneau de filtres (repliable) ── */}
-      {showFiltres && (
-        <div className="flex flex-wrap items-center gap-3 mb-4 p-4 bg-white border border-[#E2E8F0] rounded-lg">
-          <select value={filtreStatut} onChange={(e) => setFiltreStatut(e.target.value)} className={selectCls}>
-            <option value="">Tous les statuts</option>
-            <option value="OK">OK</option>
-            <option value="BIENTOT">Bientôt</option>
-            <option value="ALERTE">Alerte</option>
-          </select>
-          <select value={filtreSite} onChange={(e) => setFiltreSite(e.target.value)} className={selectCls}>
-            <option value="">Tous les sites</option>
-            {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
-          </select>
-          {filtresActifs && (
-            <button onClick={() => { setFiltreStatut(""); setFiltreSite(""); }}
-              className="text-xs text-[#64748B] hover:text-navy underline">
-              Réinitialiser
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* ── Recherche ── */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="relative flex-1 max-w-xs">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" placeholder="Rechercher par désignation, type…" value={recherche} onChange={(e) => setRecherche(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition" />
-        </div>
-        <span className="text-sm text-[#64748B] shrink-0">{filtres.length} résultat{filtres.length !== 1 ? "s" : ""}</span>
-      </div>
-
-      {chargement ? (
-        <p className="text-sm text-[#64748B]">Chargement...</p>
-      ) : (
-        <>
-          {/* ── Grille de cartes ── */}
-          {affiches.length === 0 ? (
-            <div className="p-12 text-center text-[#94A3B8] bg-white border border-[#E2E8F0] rounded-lg mb-5">
-              {recherche || filtresActifs ? "Aucun EPI ne correspond aux critères." : "Aucun EPI enregistré"}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-5">
-              {affiches.map((epi) => (
-                <CarteEpi
-                  key={epi.id}
-                  epi={epi}
-                  peutGerer={peutGerer}
-                  affectationsActives={affectationsActivesParEpi(epi.id)}
-                  onModifier={ouvrirModification}
-                  onAffecter={ouvrirModalAffecter}
-                  onInspecter={ouvrirModalInspection}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* ── Tableau détaillé ── */}
-          <p className="text-sm font-semibold text-navy mb-2">Inventaire détaillé</p>
-          <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] text-sm">
-                <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
-                  <tr>
-                    {["Désignation", "Type", "Site", "Stock", "Seuil", "Statut", "Péremption", "Actions"].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#F1F5F9]">
-                  {affiches.length === 0 ? (
-                    <tr><td colSpan={8} className="px-4 py-12 text-center text-[#94A3B8]">Aucun EPI à afficher.</td></tr>
-                  ) : (
-                    affiches.map((epi) => {
-                      const enAlerteStock = epi.quantite <= epi.seuilAlerte;
-                      const perime = estPerime(epi.datePeremption);
-                      const peremption = formatDateAffichage(epi.datePeremption);
-                      return (
-                        <tr key={epi.id} className="hover:bg-[#F8FAFC] transition-colors">
-                          <td className="px-4 py-3 font-medium text-[#1E293B]">{epi.designation}</td>
-                          <td className="px-4 py-3 text-[#64748B]">{epi.type || "—"}</td>
-                          <td className="px-4 py-3 text-[#64748B]">{epi.site?.nom ?? "—"}</td>
-                          <td className="px-4 py-3 font-medium" style={{ color: enAlerteStock ? "#DC2626" : "#1E293B" }}>{epi.quantite}</td>
-                          <td className="px-4 py-3 text-[#64748B]">{epi.seuilAlerte}</td>
-                          <td className="px-4 py-3"><Badge variant={epi.niveauAlerte} /></td>
-                          <td className="px-4 py-3">
-                            {perime ? <Badge variant="PERIME" /> : <span className="text-[#64748B]">{peremption ?? "—"}</span>}
-                          </td>
-                          <td className="px-4 py-3">
-                            {peutGerer && (
-                              <button onClick={() => ouvrirModification(epi)}
-                                className="px-2.5 py-1 text-xs font-medium text-navy border border-[#E2E8F0] rounded-md hover:bg-[#F1F5F9] transition-colors">
-                                Modifier
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-[#E2E8F0] bg-[#F8FAFC]">
-                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                  className="px-3 py-1.5 text-xs font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
-                  ← Précédent
-                </button>
-                <span className="text-xs text-[#64748B]">Page {page} / {totalPages}</span>
-                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                  className="px-3 py-1.5 text-xs font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
-                  Suivant →
-                </button>
-              </div>
+            {peutGerer && (
+              <button onClick={ouvrirCreation}
+                className="px-4 py-2 text-sm font-bold text-white rounded-lg flex items-center gap-2 shadow-sm transition-opacity hover:opacity-90"
+                style={{ backgroundColor: C.primary }}>
+                <Plus size={15} /> Nouvel EPI
+              </button>
             )}
           </div>
+        </div>
 
-          {/* ── Journal des affectations ── */}
-          {peutGerer && (
-            <div className="mt-5">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-semibold text-navy">Journal des affectations</p>
-                {filtreJournalEpi && (
-                  <button onClick={() => setFiltreJournalEpi(null)} className="text-xs text-[#64748B] hover:text-navy underline">
-                    Retirer le filtre « {filtreJournalEpi.designation} »
-                  </button>
-                )}
-              </div>
-              <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] text-sm">
-                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
-                      <tr>
-                        {["Employé", "EPI", "Date d'affectation", "Statut", "Actions"].map((h) => (
-                          <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#F1F5F9]">
-                      {(() => {
-                        const lignes = filtreJournalEpi
-                          ? affectations.filter((a) => a.epiId === filtreJournalEpi.id)
-                          : affectations;
-                        if (lignes.length === 0) {
-                          return (
-                            <tr><td colSpan={5} className="px-4 py-12 text-center text-[#94A3B8]">Aucune affectation enregistrée.</td></tr>
-                          );
-                        }
-                        return lignes.map((a) => (
-                          <tr key={a.id} className="hover:bg-[#F8FAFC] transition-colors">
-                            <td className="px-4 py-3">
-                              <p className="font-medium text-[#1E293B]">{a.employe.prenom} {a.employe.nom}</p>
-                              <p className="text-xs text-[#94A3B8] mt-0.5">{a.poste || <Badge variant={a.employe.role} />}</p>
-                            </td>
-                            <td className="px-4 py-3">
-                              <p className="text-[#1E293B]">{a.epi.designation}</p>
-                              {a.epi.reference && <p className="text-xs text-[#94A3B8]">{a.epi.reference}</p>}
-                            </td>
-                            <td className="px-4 py-3 text-[#64748B] whitespace-nowrap">{formatDateAffichage(a.dateAffectation)}</td>
-                            <td className="px-4 py-3"><Badge variant={a.statut} /></td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                {a.statut === "ACTIVE" && (
-                                  <button onClick={() => rendreAffectation(a.id)} disabled={rendreEnCours === a.id}
-                                    className="px-2.5 py-1 text-xs font-semibold rounded-md text-white bg-[#2E7D32] hover:bg-[#2E7D32]/90 disabled:opacity-50 transition-colors">
-                                    {rendreEnCours === a.id ? "…" : "Rendre"}
-                                  </button>
-                                )}
-                                <button onClick={() => setFiltreJournalEpi({ id: a.epiId, designation: a.epi.designation })}
-                                  className="px-2.5 py-1 text-xs font-medium text-navy border border-[#E2E8F0] rounded-md hover:bg-[#F1F5F9] transition-colors">
-                                  Voir historique
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ));
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
+        {/* ── Cartes de synthèse (bento) ── */}
+        {!chargement && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-6">
+            <CarteEtatStock epis={epis} />
+            <CarteRepartitionGlobale epis={epis} affectations={affectations} />
+          </div>
+        )}
 
-          {/* ── Journal des inspections ── */}
-          {peutGerer && (
-            <div className="mt-5">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-semibold text-navy">Journal des inspections</p>
-                {filtreJournalInspection && (
-                  <button onClick={() => setFiltreJournalInspection(null)} className="text-xs text-[#64748B] hover:text-navy underline">
-                    Retirer le filtre « {filtreJournalInspection.designation} »
-                  </button>
-                )}
-              </div>
-              <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] text-sm">
-                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
-                      <tr>
-                        {["EPI", "Date d'inspection", "Résultat", "Inspecteur", "Commentaire", "Actions"].map((h) => (
-                          <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#F1F5F9]">
-                      {(() => {
-                        const lignes = filtreJournalInspection
-                          ? inspections.filter((i) => i.epiId === filtreJournalInspection.id)
-                          : inspections;
-                        if (lignes.length === 0) {
-                          return (
-                            <tr><td colSpan={6} className="px-4 py-12 text-center text-[#94A3B8]">Aucune inspection enregistrée.</td></tr>
-                          );
-                        }
-                        return lignes.map((i) => (
-                          <tr key={i.id} className="hover:bg-[#F8FAFC] transition-colors">
-                            <td className="px-4 py-3">
-                              <p className="text-[#1E293B]">{i.epi.designation}</p>
-                              {i.epi.reference && <p className="text-xs text-[#94A3B8]">{i.epi.reference}</p>}
-                            </td>
-                            <td className="px-4 py-3 text-[#64748B] whitespace-nowrap">{formatDateAffichage(i.dateInspection)}</td>
-                            <td className="px-4 py-3"><Badge variant={i.conforme ? "CONFORME" : "NON_CONFORME"} /></td>
-                            <td className="px-4 py-3 text-[#64748B]">
-                              {i.inspecteur ? `${i.inspecteur.prenom} ${i.inspecteur.nom}` : "—"}
-                            </td>
-                            <td className="px-4 py-3 text-[#64748B]">{i.commentaire || "—"}</td>
-                            <td className="px-4 py-3">
-                              <button onClick={() => setFiltreJournalInspection({ id: i.epiId, designation: i.epi.designation })}
-                                className="px-2.5 py-1 text-xs font-medium text-navy border border-[#E2E8F0] rounded-md hover:bg-[#F1F5F9] transition-colors">
-                                Voir historique
-                              </button>
-                            </td>
-                          </tr>
-                        ));
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ── Modale de création / modification ── */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
-          <div className="w-full max-w-md bg-white rounded-lg border border-[#E2E8F0] p-6 mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-semibold text-[#1E293B]">{epiEnEdition ? "Modifier l'EPI" : "Nouvel EPI"}</h2>
-              <button onClick={() => setShowModal(false)}
-                className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition text-base leading-none">
-                &#x2715;
+        {/* ── Panneau de filtres (repliable) ── */}
+        {showFiltres && (
+          <div className="flex flex-wrap items-center gap-3 mb-4 p-4 bg-white rounded-xl">
+            <select value={filtreStatut} onChange={(e) => setFiltreStatut(e.target.value)}
+              className="py-2 pl-3 pr-7 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 transition"
+              style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>
+              <option value="">Tous les statuts</option>
+              <option value="OK">OK</option>
+              <option value="BIENTOT">Bientôt</option>
+              <option value="ALERTE">Alerte</option>
+            </select>
+            <select value={filtreSite} onChange={(e) => setFiltreSite(e.target.value)}
+              className="py-2 pl-3 pr-7 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 transition"
+              style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>
+              <option value="">Tous les sites</option>
+              {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
+            </select>
+            {filtresActifs && (
+              <button onClick={() => { setFiltreStatut(""); setFiltreSite(""); }}
+                className="text-xs font-semibold hover:underline" style={{ color: C.onSurfaceVariant }}>
+                Réinitialiser
               </button>
-            </div>
+            )}
+          </div>
+        )}
 
-            {erreurForm && (
-              <div className="mb-4 p-3 text-sm text-[#DC2626] bg-red-50 border border-red-200 rounded-md">{erreurForm}</div>
+        {/* ── Recherche ── */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="relative flex-1 max-w-xs">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: C.onSurfaceVariant }} />
+            <input type="text" placeholder="Rechercher par désignation, type…" value={recherche} onChange={(e) => setRecherche(e.target.value)}
+              className={`pl-9 ${inputClsFull}`} style={{ borderColor: C.outlineVariant }} />
+          </div>
+          <span className="text-sm shrink-0" style={{ color: C.onSurfaceVariant }}>{filtres.length} résultat{filtres.length !== 1 ? "s" : ""}</span>
+        </div>
+
+        {chargement ? (
+          <div className="flex items-center gap-2 text-sm py-8" style={{ color: C.onSurfaceVariant }}><Spinner /> Chargement…</div>
+        ) : (
+          <>
+            {/* ── Grille de cartes ── */}
+            {affiches.length === 0 ? (
+              <div className="p-12 text-center rounded-xl bg-white mb-6" style={{ color: C.onSurfaceVariant }}>
+                {recherche || filtresActifs ? "Aucun EPI ne correspond aux critères." : "Aucun EPI enregistré"}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-6">
+                {affiches.slice(0, 4).map((epi) => (
+                  <CarteEpi
+                    key={epi.id}
+                    epi={epi}
+                    affectationsActives={affectationsActivesParEpi(epi.id)}
+                  />
+                ))}
+              </div>
             )}
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Désignation</label>
-                <input type="text" {...register("designation")} placeholder="ex: Casque de chantier" className={inputCls("designation")} />
-                {errors.designation && <p className="mt-1 text-xs text-[#DC2626]">{errors.designation.message}</p>}
+            {/* ── Tableau détaillé ── */}
+            <div className="bg-white rounded-xl overflow-hidden mb-6">
+              <div className="p-5" style={{ backgroundColor: C.surface }}>
+                <h3 className="text-base font-semibold text-[#1E293B]">Inventaire détaillé</h3>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Type</label>
-                  <input type="text" {...register("type")} placeholder="ex: Protection tête" className={inputCls("type")} />
-                  {errors.type && <p className="mt-1 text-xs text-[#DC2626]">{errors.type.message}</p>}
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[720px] text-sm">
+                  <thead style={{ backgroundColor: C.surfaceContainerLow, color: C.onSurfaceVariant }}>
+                    <tr>
+                      {["Désignation", "Type", "Site", "Stock", "Seuil", "Statut", "Péremption", "Actions"].map((h) => (
+                        <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: C.outlineVariant }}>
+                    {affiches.length === 0 ? (
+                      <tr><td colSpan={8} className="px-4 py-12 text-center" style={{ color: C.onSurfaceVariant }}>Aucun EPI à afficher.</td></tr>
+                    ) : (
+                      affiches.map((epi) => {
+                        const enAlerteStock = epi.quantite <= epi.seuilAlerte;
+                        const perime = estPerime(epi.datePeremption);
+                        const peremption = formatDateAffichage(epi.datePeremption);
+                        return (
+                          <tr key={epi.id} className="hover:bg-[#eff4ff] transition-colors">
+                            <td className="px-4 py-3 font-semibold" style={{ color: "#1E293B" }}>{epi.designation}</td>
+                            <td className="px-4 py-3" style={{ color: C.onSurfaceVariant }}>{epi.type || "Non renseigné"}</td>
+                            <td className="px-4 py-3" style={{ color: C.onSurfaceVariant }}>{epi.site?.nom ?? "Non renseigné"}</td>
+                            <td className="px-4 py-3 font-semibold" style={{ color: enAlerteStock ? C.secondary : "#1E293B" }}>{epi.quantite}</td>
+                            <td className="px-4 py-3" style={{ color: C.onSurfaceVariant }}>{epi.seuilAlerte}</td>
+                            <td className="px-4 py-3"><Badge variant={epi.niveauAlerte} /></td>
+                            <td className="px-4 py-3">
+                              {perime ? <Badge variant="PERIME" /> : <span style={{ color: C.onSurfaceVariant }}>{peremption ?? "Non renseignée"}</span>}
+                            </td>
+                            <td className="px-4 py-3">
+                              {peutGerer && (
+                                <div className="flex items-center gap-2">
+                                  <button onClick={() => ouvrirModification(epi)}
+                                    className="px-2.5 py-1 text-xs font-semibold border rounded-lg transition-colors"
+                                    style={{ borderColor: C.outlineVariant, color: C.primary }}>
+                                    Modifier
+                                  </button>
+                                  <button onClick={() => ouvrirModalInspection(epi)}
+                                    className="px-2.5 py-1 text-xs font-semibold border rounded-lg transition-colors"
+                                    style={{ borderColor: C.outlineVariant, color: C.primary }}>
+                                    Inspecter
+                                  </button>
+                                  <button onClick={() => ouvrirModalAffecter(epi)} disabled={epi.quantite <= 0}
+                                    className="px-2.5 py-1 text-xs font-bold text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity hover:opacity-90"
+                                    style={{ backgroundColor: C.primary }}>
+                                    Affecter
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-4 py-3" style={{ backgroundColor: C.surface }}>
+                  <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                    className="px-3 py-1.5 text-xs font-semibold border rounded-lg hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>
+                    ← Précédent
+                  </button>
+                  <span className="text-xs" style={{ color: C.onSurfaceVariant }}>Page {page} / {totalPages}</span>
+                  <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                    className="px-3 py-1.5 text-xs font-semibold border rounded-lg hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>
+                    Suivant →
+                  </button>
                 </div>
-                <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Référence</label>
-                  <input type="text" {...register("reference")} placeholder="ex: REF-4521" className={inputCls("reference")} />
-                </div>
+              )}
+            </div>
+
+          </>
+        )}
+
+        {/* ── Modale de création / modification ── */}
+        {showModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
+            <div className="w-full max-w-md bg-white rounded-xl mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b" style={{ borderColor: C.outlineVariant }}>
+                <h2 className="text-base font-semibold text-[#1E293B]">{epiEnEdition ? "Modifier l'EPI" : "Nouvel EPI"}</h2>
+                <button onClick={() => setShowModal(false)}
+                  className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#f8f9ff]">
+                  &#x2715;
+                </button>
               </div>
 
-              {/* ── Photo de l'EPI (facultatif) ── */}
-              <div>
-                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
-                  Photo <span className="font-normal normal-case text-[#94A3B8]">(facultatif)</span>
-                </label>
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-16 h-16 rounded-lg border border-[#E2E8F0] flex items-center justify-center overflow-hidden shrink-0"
-                    style={{ backgroundColor: "#F8FAFC" }}
-                  >
-                    {apercuPhoto ? (
-                      <img src={apercuPhoto} alt="Aperçu" className="w-full h-full object-cover" />
-                    ) : (
-                      <ShieldCheck size={22} color="#0D2B4E" strokeWidth={1.6} />
-                    )}
+              <form onSubmit={handleSubmit(onSubmit)} className="px-6 py-5 space-y-4">
+                {erreurForm && (
+                  <div className="p-3 text-sm rounded-lg" style={{ color: C.error, backgroundColor: C.errorContainer }}>{erreurForm}</div>
+                )}
+                <div>
+                  <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Désignation</label>
+                  <input type="text" {...register("designation")} placeholder="ex: Casque de chantier" className={inputCls("designation")} style={{ borderColor: errors.designation ? C.error : C.outlineVariant }} />
+                  {errors.designation && <p className="mt-1 text-xs" style={{ color: C.error }}>{errors.designation.message}</p>}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Type</label>
+                    <input type="text" {...register("type")} placeholder="ex: Protection tête" className={inputCls("type")} style={{ borderColor: errors.type ? C.error : C.outlineVariant }} />
+                    {errors.type && <p className="mt-1 text-xs" style={{ color: C.error }}>{errors.type.message}</p>}
                   </div>
-                  <label
-                    className="flex-1 flex items-center justify-center px-3 py-2.5 text-sm border-2 border-dashed rounded-md cursor-pointer transition-colors select-none"
-                    style={{
-                      borderColor: photoUrl ? "#0D2B4E" : "#E2E8F0",
-                      backgroundColor: photoUrl ? "rgba(13,43,78,0.03)" : "#FAFAFA",
-                    }}
-                  >
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={handleFichierPhoto}
-                      disabled={uploadPhoto}
-                      className="sr-only"
-                    />
-                    {uploadPhoto ? (
-                      <span className="flex items-center gap-2 text-[#64748B]">
-                        <span className="w-4 h-4 border-2 border-[#0D2B4E] border-t-transparent rounded-full animate-spin shrink-0" />
-                        Envoi de la photo…
-                      </span>
-                    ) : photoUrl ? (
-                      <span className="font-medium text-[#0D2B4E]">Photo envoyée, cliquer pour changer</span>
-                    ) : (
-                      <span className="text-[#64748B]">Sélectionner une photo</span>
-                    )}
-                  </label>
+                  <div>
+                    <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Référence</label>
+                    <input type="text" {...register("reference")} placeholder="ex: REF-4521" className={inputCls("reference")} style={{ borderColor: C.outlineVariant }} />
+                  </div>
                 </div>
-                {erreurPhoto && <p className="mt-1.5 text-xs text-[#DC2626]">{erreurPhoto}</p>}
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
+                {/* ── Photo de l'EPI (facultatif) ── */}
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Quantité</label>
-                  <input type="number" {...register("quantite")} min={0} className={inputCls("quantite")} />
-                  {errors.quantite && <p className="mt-1 text-xs text-[#DC2626]">{errors.quantite.message}</p>}
-                </div>
-                <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Seuil d'alerte</label>
-                  <input type="number" {...register("seuilAlerte")} min={0} className={inputCls("seuilAlerte")} />
-                  {errors.seuilAlerte && <p className="mt-1 text-xs text-[#DC2626]">{errors.seuilAlerte.message}</p>}
-                </div>
-              </div>
-              <div>
-                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Site</label>
-                <select {...register("siteId")} className={inputCls("siteId")}>
-                  <option value="">Sélectionner un site</option>
-                  {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
-                </select>
-                {errors.siteId && <p className="mt-1 text-xs text-[#DC2626]">{errors.siteId.message}</p>}
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
-                    Fréquence d'inspection <span className="font-normal normal-case text-[#94A3B8]">(jours)</span>
+                  <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>
+                    Photo <span className="font-normal normal-case" style={{ color: C.onSurfaceVariant }}>(facultatif)</span>
                   </label>
-                  <input type="number" {...register("frequenceInspectionJours")} min={1} placeholder="ex: 180" className={inputCls("frequenceInspectionJours")} />
-                  {errors.frequenceInspectionJours && <p className="mt-1 text-xs text-[#DC2626]">{errors.frequenceInspectionJours.message}</p>}
+                  <div className="flex items-center gap-3">
+                    <div className="w-16 h-16 rounded-lg flex items-center justify-center overflow-hidden shrink-0" style={{ backgroundColor: C.surface }}>
+                      {apercuPhoto ? (
+                        <img src={apercuPhoto} alt="Aperçu" className="w-full h-full object-cover" />
+                      ) : (
+                        <ShieldCheck size={22} color={C.primary} strokeWidth={1.6} />
+                      )}
+                    </div>
+                    <label className="flex-1 flex items-center justify-center px-3 py-2.5 text-sm border-2 border-dashed rounded-lg cursor-pointer transition-colors select-none"
+                      style={{ borderColor: photoUrl ? C.primary : C.outlineVariant, backgroundColor: photoUrl ? C.surface : "transparent" }}>
+                      <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFichierPhoto} disabled={uploadPhoto} className="sr-only" />
+                      {uploadPhoto ? (
+                        <span className="flex items-center gap-2" style={{ color: C.onSurfaceVariant }}>
+                          <Spinner size={4} /> Envoi de la photo…
+                        </span>
+                      ) : photoUrl ? (
+                        <span className="font-semibold" style={{ color: C.primary }}>Photo envoyée, cliquer pour changer</span>
+                      ) : (
+                        <span style={{ color: C.onSurfaceVariant }}>Sélectionner une photo</span>
+                      )}
+                    </label>
+                  </div>
+                  {erreurPhoto && <p className="mt-1.5 text-xs" style={{ color: C.error }}>{erreurPhoto}</p>}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Quantité</label>
+                    <input type="number" {...register("quantite")} min={0} className={inputCls("quantite")} style={{ borderColor: errors.quantite ? C.error : C.outlineVariant }} />
+                    {errors.quantite && <p className="mt-1 text-xs" style={{ color: C.error }}>{errors.quantite.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Seuil d'alerte</label>
+                    <input type="number" {...register("seuilAlerte")} min={0} className={inputCls("seuilAlerte")} style={{ borderColor: errors.seuilAlerte ? C.error : C.outlineVariant }} />
+                    {errors.seuilAlerte && <p className="mt-1 text-xs" style={{ color: C.error }}>{errors.seuilAlerte.message}</p>}
+                  </div>
                 </div>
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Péremption</label>
-                  <input type="date" {...register("datePeremption")} className={inputCls("datePeremption")} />
+                  <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Site</label>
+                  <select {...register("siteId")} className={inputCls("siteId")} style={{ borderColor: errors.siteId ? C.error : C.outlineVariant }}>
+                    <option value="">Sélectionner un site</option>
+                    {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
+                  </select>
+                  {errors.siteId && <p className="mt-1 text-xs" style={{ color: C.error }}>{errors.siteId.message}</p>}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>
+                      Fréquence d'inspection <span className="font-normal normal-case" style={{ color: C.onSurfaceVariant }}>(jours)</span>
+                    </label>
+                    <input type="number" {...register("frequenceInspectionJours")} min={1} placeholder="ex: 180" className={inputCls("frequenceInspectionJours")} style={{ borderColor: errors.frequenceInspectionJours ? C.error : C.outlineVariant }} />
+                    {errors.frequenceInspectionJours && <p className="mt-1 text-xs" style={{ color: C.error }}>{errors.frequenceInspectionJours.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Péremption</label>
+                    <input type="date" {...register("datePeremption")} className={inputCls("datePeremption")} style={{ borderColor: C.outlineVariant }} />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 pt-2 border-t" style={{ borderColor: C.outlineVariant }}>
+                  <button type="button" onClick={() => setShowModal(false)}
+                    className="px-4 py-2 text-sm font-semibold rounded-lg border" style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>
+                    Annuler
+                  </button>
+                  <button type="submit" disabled={isSubmitting}
+                    className="px-4 py-2 text-sm font-bold text-white rounded-lg disabled:opacity-50 transition-opacity hover:opacity-90"
+                    style={{ backgroundColor: C.primary }}>
+                    {isSubmitting ? "Enregistrement…" : "Enregistrer"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ── Modale d'affectation ── */}
+        {showModalAffecter && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            onClick={(e) => e.target === e.currentTarget && setShowModalAffecter(false)}>
+            <div className="w-full max-w-sm bg-white rounded-xl mx-4">
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b" style={{ borderColor: C.outlineVariant }}>
+                <h2 className="text-base font-semibold text-[#1E293B]">Affecter un EPI</h2>
+                <button onClick={() => setShowModalAffecter(false)}
+                  className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#f8f9ff]">
+                  &#x2715;
+                </button>
+              </div>
+              <div className="px-6 py-5 space-y-4">
+                <p className="text-sm" style={{ color: C.onSurfaceVariant }}>{epiAAffecter?.designation}</p>
+                {erreurAffectation && (
+                  <div className="p-3 text-sm rounded-lg" style={{ color: C.error, backgroundColor: C.errorContainer }}>{erreurAffectation}</div>
+                )}
+                <div>
+                  <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Employé</label>
+                  <select value={formAffectation.employeId} onChange={(e) => setFormAffectation((f) => ({ ...f, employeId: e.target.value }))}
+                    className={inputClsFull} style={{ borderColor: C.outlineVariant }}>
+                    <option value="">Sélectionner un employé</option>
+                    {users.map((u) => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>
+                    Poste <span className="font-normal normal-case" style={{ color: C.onSurfaceVariant }}>(optionnel)</span>
+                  </label>
+                  <input type="text" value={formAffectation.poste} onChange={(e) => setFormAffectation((f) => ({ ...f, poste: e.target.value }))}
+                    placeholder="ex: Chantier A" className={inputClsFull} style={{ borderColor: C.outlineVariant }} />
                 </div>
               </div>
-              <div className="flex justify-end gap-3 pt-2 border-t border-[#F1F5F9]">
-                <button type="button" onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
+              <div className="flex justify-end gap-3 px-6 py-4 border-t" style={{ borderColor: C.outlineVariant }}>
+                <button type="button" onClick={() => setShowModalAffecter(false)}
+                  className="px-4 py-2 text-sm font-semibold rounded-lg border" style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>
                   Annuler
                 </button>
-                <button type="submit" disabled={isSubmitting}
-                  className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
-                  {isSubmitting ? "Enregistrement..." : "Enregistrer"}
+                <button type="button" onClick={soumettreAffectation} disabled={envoiAffectation}
+                  className="px-4 py-2 text-sm font-bold text-white rounded-lg disabled:opacity-50 transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: C.primary }}>
+                  {envoiAffectation ? "Affectation…" : "Affecter"}
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ── Modale d'affectation ── */}
-      {showModalAffecter && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={(e) => e.target === e.currentTarget && setShowModalAffecter(false)}>
-          <div className="w-full max-w-sm bg-white rounded-lg border border-[#E2E8F0] p-6 mx-4">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-base font-semibold text-[#1E293B]">Affecter un EPI</h2>
-              <button onClick={() => setShowModalAffecter(false)}
-                className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition text-base leading-none">
-                &#x2715;
-              </button>
-            </div>
-            <p className="text-sm text-[#64748B] mb-4">{epiAAffecter?.designation}</p>
-
-            {erreurAffectation && (
-              <div className="mb-4 p-3 text-sm text-[#DC2626] bg-red-50 border border-red-200 rounded-md">{erreurAffectation}</div>
-            )}
-
-            <div className="space-y-4">
-              <div>
-                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Employé</label>
-                <select
-                  value={formAffectation.employeId}
-                  onChange={(e) => setFormAffectation((f) => ({ ...f, employeId: e.target.value }))}
-                  className={inputCls("employeId")}
-                >
-                  <option value="">Sélectionner un employé</option>
-                  {users.map((u) => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
-                  Poste <span className="font-normal normal-case text-[#94A3B8]">(optionnel)</span>
-                </label>
-                <input
-                  type="text"
-                  value={formAffectation.poste}
-                  onChange={(e) => setFormAffectation((f) => ({ ...f, poste: e.target.value }))}
-                  placeholder="ex: Chantier A"
-                  className={inputCls("poste")}
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-[#F1F5F9]">
-              <button type="button" onClick={() => setShowModalAffecter(false)}
-                className="px-4 py-2 text-sm font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
-                Annuler
-              </button>
-              <button type="button" onClick={soumettreAffectation} disabled={envoiAffectation}
-                className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
-                {envoiAffectation ? "Affectation..." : "Affecter"}
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* ── Modale d'inspection ── */}
-      {showModalInspection && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={(e) => e.target === e.currentTarget && setShowModalInspection(false)}>
-          <div className="w-full max-w-sm bg-white rounded-lg border border-[#E2E8F0] p-6 mx-4">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-base font-semibold text-[#1E293B]">Enregistrer une inspection</h2>
-              <button onClick={() => setShowModalInspection(false)}
-                className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition text-base leading-none">
-                &#x2715;
-              </button>
-            </div>
-            <p className="text-sm text-[#64748B] mb-4">{epiAInspecter?.designation}</p>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Date d'inspection</label>
-                <input
-                  type="date"
-                  value={formInspection.dateInspection}
-                  onChange={(e) => setFormInspection((f) => ({ ...f, dateInspection: e.target.value }))}
-                  className={inputCls("dateInspection")}
-                />
+        {/* ── Modale d'inspection ── */}
+        {showModalInspection && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            onClick={(e) => e.target === e.currentTarget && setShowModalInspection(false)}>
+            <div className="w-full max-w-sm bg-white rounded-xl mx-4">
+              <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b" style={{ borderColor: C.outlineVariant }}>
+                <h2 className="text-base font-semibold text-[#1E293B]">Enregistrer une inspection</h2>
+                <button onClick={() => setShowModalInspection(false)}
+                  className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#f8f9ff]">
+                  &#x2715;
+                </button>
               </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="conforme"
-                  checked={formInspection.conforme}
-                  onChange={(e) => setFormInspection((f) => ({ ...f, conforme: e.target.checked }))}
-                  className="w-4 h-4 rounded border-[#E2E8F0] text-navy focus:ring-navy/30"
-                />
-                <label htmlFor="conforme" className="text-sm text-[#1E293B]">L'EPI est conforme</label>
+              <div className="px-6 py-5 space-y-4">
+                <p className="text-sm" style={{ color: C.onSurfaceVariant }}>{epiAInspecter?.designation}</p>
+                <div>
+                  <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Date d'inspection</label>
+                  <input type="date" value={formInspection.dateInspection}
+                    onChange={(e) => setFormInspection((f) => ({ ...f, dateInspection: e.target.value }))}
+                    className={inputClsFull} style={{ borderColor: C.outlineVariant }} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="conforme" checked={formInspection.conforme}
+                    onChange={(e) => setFormInspection((f) => ({ ...f, conforme: e.target.checked }))}
+                    className="w-4 h-4 rounded" style={{ accentColor: C.primary }} />
+                  <label htmlFor="conforme" className="text-sm" style={{ color: "#1E293B" }}>L'EPI est conforme</label>
+                </div>
+                <div>
+                  <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>
+                    Commentaire <span className="font-normal normal-case" style={{ color: C.onSurfaceVariant }}>(optionnel)</span>
+                  </label>
+                  <textarea value={formInspection.commentaire}
+                    onChange={(e) => setFormInspection((f) => ({ ...f, commentaire: e.target.value }))}
+                    rows={3} placeholder="Observations éventuelles…" className={inputClsFull} style={{ borderColor: C.outlineVariant }} />
+                </div>
               </div>
-              <div>
-                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
-                  Commentaire <span className="font-normal normal-case text-[#94A3B8]">(optionnel)</span>
-                </label>
-                <textarea
-                  value={formInspection.commentaire}
-                  onChange={(e) => setFormInspection((f) => ({ ...f, commentaire: e.target.value }))}
-                  rows={3}
-                  placeholder="Observations éventuelles…"
-                  className={inputCls("commentaire")}
-                />
+              <div className="flex justify-end gap-3 px-6 py-4 border-t" style={{ borderColor: C.outlineVariant }}>
+                <button type="button" onClick={() => setShowModalInspection(false)}
+                  className="px-4 py-2 text-sm font-semibold rounded-lg border" style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>
+                  Annuler
+                </button>
+                <button type="button" onClick={soumettreInspection} disabled={envoiInspection}
+                  className="px-4 py-2 text-sm font-bold text-white rounded-lg disabled:opacity-50 transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: C.primary }}>
+                  {envoiInspection ? "Enregistrement…" : "Enregistrer"}
+                </button>
               </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-[#F1F5F9]">
-              <button type="button" onClick={() => setShowModalInspection(false)}
-                className="px-4 py-2 text-sm font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
-                Annuler
-              </button>
-              <button type="button" onClick={soumettreInspection} disabled={envoiInspection}
-                className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
-                {envoiInspection ? "Enregistrement..." : "Enregistrer"}
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </AppLayout>
   );
 }

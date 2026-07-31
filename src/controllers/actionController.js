@@ -43,10 +43,23 @@ const createAction = async (req, res) => {
   }
 };
 
+// GET /api/actions/:id — détail complet (page CAPA)
+const getActionById = async (req, res) => {
+  try {
+    const action = await actionService.getActionById(req.params.id, req.user.entrepriseId, {
+      userId: req.user.userId,
+      role:   req.user.role,
+    });
+    res.status(200).json({ success: true, data: action });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
 // PUT /api/actions/:id
 const updateAction = async (req, res) => {
   try {
-    const action = await actionService.updateAction(req.params.id, req.body, req.user.entrepriseId);
+    const action = await actionService.updateAction(req.params.id, req.body, req.user.entrepriseId, req.user.userId);
     res.status(200).json({ success: true, data: action });
   } catch (error) {
     handleErreur(res, error);
@@ -59,7 +72,8 @@ const cloturerAction = async (req, res) => {
     const action = await actionService.cloturerAction(
       req.params.id,
       req.body.commentaireCloture,
-      req.user.entrepriseId
+      req.user.entrepriseId,
+      req.user.userId
     );
     res.status(200).json({ success: true, data: action });
   } catch (error) {
@@ -112,6 +126,7 @@ module.exports = {
   getMesActions,
   getActionsByIncident,
   createAction,
+  getActionById,
   updateAction,
   cloturerAction,
   progresserAction,

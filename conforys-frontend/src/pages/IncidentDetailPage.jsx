@@ -822,7 +822,7 @@ function IncidentDetailPage() {
       {/* ── En-tête (sans cadre) ── */}
       <div className="flex items-start justify-between mb-6 pb-5 border-b border-[#E2E8F0]">
         <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="text-xl font-bold text-[#0D2B4E]">{incident.numeroReference}</h1>
+          <h1 className="text-lg font-semibold text-navy">{incident.numeroReference}</h1>
           <Badge variant={incident.gravite} />
           <Badge variant={incident.statut} />
         </div>

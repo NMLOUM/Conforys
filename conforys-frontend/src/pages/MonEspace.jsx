@@ -131,7 +131,7 @@ function MonEspace() {
           {/* Déclarations récentes */}
           <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">
             <div className="px-5 py-4 border-b border-[#E2E8F0] flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-[#1E293B]">Mes déclarations récentes</h2>
+              <h2 className="text-base font-semibold text-[#1E293B]">Mes déclarations récentes</h2>
               <button onClick={() => navigate("/incidents")}
                 className="text-xs text-navy hover:underline font-medium">
                 Voir tout
@@ -172,7 +172,7 @@ function MonEspace() {
           {/* Formations */}
           <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">
             <div className="px-5 py-4 border-b border-[#E2E8F0]">
-              <h2 className="text-sm font-semibold text-[#1E293B]">Formations disponibles</h2>
+              <h2 className="text-base font-semibold text-[#1E293B]">Formations disponibles</h2>
             </div>
             {formations.length === 0 ? (
               <p className="px-5 py-8 text-sm text-center text-[#94A3B8]">Aucune formation enregistrée</p>
@@ -198,7 +198,7 @@ function MonEspace() {
           {habilitations.length > 0 && (
             <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">
               <div className="px-5 py-4 border-b border-[#E2E8F0]">
-                <h2 className="text-sm font-semibold text-[#1E293B]">Mes habilitations</h2>
+                <h2 className="text-base font-semibold text-[#1E293B]">Mes habilitations</h2>
               </div>
               <div className="divide-y divide-[#F1F5F9]">
                 {habilitations.map((h) => (
@@ -222,7 +222,7 @@ function MonEspace() {
           {episAffectes.length > 0 && (
             <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">
               <div className="px-5 py-4 border-b border-[#E2E8F0]">
-                <h2 className="text-sm font-semibold text-[#1E293B]">Mes EPI affectés</h2>
+                <h2 className="text-base font-semibold text-[#1E293B]">Mes EPI affectés</h2>
               </div>
               <div className="divide-y divide-[#F1F5F9]">
                 {episAffectes.map((a) => (
@@ -245,7 +245,7 @@ function MonEspace() {
           {attestations.length > 0 && (
             <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">
               <div className="px-5 py-4 border-b border-[#E2E8F0]">
-                <h2 className="text-sm font-semibold text-[#1E293B]">Mes attestations</h2>
+                <h2 className="text-base font-semibold text-[#1E293B]">Mes attestations</h2>
               </div>
               <div className="divide-y divide-[#F1F5F9]">
                 {attestations.map((a) => {

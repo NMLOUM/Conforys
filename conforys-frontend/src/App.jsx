@@ -19,6 +19,7 @@ import RisqueDetailPage from "./pages/RisqueDetailPage";
 import VerifierAttestationPage from "./pages/VerifierAttestationPage";
 import UsersPage from "./pages/UsersPage";
 import ActionsPage from "./pages/ActionsPage";
+import ActionDetailPage from "./pages/ActionDetailPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import JournalActivitePage from "./pages/JournalActivitePage";
 
@@ -93,6 +94,7 @@ function App() {
         <Route path="/incidents/:id/analyse" element={<ProtectedRoute element={<AnalyseCausesPage />} rolesAutorises={["ADMIN", "RESPONSABLE_QHSE", "EMPLOYE"]} />} />
         {/* Actions correctives : QHSE + EMPLOYE (ADMIN n'a pas accès au métier QHSE) */}
         <Route path="/actions"    element={<ProtectedRoute element={<ActionsPage />}    rolesAutorises={["RESPONSABLE_QHSE", "EMPLOYE"]} />} />
+        <Route path="/actions/:id" element={<ProtectedRoute element={<ActionDetailPage />} rolesAutorises={["RESPONSABLE_QHSE", "EMPLOYE"]} />} />
         {/* Modules QHSE exclusifs */}
         <Route path="/epis"       element={<ProtectedRoute element={<EpisPage />}       rolesAutorises={["RESPONSABLE_QHSE"]} />} />
         <Route path="/audits"     element={<ProtectedRoute element={<AuditsPage />}     rolesAutorises={["RESPONSABLE_QHSE"]} />} />

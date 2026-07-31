@@ -1,4 +1,5 @@
  const historiqueService = require("../services/historiqueService");
+const actionService     = require("../services/actionService");
 const { handleErreur }  = require("../utils/handleErreur");
 
 // GET /api/incidents/:id/historique — piste d'audit en lecture seule
@@ -26,4 +27,20 @@ const getHistoriqueGlobal = async (req, res) => {
   }
 };
 
-module.exports = { getHistorique, getHistoriqueGlobal };
+// GET /api/actions/:id/historique — journal d'audit de l'action, lecture seule
+// Réutilise getActionById pour l'appartenance entreprise + l'accès (QHSE/ADMIN
+// ou responsable assigné) avant de lire le journal.
+const getHistoriqueAction = async (req, res) => {
+  try {
+    await actionService.getActionById(req.params.id, req.user.entrepriseId, {
+      userId: req.user.userId,
+      role:   req.user.role,
+    });
+    const historique = await historiqueService.getHistoriqueByAction(req.params.id);
+    res.status(200).json({ success: true, data: historique });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+module.exports = { getHistorique, getHistoriqueGlobal, getHistoriqueAction };

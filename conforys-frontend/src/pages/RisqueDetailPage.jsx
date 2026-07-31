@@ -282,7 +282,7 @@ function RisqueDetailPage() {
             <button type="button" onClick={() => setShowHistorique((v) => !v)}
               className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#F8FAFC] transition-colors">
               <div className="text-left">
-                <h2 className="text-sm font-semibold text-[#1E293B]">
+                <h2 className="text-base font-semibold text-[#1E293B]">
                   Historique
                   {historique.length > 0 && (
                     <span className="ml-2 text-[11px] font-normal text-[#94A3B8]">

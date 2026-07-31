@@ -1078,7 +1078,7 @@ function IncidentsPage() {
       {/* ── En-tête ── */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-xl font-bold text-[#0D2B4E]">Gestion des incidents</h1>
+          <h1 className="text-lg font-semibold text-navy">Gestion des incidents</h1>
           <p className="text-sm text-[#64748B] mt-0.5">Suivi des événements et risques QHSE</p>
         </div>
         <button

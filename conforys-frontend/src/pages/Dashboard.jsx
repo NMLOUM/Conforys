@@ -168,7 +168,7 @@ function Dashboard() {
           {/* â”€â”€ EN-TÃŠTE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-navy">Vue d'ensemble QHSE</h2>
+              <h1 className="text-lg font-semibold text-navy">Vue d'ensemble QHSE</h1>
               <p className="text-xs text-[#94A3B8] capitalize mt-0.5">{dateAujourdhui}</p>
             </div>
             <div className="flex items-center gap-3">

@@ -5,6 +5,7 @@ generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
+
 datasource db {
   provider = "postgresql"
 }
@@ -14,21 +15,21 @@ datasource db {
 // ─────────────────────────────────────────────
 
 enum Role {
-  ADMIN            // Administrateur de la plateforme
+  ADMIN // Administrateur de la plateforme
   RESPONSABLE_QHSE // Responsable QHSE de l'entreprise
-  EMPLOYE          // Employé déclarant
+  EMPLOYE // Employé déclarant
 }
 
 model Entreprise {
-  id        String   @id @default(uuid())
+  id        String  @id @default(uuid())
   nom       String
-  secteur   String?  // Secteur d'activité (BTP, agroalimentaire, etc.)
+  secteur   String? // Secteur d'activité (BTP, agroalimentaire, etc.)
   adresse   String?
   telephone String?
-  email     String?  @unique
+  email     String? @unique
 
   // Relation : une entreprise a plusieurs utilisateurs
-  users     User[]
+  users User[]
   sites Site[]
 
   // Dernière date à laquelle le DUERP a été formellement révisé (obligation
@@ -43,49 +44,55 @@ model Entreprise {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  nom       String
-  prenom    String
-  email     String   @unique
-  password  String
-  role      Role     @default(EMPLOYE)
-  actif     Boolean  @default(true)
+  id       String  @id @default(uuid())
+  nom      String
+  prenom   String
+  email    String  @unique
+  password String
+  role     Role    @default(EMPLOYE)
+  actif    Boolean @default(true)
 
   // Relation : un utilisateur appartient à une entreprise
   entreprise   Entreprise @relation(fields: [entrepriseId], references: [id])
   entrepriseId String
 
   // Relation : incidents déclarés par cet utilisateur (employé déclarant)
-  incidentsDeclares Incident[]        @relation("IncidentsDeclares")
+  incidentsDeclares            Incident[]               @relation("IncidentsDeclares")
   // Relation : incidents validés par cet utilisateur (responsable QHSE)
-  incidentsValides  Incident[]        @relation("IncidentsValides")
-  audits            Audit[]
+  incidentsValides             Incident[]               @relation("IncidentsValides")
+  audits                       Audit[]
   // Relation : participations aux formations (présence, validation)
-  participationsFormation ParticipationFormation[] @relation("ParticipantsFormation")
+  participationsFormation      ParticipationFormation[] @relation("ParticipantsFormation")
   // Relation : habilitations détenues par cet utilisateur
-  habilitations     Habilitation[]
+  habilitations                Habilitation[]
   // Relation : actions correctives assignées à cet utilisateur
-  actionsAssignees  ActionCorrective[] @relation("ActionsAssignees")
+  actionsAssignees             ActionCorrective[]       @relation("ActionsAssignees")
   // Relation : entrées d'historique dont cet utilisateur est l'auteur
-  historiqueActions HistoriqueIncident[] @relation("HistoriqueAuteur")
+  historiqueActions            HistoriqueIncident[]     @relation("HistoriqueAuteur")
   // Relation : notifications reçues par cet utilisateur
-  notifications     Notification[]
+  notifications                Notification[]
   // Relation : EPI actuellement ou anciennement affectés à cet utilisateur
-  episAffectes      AffectationEpi[]     @relation("EpisAffectes")
+  episAffectes                 AffectationEpi[]         @relation("EpisAffectes")
   // Relation : inspections d'EPI réalisées par cet utilisateur
-  inspectionsEffectuees InspectionEpi[]  @relation("InspectionsEffectuees")
+  inspectionsEffectuees        InspectionEpi[]          @relation("InspectionsEffectuees")
   // Relation : attestations de formation obtenues
-  attestations          Attestation[]
+  attestations                 Attestation[]
   // Relation : risques professionnels identifiés par cet utilisateur (DUERP)
-  risquesIdentifies     Risque[]
+  risquesIdentifies            Risque[]
   // Relation : entrées d'historique DUERP dont cet utilisateur est l'auteur
-  historiqueRisques     HistoriqueRisque[] @relation("HistoriqueRisqueAuteur")
+  historiqueRisques            HistoriqueRisque[]       @relation("HistoriqueRisqueAuteur")
   // Relation : analyses de causes racines réalisées par cet utilisateur
-  analysesCauses        AnalyseCauses[]
+  analysesCauses               AnalyseCauses[]
   // Relation : pièces jointes ajoutées par cet utilisateur (espace collaboratif)
-  piecesJointesAjoutees PieceJointe[] @relation("PiecesJointesAjoutees")
+  piecesJointesAjoutees        PieceJointe[]            @relation("PiecesJointesAjoutees")
   // Relation : commentaires postés par cet utilisateur (espace collaboratif)
-  commentaires          Commentaire[] @relation("CommentairesAuteur")
+  commentaires                 Commentaire[]            @relation("CommentairesAuteur")
+  // Relation : entrées du journal d'audit des actions correctives dont cet utilisateur est l'auteur
+  historiqueActionsCorrectives HistoriqueAction[]       @relation("HistoriqueActionAuteur")
+  // Relation : commentaires postés sur une action corrective (espace collaboratif CAPA)
+  commentairesAction           CommentaireAction[]      @relation("CommentairesActionAuteur")
+  // Relation : pièces jointes ajoutées sur une action corrective
+  piecesJointesActionAjoutees  PieceJointeAction[]      @relation("PiecesJointesActionAjoutees")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -93,12 +100,11 @@ model User {
   @@map("users")
 }
 
-
 model Site {
-  id        String  @id @default(uuid())
-  nom       String
-  adresse   String?
-  ville     String?
+  id      String  @id @default(uuid())
+  nom     String
+  adresse String?
+  ville   String?
 
   entreprise   Entreprise @relation(fields: [entrepriseId], references: [id])
   entrepriseId String
@@ -138,32 +144,32 @@ enum GraviteIncident {
 }
 
 model Incident {
-  id              String          @id @default(uuid())
-  numeroReference String          @unique @map("numero_reference")
+  id              String         @id @default(uuid())
+  numeroReference String         @unique @map("numero_reference")
   type            TypeIncident
   description     String
-  statut          StatutIncident  @default(BROUILLON)
+  statut          StatutIncident @default(BROUILLON)
 
-  latitude        Float?
-  longitude       Float?
-  adresseLisible  String?         @map("adresse_lisible")
-  photoUrl        String?         @map("photo_url")
+  latitude       Float?
+  longitude      Float?
+  adresseLisible String? @map("adresse_lisible")
+  photoUrl       String? @map("photo_url")
 
-  gravite         GraviteIncident @default(FAIBLE)
+  gravite GraviteIncident @default(FAIBLE)
 
-  dateIncident    DateTime        @map("date_incident")
-  dateDeclaration DateTime        @default(now()) @map("date_declaration")
-  dateCloture     DateTime?       @map("date_cloture")
-  motifRejet      String?         @map("motif_rejet")
+  dateIncident    DateTime  @map("date_incident")
+  dateDeclaration DateTime  @default(now()) @map("date_declaration")
+  dateCloture     DateTime? @map("date_cloture")
+  motifRejet      String?   @map("motif_rejet")
 
-  declarePar   User    @relation("IncidentsDeclares", fields: [declareParId], references: [id])
-  declareParId String  @map("declare_par_id")
+  declarePar   User   @relation("IncidentsDeclares", fields: [declareParId], references: [id])
+  declareParId String @map("declare_par_id")
 
-  validePar    User?   @relation("IncidentsValides", fields: [valideParId], references: [id])
-  valideParId  String? @map("valide_par_id")
+  validePar   User?   @relation("IncidentsValides", fields: [valideParId], references: [id])
+  valideParId String? @map("valide_par_id")
 
-  site         Site    @relation(fields: [siteId], references: [id])
-  siteId       String  @map("site_id")
+  site   Site   @relation(fields: [siteId], references: [id])
+  siteId String @map("site_id")
 
   // Relation : actions correctives liées à cet incident
   actionsCorrectives ActionCorrective[]
@@ -188,8 +194,8 @@ model Incident {
 
 model HistoriqueIncident {
   id      String  @id @default(uuid())
-  action  String                          // Ex: "Incident déclaré", "Statut changé : OUVERT → EN_COURS"
-  details String?                         // Précision optionnelle (motif rejet, nom photo, etc.)
+  action  String // Ex: "Incident déclaré", "Statut changé : OUVERT → EN_COURS"
+  details String? // Précision optionnelle (motif rejet, nom photo, etc.)
 
   // Suppression en cascade : si l'incident est supprimé, son historique disparaît aussi
   incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
@@ -242,16 +248,100 @@ model ActionCorrective {
 
   // Relation : liée à un risque du DUERP (générée pour un risque élevé/critique)
   risque   Risque? @relation(fields: [risqueId], references: [id], onDelete: Cascade)
-  risqueId String?  @map("risque_id")
+  risqueId String? @map("risque_id")
 
   // Relation : responsable assigné
   responsable   User   @relation("ActionsAssignees", fields: [responsableId], references: [id])
   responsableId String @map("responsable_id")
 
+  // Relation : checklist des étapes de résolution (page de détail CAPA)
+  etapes        EtapeAction[]
+  // Relation : journal d'audit propre à l'action (piste de traçabilité immuable)
+  historique    HistoriqueAction[]
+  // Relation : fil de commentaires propre à l'action
+  commentaires  CommentaireAction[]
+  // Relation : pièces jointes propres à l'action (photos, documents)
+  piecesJointes PieceJointeAction[]
+
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("actions_correctives")
+}
+
+// ── Page de détail CAPA : checklist, journal d'audit, commentaires, pièces jointes ──
+
+// Une étape de la checklist de résolution d'une action corrective.
+// Remplace-tout côté service à chaque écriture (même logique que les causes
+// Ishikawa/étapes 5 Pourquoi) : pas d'enjeu d'audit individuel par étape,
+// seule la complétion globale (progression %) compte pour l'affichage.
+model EtapeAction {
+  id       String  @id @default(uuid())
+  libelle  String
+  complete Boolean @default(false)
+  ordre    Int     @default(0)
+
+  action   ActionCorrective @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  actionId String           @map("action_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("etapes_action")
+}
+
+// Piste d'audit immuable propre à une action corrective — même principe que
+// HistoriqueIncident/HistoriqueRisque (une entrée par événement métier :
+// création, changement de statut, étape complétée, clôture).
+model HistoriqueAction {
+  id      String  @id @default(uuid())
+  action  String // Libellé métier libre : "Action créée", "Statut changé : X → Y", "Étape complétée : ..."
+  details String?
+
+  actionCorrective   ActionCorrective @relation(fields: [actionCorrectiveId], references: [id], onDelete: Cascade)
+  actionCorrectiveId String           @map("action_corrective_id")
+
+  auteur   User   @relation("HistoriqueActionAuteur", fields: [auteurId], references: [id])
+  auteurId String @map("auteur_id")
+
+  dateAction DateTime @default(now()) @map("date_action")
+
+  @@map("historique_actions")
+}
+
+// Fil de commentaires propre à une action corrective (espace collaboratif CAPA).
+model CommentaireAction {
+  id      String @id @default(uuid())
+  contenu String
+
+  action   ActionCorrective @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  actionId String           @map("action_id")
+
+  auteur   User   @relation("CommentairesActionAuteur", fields: [auteurId], references: [id])
+  auteurId String @map("auteur_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("commentaires_action")
+}
+
+// Pièces jointes propres à une action corrective (photos/documents de résolution).
+model PieceJointeAction {
+  id     String          @id @default(uuid())
+  url    String
+  nom    String?
+  type   TypePieceJointe @default(IMAGE)
+  taille Int?
+
+  action   ActionCorrective @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  actionId String           @map("action_id")
+
+  ajoutePar   User?   @relation("PiecesJointesActionAjoutees", fields: [ajouteParId], references: [id])
+  ajouteParId String? @map("ajoute_par_id")
+
+  dateAjout DateTime @default(now()) @map("date_ajout")
+
+  @@map("pieces_jointes_action")
 }
 
 // ─────────────────────────────────────────────
@@ -262,10 +352,10 @@ model ActionCorrective {
 // retenue à l'issue de l'analyse, et sert de parent aux causes Ishikawa et
 // aux étapes des 5 Pourquoi.
 model AnalyseCauses {
-  id          String    @id @default(uuid())
-  probleme    String                          // Pré-rempli avec incident.description à la création
-  causeRacine String?   @map("cause_racine")   // Renseignée à l'issue de l'analyse
-  valideLe    DateTime? @map("valide_le")      // Date de validation ("Valider l'analyse") — null tant que non validée
+  id              String    @id @default(uuid())
+  probleme        String // Pré-rempli avec incident.description à la création
+  causeRacine     String?   @map("cause_racine") // Renseignée à l'issue de l'analyse
+  valideLe        DateTime? @map("valide_le") // Date de validation ("Valider l'analyse") — null tant que non validée
   actionGenereeLe DateTime? @map("action_generee_le") // Empêche de générer deux fois l'action corrective depuis la même analyse
 
   incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
@@ -278,7 +368,7 @@ model AnalyseCauses {
   etapesPourquoi EtapePourquoi[]
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("analyses_causes")
 }
@@ -334,11 +424,11 @@ enum TypePieceJointe {
 }
 
 model PieceJointe {
-  id       String          @id @default(uuid())
-  url      String                              // URL hébergée sur ImgBB
-  nom      String?                             // Nom original du fichier
-  type     TypePieceJointe @default(IMAGE)
-  taille   Int?                                // Taille en octets, si connue (affichage espace collaboratif)
+  id     String          @id @default(uuid())
+  url    String // URL hébergée sur ImgBB
+  nom    String? // Nom original du fichier
+  type   TypePieceJointe @default(IMAGE)
+  taille Int? // Taille en octets, si connue (affichage espace collaboratif)
 
   // Relation : liée à un incident (suppression en cascade)
   incident   Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
@@ -376,23 +466,23 @@ model Commentaire {
 // ─────────────────────────────────────────────
 
 enum StatutEpi {
-  DISPONIBLE      // En stock, utilisable
-  EN_RUPTURE      // Stock épuisé
-  PERIME          // Date de péremption dépassée
-  COMMANDE        // En cours de commande
+  DISPONIBLE // En stock, utilisable
+  EN_RUPTURE // Stock épuisé
+  PERIME // Date de péremption dépassée
+  COMMANDE // En cours de commande
 }
 
 model Epi {
-  id          String     @id @default(uuid())
-  designation String                              // Ex: Casque de chantier
-  type        String                              // Ex: Protection tête
-  reference   String?                             // Référence fournisseur
-  photoUrl    String?    @map("photo_url")        // URL de la photo (hébergée sur ImgBB)
-  quantite    Int        @default(0)              // Stock disponible
-  seuilAlerte Int        @default(5)              // Seuil de réapprovisionnement
-  statut      StatutEpi  @default(DISPONIBLE)
-  datePeremption DateTime? @map("date_peremption") // Optionnel (certains EPI expirent)
-  frequenceInspectionJours Int? @map("frequence_inspection_jours") // Optionnel : périodicité d'inspection requise (ex: 180 = tous les 6 mois)
+  id                       String    @id @default(uuid())
+  designation              String // Ex: Casque de chantier
+  type                     String // Ex: Protection tête
+  reference                String? // Référence fournisseur
+  photoUrl                 String?   @map("photo_url") // URL de la photo (hébergée sur ImgBB)
+  quantite                 Int       @default(0) // Stock disponible
+  seuilAlerte              Int       @default(5) // Seuil de réapprovisionnement
+  statut                   StatutEpi @default(DISPONIBLE)
+  datePeremption           DateTime? @map("date_peremption") // Optionnel (certains EPI expirent)
+  frequenceInspectionJours Int?      @map("frequence_inspection_jours") // Optionnel : périodicité d'inspection requise (ex: 180 = tous les 6 mois)
 
   // Relation : l'EPI est rattaché à un site
   site   Site   @relation(fields: [siteId], references: [id])
@@ -420,7 +510,7 @@ model Epi {
 model InspectionEpi {
   id             String   @id @default(uuid())
   dateInspection DateTime @default(now()) @map("date_inspection")
-  conforme       Boolean  @default(true)              // L'EPI a-t-il passé l'inspection ?
+  conforme       Boolean  @default(true) // L'EPI a-t-il passé l'inspection ?
   commentaire    String?
 
   // Relation : l'EPI inspecté (suppression en cascade avec l'EPI)
@@ -447,7 +537,7 @@ enum StatutAffectation {
 
 model AffectationEpi {
   id              String            @id @default(uuid())
-  poste           String?                                     // Poste de travail concerné
+  poste           String? // Poste de travail concerné
   dateAffectation DateTime          @default(now()) @map("date_affectation")
   dateRetour      DateTime?         @map("date_retour")
   statut          StatutAffectation @default(ACTIVE)
@@ -461,7 +551,7 @@ model AffectationEpi {
   employeId String @map("employe_id")
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("affectations_epi")
 }
@@ -471,29 +561,29 @@ model AffectationEpi {
 // ─────────────────────────────────────────────
 
 enum TypeAudit {
-  SECURITE       // Audit sécurité
-  QUALITE        // Audit qualité
-  ENVIRONNEMENT  // Audit environnemental
-  HYGIENE        // Audit hygiène
+  SECURITE // Audit sécurité
+  QUALITE // Audit qualité
+  ENVIRONNEMENT // Audit environnemental
+  HYGIENE // Audit hygiène
 }
 
 enum StatutAudit {
-  PLANIFIE   // Audit programmé
-  EN_COURS   // Audit en cours de réalisation
-  TERMINE    // Audit clôturé
-  ANNULE     // Audit annulé
+  PLANIFIE // Audit programmé
+  EN_COURS // Audit en cours de réalisation
+  TERMINE // Audit clôturé
+  ANNULE // Audit annulé
 }
 
 model Audit {
-  id          String      @id @default(uuid())
-  reference   String      @unique @map("reference")  // Ex: AUD-2026-0001
-  titre       String
-  type        TypeAudit
-  statut      StatutAudit @default(PLANIFIE)
-  datePrevue  DateTime    @map("date_prevue")          // Date planifiée
-  dateRealisee DateTime?  @map("date_realisee")        // Date réelle (optionnel)
-  scoreConformite Float?  @map("score_conformite")     // Score en % (0-100)
-  observations String?                                  // Commentaires de l'auditeur
+  id              String      @id @default(uuid())
+  reference       String      @unique @map("reference") // Ex: AUD-2026-0001
+  titre           String
+  type            TypeAudit
+  statut          StatutAudit @default(PLANIFIE)
+  datePrevue      DateTime    @map("date_prevue") // Date planifiée
+  dateRealisee    DateTime?   @map("date_realisee") // Date réelle (optionnel)
+  scoreConformite Float?      @map("score_conformite") // Score en % (0-100)
+  observations    String? // Commentaires de l'auditeur
 
   // Relation : l'auditeur (utilisateur qui réalise l'audit)
   auditeur   User   @relation(fields: [auditeurId], references: [id])
@@ -519,15 +609,15 @@ model Audit {
 
 enum CriticiteQuestion {
   CRITIQUE // Poids 3 dans le calcul du score
-  MAJEUR   // Poids 2
-  MINEUR   // Poids 1
+  MAJEUR // Poids 2
+  MINEUR // Poids 1
 }
 
 enum ReponseAudit {
-  CONFORME       // Compte pour le score
-  NON_CONFORME   // Compte pour le score, commentaire obligatoire
+  CONFORME // Compte pour le score
+  NON_CONFORME // Compte pour le score, commentaire obligatoire
   NON_APPLICABLE // Exclue du dénominateur du score
-  NON_REPONDU    // Exclue du dénominateur du score (valeur initiale)
+  NON_REPONDU // Exclue du dénominateur du score (valeur initiale)
 }
 
 model QuestionAudit {
@@ -547,7 +637,7 @@ model QuestionAudit {
   auditId String @map("audit_id")
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("questions_audit")
 }
@@ -557,10 +647,10 @@ model QuestionAudit {
 // ─────────────────────────────────────────────
 
 enum StatutFormation {
-  PLANIFIEE  // Formation programmée
-  EN_COURS   // Formation en cours de réalisation
-  TERMINEE   // Formation clôturée
-  ANNULEE    // Formation annulée
+  PLANIFIEE // Formation programmée
+  EN_COURS // Formation en cours de réalisation
+  TERMINEE // Formation clôturée
+  ANNULEE // Formation annulée
 }
 
 enum ThemeFormation {
@@ -573,16 +663,16 @@ enum ThemeFormation {
 }
 
 model Formation {
-  id          String         @id @default(uuid())
-  titre       String
-  description String?
-  formateur   String
-  theme       ThemeFormation?
-  statut      StatutFormation @default(PLANIFIEE)
-  dateDebut   DateTime       @map("date_debut")
-  dateFin     DateTime?      @map("date_fin")
-  dureeHeures Float?         @map("duree_heures")
-  dureeValiditeJours Int?    @map("duree_validite_jours") // Optionnel : périodicité de recyclage requise (ex: 365 = 1 an) — sert à calculer la date d'expiration de l'attestation délivrée
+  id                 String          @id @default(uuid())
+  titre              String
+  description        String?
+  formateur          String
+  theme              ThemeFormation?
+  statut             StatutFormation @default(PLANIFIEE)
+  dateDebut          DateTime        @map("date_debut")
+  dateFin            DateTime?       @map("date_fin")
+  dureeHeures        Float?          @map("duree_heures")
+  dureeValiditeJours Int?            @map("duree_validite_jours") // Optionnel : périodicité de recyclage requise (ex: 365 = 1 an) — sert à calculer la date d'expiration de l'attestation délivrée
 
   // Relation : la formation se déroule sur un site
   site   Site   @relation(fields: [siteId], references: [id])
@@ -593,7 +683,7 @@ model Formation {
   participations ParticipationFormation[]
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("formations")
 }
@@ -613,7 +703,7 @@ model ParticipationFormation {
   participantId String @map("participant_id")
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Un utilisateur ne peut être inscrit qu'une seule fois à une même session
   @@unique([formationId, participantId])
@@ -632,18 +722,18 @@ model ParticipationFormation {
 // ou supprimée — d'où les champs texte dénormalisés (titreFormation, etc.).
 
 enum SourceAttestation {
-  SESSION         // Issue d'une session présentielle (sous-bloc A)
+  SESSION // Issue d'une session présentielle (sous-bloc A)
   MODULE_EN_LIGNE // Issue d'un module en ligne / quiz (sous-bloc B)
 }
 
 model Attestation {
-  id               String   @id @default(uuid())
-  codeVerification String   @unique @map("code_verification") // Code public, distinct de l'id interne
-  titreFormation   String   @map("titre_formation")
-  themeFormation   String?  @map("theme_formation")
-  dateObtention    DateTime @default(now()) @map("date_obtention")
-  dateExpiration   DateTime? @map("date_expiration") // Optionnel : formations à recycler périodiquement
-  scoreObtenu      Int?     @map("score_obtenu")     // Renseigné si issue d'un quiz
+  id               String            @id @default(uuid())
+  codeVerification String            @unique @map("code_verification") // Code public, distinct de l'id interne
+  titreFormation   String            @map("titre_formation")
+  themeFormation   String?           @map("theme_formation")
+  dateObtention    DateTime          @default(now()) @map("date_obtention")
+  dateExpiration   DateTime?         @map("date_expiration") // Optionnel : formations à recycler périodiquement
+  scoreObtenu      Int?              @map("score_obtenu") // Renseigné si issue d'un quiz
   source           SourceAttestation
 
   beneficiaire   User   @relation(fields: [beneficiaireId], references: [id])
@@ -659,16 +749,16 @@ model Attestation {
 // ─────────────────────────────────────────────
 
 enum StatutHabilitation {
-  VALIDE          // Habilitation en cours de validité
-  EXPIREE         // Date d'expiration dépassée
+  VALIDE // Habilitation en cours de validité
+  EXPIREE // Date d'expiration dépassée
   BIENTOT_EXPIREE // Expire dans moins de 30 jours
 }
 
 model Habilitation {
   id             String             @id @default(uuid())
-  intitule       String                                    // Ex: Habilitation électrique B1V
-  type           String                                    // Ex: Electrique, Chimique, Hauteur
-  niveau         String?                                   // Ex: B1, B2, BR...
+  intitule       String // Ex: Habilitation électrique B1V
+  type           String // Ex: Electrique, Chimique, Hauteur
+  niveau         String? // Ex: B1, B2, BR...
   dateObtention  DateTime           @map("date_obtention")
   dateExpiration DateTime           @map("date_expiration")
   statut         StatutHabilitation @default(VALIDE)
@@ -678,7 +768,7 @@ model Habilitation {
   titulaireId String @map("titulaire_id")
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("habilitations")
 }
@@ -688,21 +778,21 @@ model Habilitation {
 // ─────────────────────────────────────────────
 
 enum TypeNotification {
-  INCIDENT_DECLARE     // Incident déclaré, notifié aux QHSE de l'entreprise
-  INCIDENT_CRITIQUE    // Idem, mais gravité CRITIQUE (titre plus urgent)
-  EPI_STOCK_BAS        // EPI sous le seuil d'alerte
-  HABILITATION_EXPIRE  // Habilitation expirant bientôt
-  ACTION_EN_RETARD     // Action corrective en retard
-  AUDIT_PLANIFIE       // Audit planifié à venir
+  INCIDENT_DECLARE // Incident déclaré, notifié aux QHSE de l'entreprise
+  INCIDENT_CRITIQUE // Idem, mais gravité CRITIQUE (titre plus urgent)
+  EPI_STOCK_BAS // EPI sous le seuil d'alerte
+  HABILITATION_EXPIRE // Habilitation expirant bientôt
+  ACTION_EN_RETARD // Action corrective en retard
+  AUDIT_PLANIFIE // Audit planifié à venir
 }
 
 model Notification {
-  id      String            @id @default(uuid())
+  id      String           @id @default(uuid())
   type    TypeNotification
   titre   String
   message String
-  lu      Boolean           @default(false)
-  lien    String?                              // Ex: /incidents/:id — route frontend cible
+  lu      Boolean          @default(false)
+  lien    String? // Ex: /incidents/:id — route frontend cible
 
   // Relation : destinataire de la notification (suppression en cascade avec l'utilisateur)
   destinataire   User   @relation(fields: [destinataireId], references: [id], onDelete: Cascade)
@@ -736,22 +826,22 @@ enum CategorieRisque {
 // pour rester des valeurs figées au moment de la saisie, cohérentes avec
 // l'historique du document même si l'échelle de calcul évoluait plus tard.
 model Risque {
-  id                String          @id @default(uuid())
-  danger            String                                     // Ex: "Chute de hauteur"
-  description       String?
-  categorie         CategorieRisque @default(AUTRE)
-  zone              String?                                     // Ex: "Atelier soudure"
+  id          String          @id @default(uuid())
+  danger      String // Ex: "Chute de hauteur"
+  description String?
+  categorie   CategorieRisque @default(AUTRE)
+  zone        String? // Ex: "Atelier soudure"
 
-  probabilite       Int                                         // 1 (rare) à 4 (fréquent)
-  gravite           Int                                         // 1 (mineure) à 4 (critique)
-  niveauRisque      Int             @map("niveau_risque")       // = probabilite × gravite, 1 à 16
+  probabilite  Int // 1 (rare) à 4 (fréquent)
+  gravite      Int // 1 (mineure) à 4 (critique)
+  niveauRisque Int @map("niveau_risque") // = probabilite × gravite, 1 à 16
 
-  mesuresPrevention String?         @map("mesures_prevention")
+  mesuresPrevention String? @map("mesures_prevention")
 
   // Cotation résiduelle — après application des mesures de prévention (optionnelle)
-  probabiliteResiduelle Int?        @map("probabilite_residuelle")
-  graviteResiduelle     Int?        @map("gravite_residuelle")
-  niveauResiduel        Int?        @map("niveau_residuel")
+  probabiliteResiduelle Int? @map("probabilite_residuelle")
+  graviteResiduelle     Int? @map("gravite_residuelle")
+  niveauResiduel        Int? @map("niveau_residuel")
 
   // Relation : site/atelier concerné par ce risque
   site   Site   @relation(fields: [siteId], references: [id])
@@ -768,7 +858,7 @@ model Risque {
   historique HistoriqueRisque[]
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("risques")
 }
@@ -778,14 +868,14 @@ model Risque {
 // même principe que HistoriqueIncident, nécessaire à la traçabilité exigée
 // du DUERP (obligation de conserver les versions successives du document).
 model HistoriqueRisque {
-  id     String @id @default(uuid())
-  risque Risque @relation(fields: [risqueId], references: [id], onDelete: Cascade)
+  id       String @id @default(uuid())
+  risque   Risque @relation(fields: [risqueId], references: [id], onDelete: Cascade)
   risqueId String @map("risque_id")
 
   auteur   User   @relation("HistoriqueRisqueAuteur", fields: [auteurId], references: [id])
   auteurId String @map("auteur_id")
 
-  action  String  // Libellé métier libre : "Risque identifié", "Cotation modifiée : 8 → 4", "Mesures de prévention mises à jour", "Action de prévention générée"
+  action  String // Libellé métier libre : "Risque identifié", "Cotation modifiée : 8 → 4", "Mesures de prévention mises à jour", "Action de prévention générée"
   details String?
 
   dateAction DateTime @default(now()) @map("date_action")

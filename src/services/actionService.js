@@ -1,5 +1,5 @@
 const prisma = require("../config/prisma");
-const { enregistrer } = require("./historiqueService");
+const { enregistrer, enregistrerAction } = require("./historiqueService");
 
 // Erreur métier avec code HTTP (400/403/404) — évite de renvoyer 500 sur des cas attendus
 class ErreurMetier extends Error {
@@ -16,9 +16,9 @@ const PRIORITE_PAR_CRITICITE = { CRITIQUE: "CRITIQUE", MAJEUR: "ELEVE", MINEUR: 
 // jamais plus d'une seule de ces trois relations à la fois)
 const INCLUDE_ACTION = {
   responsable: { select: { id: true, nom: true, prenom: true, email: true } },
-  incident:    { select: { id: true, numeroReference: true } },
-  audit:       { select: { id: true, reference: true } },
-  risque:      { select: { id: true, danger: true } },
+  incident:    { select: { id: true, numeroReference: true, site: { select: { id: true, nom: true } } } },
+  audit:       { select: { id: true, reference: true, site: { select: { id: true, nom: true } } } },
+  risque:      { select: { id: true, danger: true, site: { select: { id: true, nom: true } } } },
 };
 
 // Récupère toutes les actions d'un incident, triées du plus récent au plus ancien
@@ -46,6 +46,37 @@ const createAction = async (incidentId, data, auteurId, entrepriseId) => {
     include: INCLUDE_ACTION,
   });
   await enregistrer(incidentId, auteurId, "Action corrective ajoutée", action.description.slice(0, 120));
+  await enregistrerAction(action.id, auteurId, "Action créée");
+  return action;
+};
+
+// Récupère une action avec tout le détail nécessaire à la page CAPA (étapes,
+// checklist, compteurs). Vérifie l'appartenance à l'entreprise ET l'accès :
+// QHSE/ADMIN voient toute action de l'entreprise, un EMPLOYE ne voit que les
+// actions dont il est le responsable assigné.
+const getActionById = async (id, entrepriseId, demandeur) => {
+  const action = await prisma.actionCorrective.findFirst({
+    where: {
+      id,
+      OR: [
+        { incident: { declarePar: { entrepriseId } } },
+        { audit: { auditeur: { entrepriseId } } },
+        { risque: { site: { entrepriseId } } },
+      ],
+    },
+    include: {
+      ...INCLUDE_ACTION,
+      etapes: { orderBy: { ordre: "asc" } },
+    },
+  });
+  if (!action) throw new ErreurMetier("Action introuvable.", 404);
+
+  const estGestionnaire = demandeur.role === "RESPONSABLE_QHSE" || demandeur.role === "ADMIN";
+  const estResponsable  = action.responsableId === demandeur.userId;
+  if (!estGestionnaire && !estResponsable) {
+    throw new ErreurMetier("Vous n'avez pas accès à cette action.", 403);
+  }
+
   return action;
 };
 
@@ -69,7 +100,7 @@ const verifierAppartenance = async (id, entrepriseId) => {
 };
 
 // Met à jour une action (description, priorité, statut, date limite, responsable)
-const updateAction = async (id, data, entrepriseId) => {
+const updateAction = async (id, data, entrepriseId, auteurId) => {
   const action = await verifierAppartenance(id, entrepriseId);
 
   // Bloquer la modification d'une action déjà clôturée ou annulée
@@ -84,7 +115,7 @@ const updateAction = async (id, data, entrepriseId) => {
     );
   }
 
-  return await prisma.actionCorrective.update({
+  const misAJour = await prisma.actionCorrective.update({
     where: { id },
     data: {
       ...(data.description  !== undefined && { description:  data.description }),
@@ -97,16 +128,24 @@ const updateAction = async (id, data, entrepriseId) => {
     },
     include: INCLUDE_ACTION,
   });
+
+  if (data.statut !== undefined && data.statut !== action.statut) {
+    await enregistrerAction(id, auteurId, `Statut changé : ${action.statut} → ${data.statut}`);
+  } else {
+    await enregistrerAction(id, auteurId, "Action modifiée");
+  }
+
+  return misAJour;
 };
 
 // Clôture une action : passe au statut TERMINE, remplit dateCloture et commentaire
-const cloturerAction = async (id, commentaireCloture, entrepriseId) => {
+const cloturerAction = async (id, commentaireCloture, entrepriseId, auteurId) => {
   const action = await verifierAppartenance(id, entrepriseId);
 
   if (action.statut === "TERMINE") throw new ErreurMetier("Cette action est déjà clôturée.");
   if (action.statut === "ANNULE")  throw new ErreurMetier("Impossible de clôturer une action annulée.");
 
-  return await prisma.actionCorrective.update({
+  const cloturee = await prisma.actionCorrective.update({
     where: { id },
     data: {
       statut:             "TERMINE",
@@ -115,6 +154,8 @@ const cloturerAction = async (id, commentaireCloture, entrepriseId) => {
     },
     include: INCLUDE_ACTION,
   });
+  await enregistrerAction(id, auteurId, "Action clôturée", commentaireCloture.trim().slice(0, 120));
+  return cloturee;
 };
 
 // Permet au responsable assigné de démarrer son action (A_FAIRE → EN_COURS)
@@ -126,11 +167,13 @@ const progresserAction = async (id, userId) => {
   if (action.statut !== "A_FAIRE")
     throw new ErreurMetier("Seules les actions « À faire » peuvent être démarrées.");
 
-  return await prisma.actionCorrective.update({
+  const progressee = await prisma.actionCorrective.update({
     where: { id },
     data:  { statut: "EN_COURS" },
     include: INCLUDE_ACTION,
   });
+  await enregistrerAction(id, userId, "Statut changé : A_FAIRE → EN_COURS");
+  return progressee;
 };
 
 // Supprime définitivement une action (ADMIN uniquement)
@@ -220,6 +263,7 @@ const getMesActions = async (userId) => {
 module.exports = {
   getActionsByIncident,
   createAction,
+  getActionById,
   updateAction,
   cloturerAction,
   progresserAction,

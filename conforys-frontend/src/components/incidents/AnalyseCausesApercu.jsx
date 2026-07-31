@@ -24,7 +24,7 @@ function AnalyseCausesApercu({ incident, peutGerer }) {
       style={{ backgroundColor: "#EAF3EC", border: "1px solid #2E7D32" }}>
       <div className="flex items-center gap-2 px-5 pt-4">
         <Search size={15} color="#2E7D32" strokeWidth={2} />
-        <h2 className="text-sm font-semibold text-[#1E293B]">Analyse des causes</h2>
+        <h2 className="text-base font-semibold text-[#1E293B]">Analyse des causes</h2>
       </div>
 
       <div className="p-5 flex-1 flex flex-col">

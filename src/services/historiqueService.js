@@ -113,4 +113,30 @@ const getHistoriqueGlobal = async (entrepriseId, { typeAction, auteurId, inciden
   };
 };
 
-module.exports = { enregistrer, getHistoriqueByIncident, getHistoriqueGlobal, enregistrerRisque, getHistoriqueByRisque };
+// ── Piste d'audit d'une action corrective (CAPA) ────────────────────────────
+//
+// Même principe que l'historique des incidents/risques : une entrée immuable
+// par événement (création, changement de statut, étape complétée, clôture).
+const enregistrerAction = async (actionId, auteurId, action, details = null) => {
+  try {
+    return await prisma.historiqueAction.create({
+      data: { actionCorrectiveId: actionId, auteurId, action, details },
+    });
+  } catch (err) {
+    console.error("[HISTORIQUE ACTION] Échec enregistrement :", err.message);
+  }
+};
+
+const getHistoriqueByAction = async (actionId) => {
+  return await prisma.historiqueAction.findMany({
+    where:   { actionCorrectiveId: actionId },
+    include: { auteur: { select: { id: true, nom: true, prenom: true } } },
+    orderBy: { dateAction: "desc" },
+  });
+};
+
+module.exports = {
+  enregistrer, getHistoriqueByIncident, getHistoriqueGlobal,
+  enregistrerRisque, getHistoriqueByRisque,
+  enregistrerAction, getHistoriqueByAction,
+};
