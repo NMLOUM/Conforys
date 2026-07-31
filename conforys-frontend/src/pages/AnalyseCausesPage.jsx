@@ -15,7 +15,7 @@ function AnalyseCausesPage() {
   const [erreur,     setErreur]     = useState("");
 
   useEffect(() => {
-    document.title = "CONFORYS — Analyse des causes";
+    document.title = "Analyse des causes";
     api.get(`/incidents/${id}`)
       .then((res) => setIncident(res.data.data))
       .catch(() => setErreur("Impossible de charger l'incident."))

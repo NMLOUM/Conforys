@@ -219,7 +219,7 @@ function UsersPage() {
     useTable(users, ["nom", "prenom", "email"]);
 
   useEffect(() => {
-    document.title = "CONFORYS — Utilisateurs";
+    document.title = "Utilisateurs";
     return () => { document.title = "CONFORYS"; };
   }, []);
 

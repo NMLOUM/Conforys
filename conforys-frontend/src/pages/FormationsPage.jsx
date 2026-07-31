@@ -137,7 +137,7 @@ function FormationsPage() {
     useTable(formationsFiltrees, ["titre", "formateur"]);
 
   useEffect(() => {
-    document.title = "CONFORYS — Formations";
+    document.title = "Formations";
     return () => { document.title = "CONFORYS"; };
   }, []);
 
@@ -386,7 +386,7 @@ function FormationsPage() {
                 <div>
                   <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Thème</label>
                   <select {...register("theme")} className={inputCls("theme")}>
-                    <option value="">— Aucun —</option>
+                    <option value="">Aucun</option>
                     {Object.entries(THEMES).map(([cle, { label }]) => <option key={cle} value={cle}>{label}</option>)}
                   </select>
                 </div>
@@ -411,7 +411,7 @@ function FormationsPage() {
                 <div>
                   <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Site</label>
                   <select {...register("siteId")} className={inputCls("siteId")}>
-                    <option value="">— Sélectionner un site —</option>
+                    <option value="">Sélectionner un site</option>
                     {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
                   </select>
                   {errors.siteId && <p className="mt-1 text-xs text-[#DC2626]">{errors.siteId.message}</p>}

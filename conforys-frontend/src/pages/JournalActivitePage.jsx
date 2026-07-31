@@ -35,7 +35,7 @@ function JournalActivitePage() {
   const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
-    document.title = "CONFORYS — Journal d'activité";
+    document.title = "Journal d'activité";
     return () => { document.title = "CONFORYS"; };
   }, []);
 
@@ -188,7 +188,7 @@ function JournalActivitePage() {
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-[#E2E8F0] bg-[#F8FAFC]">
-              <p className="text-xs text-[#64748B]">Page {page} / {totalPages} — {total} résultat(s)</p>
+              <p className="text-xs text-[#64748B]">Page {page} / {totalPages} ({total} résultat(s))</p>
               <div className="flex items-center gap-2">
                 <button onClick={() => changerPage(page - 1)} disabled={page === 1}
                   className="px-3 py-1.5 text-xs font-medium border border-[#E2E8F0] rounded-md text-[#475569] hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors">

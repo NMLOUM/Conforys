@@ -161,7 +161,7 @@ function Etape2({ valeurs, setValue, errors, register, sites }) {
             Site *
           </label>
           <select {...register("siteId")} className={inputCls("siteId")}>
-            <option value="">— Choisir un site —</option>
+            <option value="">Choisir un site</option>
             {sites.map((s) => (
               <option key={s.id} value={s.id}>{s.nom}</option>
             ))}
@@ -325,8 +325,8 @@ function Etape3({ media, onChange }) {
     <div className="space-y-6 pt-1">
 
       <p className="text-sm text-[#64748B]">
-        Vous pouvez ajouter une photo et la localisation si elles sont disponibles —
-        cette étape est facultative, vous pouvez continuer sans.
+        Vous pouvez ajouter une photo et la localisation si elles sont disponibles.
+        Cette étape est facultative, vous pouvez continuer sans.
       </p>
 
       {/* ── Photo ── */}
@@ -578,7 +578,7 @@ function IncidentWizard({ sites, onSuccess, onClose }) {
             </div>
             <h2 className="text-base font-semibold text-[#1E293B] mb-1">Incident déclaré avec succès</h2>
             <p className="text-sm text-[#64748B] leading-relaxed max-w-xs">
-              Enregistré en brouillon — vous pourrez le soumettre pour traitement depuis sa fiche.
+              Enregistré en brouillon. Vous pourrez le soumettre pour traitement depuis sa fiche.
             </p>
             <div className="mt-5 px-6 py-3 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] flex flex-col items-center">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-[#94A3B8] mb-0.5">
@@ -665,7 +665,7 @@ function IncidentWizard({ sites, onSuccess, onClose }) {
           </form>
         </div>
 
-        {/* Pied de page — navigation */}
+        {/* Pied de page : navigation */}
         <div className="px-6 py-4 border-t border-[#F1F5F9] shrink-0">
           {erreurSoumission && (
             <p className="text-xs text-[#DC2626] mb-3">{erreurSoumission}</p>
@@ -753,7 +753,7 @@ function ModalRejeter({ incident, onConfirm, onClose }) {
         </div>
         <div className="px-6 py-5 space-y-4">
           <div className="p-3 rounded-md bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#475569]">
-            {incident.numeroReference} — {incident.description?.slice(0, 80)}…
+            {incident.numeroReference} : {incident.description?.slice(0, 80)}…
           </div>
           {erreur && (
             <p className="text-xs text-[#DC2626] p-3 bg-red-50 border border-red-200 rounded-md">{erreur}</p>
@@ -908,7 +908,7 @@ function IncidentsPage() {
   const [exportEnCours, setExportEnCours] = useState(false);
 
   useEffect(() => {
-    document.title = "CONFORYS — Incidents";
+    document.title = "Incidents";
     return () => { document.title = "CONFORYS"; };
   }, []);
 

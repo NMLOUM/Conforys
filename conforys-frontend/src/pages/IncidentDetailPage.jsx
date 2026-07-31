@@ -259,7 +259,7 @@ function ModalAjoutAction({ incidentId, users, onSuccess, onClose }) {
               Responsable *
             </label>
             <select value={form.responsableId} onChange={(e) => set("responsableId", e.target.value)} className={inputCls}>
-              <option value="">— Sélectionner un responsable —</option>
+              <option value="">Sélectionner un responsable</option>
               {users.map((u) => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
             </select>
           </div>
@@ -579,7 +579,7 @@ function IncidentDetailPage() {
   const [envoiCommentaire,   setEnvoiCommentaire]   = useState(false);
 
   useEffect(() => {
-    document.title = "CONFORYS — Détail incident";
+    document.title = "Détail incident";
     charger();
     api.get("/users").then((r) => setUsers(r.data.data || [])).catch(() => {});
     return () => { document.title = "CONFORYS"; };
@@ -1000,7 +1000,7 @@ function IncidentDetailPage() {
             )}
           </h2>
           <p className="flex items-center gap-1 text-[11px] text-[#94A3B8] mt-0.5 mb-4">
-            <Lock size={10} /> Immuable — preuve de traçabilité
+            <Lock size={10} /> Immuable, preuve de traçabilité
           </p>
           <div className="overflow-y-auto" style={{ maxHeight: 520 }}>
             {historique.length === 0 ? (
@@ -1079,7 +1079,7 @@ function IncidentDetailPage() {
                 <div key={u.id}
                   className="flex items-center justify-between text-xs px-3 py-2 rounded-md bg-red-50 border border-red-100">
                   <span className="text-[#DC2626] truncate max-w-sm">
-                    <span className="font-medium">{u.nom}</span> — {u.erreur}
+                    <span className="font-medium">{u.nom}</span> : {u.erreur}
                   </span>
                   <button onClick={() => retirerErreurUpload(u.id)}
                     className="ml-3 text-[#94A3B8] hover:text-[#64748B] shrink-0">
@@ -1092,7 +1092,7 @@ function IncidentDetailPage() {
 
           {pieces.length === 0 && uploadsEnCours.length === 0 ? (
             <p className="text-sm text-[#94A3B8] py-3">
-              Aucune pièce jointe — cliquez sur « + Ajouter » pour en ajouter une.
+              Aucune pièce jointe. Cliquez sur « + Ajouter » pour en ajouter une.
             </p>
           ) : (
             <div className="space-y-2">

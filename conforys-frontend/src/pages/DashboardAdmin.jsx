@@ -32,7 +32,7 @@ function DashboardAdmin() {
   const [chargement, setChargement] = useState(true);
 
   useEffect(() => {
-    document.title = "CONFORYS — Administration";
+    document.title = "Administration";
     return () => { document.title = "CONFORYS"; };
   }, []);
 

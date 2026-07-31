@@ -174,7 +174,7 @@ function MatriceRisques({ cellules, filtreCase, onFiltrer }) {
   return (
     <div className="p-5 bg-white border border-[#E2E8F0] rounded-xl">
       <p className="text-sm font-semibold text-navy mb-1">Matrice des risques</p>
-      <p className="text-xs text-[#94A3B8] mb-4">Probabilité × Gravité — cliquez une case pour filtrer le tableau</p>
+      <p className="text-xs text-[#94A3B8] mb-4">Probabilité × Gravité : cliquez une case pour filtrer le tableau</p>
 
       <div className="flex gap-1.5 max-w-[340px]">
         {/* Libellés de l'axe probabilité (vertical) */}
@@ -285,7 +285,7 @@ function DUERPPage() {
   };
 
   useEffect(() => {
-    document.title = "CONFORYS — DUERP";
+    document.title = "DUERP";
     return () => { document.title = "CONFORYS"; };
   }, []);
 
@@ -448,7 +448,7 @@ function DUERPPage() {
     <AppLayout titre="DUERP">
       <div className="flex items-start justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-lg font-semibold text-navy">DUERP — Évaluation des risques</h1>
+          <h1 className="text-lg font-semibold text-navy">Évaluation des risques</h1>
           <p className="text-xs text-[#94A3B8] mt-0.5">Tableau de bord <span className="mx-1">›</span> DUERP</p>
         </div>
         <button onClick={telechargerPdf} disabled={telechargementPdf}
@@ -644,7 +644,7 @@ function DUERPPage() {
               <div>
                 <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Site</label>
                 <select {...register("siteId")} className={inputCls("siteId")}>
-                  <option value="">— Sélectionner un site —</option>
+                  <option value="">Sélectionner un site</option>
                   {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
                 </select>
                 {errors.siteId && <p className="mt-1 text-xs text-[#DC2626]">{errors.siteId.message}</p>}
@@ -660,16 +660,16 @@ function DUERPPage() {
                 <div>
                   <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Probabilité</label>
                   <select {...register("probabilite")} className={inputCls("probabilite")}>
-                    <option value="">—</option>
-                    {[1, 2, 3, 4].map((p) => <option key={p} value={p}>{p} — {LABELS_PROBABILITE[p]}</option>)}
+                    <option value="">Choisir</option>
+                    {[1, 2, 3, 4].map((p) => <option key={p} value={p}>{LABELS_PROBABILITE[p]} ({p})</option>)}
                   </select>
                   {errors.probabilite && <p className="mt-1 text-xs text-[#DC2626]">{errors.probabilite.message}</p>}
                 </div>
                 <div>
                   <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Gravité</label>
                   <select {...register("gravite")} className={inputCls("gravite")}>
-                    <option value="">—</option>
-                    {[1, 2, 3, 4].map((g) => <option key={g} value={g}>{g} — {LABELS_GRAVITE[g]}</option>)}
+                    <option value="">Choisir</option>
+                    {[1, 2, 3, 4].map((g) => <option key={g} value={g}>{LABELS_GRAVITE[g]} ({g})</option>)}
                   </select>
                   {errors.gravite && <p className="mt-1 text-xs text-[#DC2626]">{errors.gravite.message}</p>}
                 </div>
@@ -698,15 +698,15 @@ function DUERPPage() {
                   <div>
                     <label className="block mb-1.5 text-xs text-[#94A3B8]">Probabilité résiduelle</label>
                     <select {...register("probabiliteResiduelle")} className={inputCls("probabiliteResiduelle")}>
-                      <option value="">—</option>
-                      {[1, 2, 3, 4].map((p) => <option key={p} value={p}>{p} — {LABELS_PROBABILITE[p]}</option>)}
+                      <option value="">Choisir</option>
+                      {[1, 2, 3, 4].map((p) => <option key={p} value={p}>{LABELS_PROBABILITE[p]} ({p})</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block mb-1.5 text-xs text-[#94A3B8]">Gravité résiduelle</label>
                     <select {...register("graviteResiduelle")} className={inputCls("graviteResiduelle")}>
-                      <option value="">—</option>
-                      {[1, 2, 3, 4].map((g) => <option key={g} value={g}>{g} — {LABELS_GRAVITE[g]}</option>)}
+                      <option value="">Choisir</option>
+                      {[1, 2, 3, 4].map((g) => <option key={g} value={g}>{LABELS_GRAVITE[g]} ({g})</option>)}
                     </select>
                   </div>
                 </div>

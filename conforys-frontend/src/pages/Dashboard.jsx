@@ -127,7 +127,7 @@ function Dashboard() {
   const [filtreGravite, setFiltreGravite] = useState(null);
   const navigate = useNavigate();
 
-  useEffect(() => { document.title = "CONFORYS — Tableau de bord"; return () => { document.title = "CONFORYS"; }; }, []);
+  useEffect(() => { document.title = "Tableau de bord"; return () => { document.title = "CONFORYS"; }; }, []);
 
   useEffect(() => {
     api.get("/dashboard/incidents")

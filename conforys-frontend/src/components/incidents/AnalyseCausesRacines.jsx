@@ -265,7 +265,7 @@ function AnalyseCausesRacines({ incident, peutGerer, onActionCreee }) {
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "#DC2626" }}>L'effet / problème</p>
           <p className="text-sm font-medium text-[#1E293B] mt-0.5">
-            {LABELS_TYPE[incident.type] ?? incident.type} — {incident.description}
+            {LABELS_TYPE[incident.type] ?? incident.type} : {incident.description}
           </p>
           <p className="text-xs text-[#64748B] mt-1">
             {dateIncident}{incident.site?.nom ? ` · ${incident.site.nom}` : ""}{incident.adresseLisible ? ` · ${incident.adresseLisible}` : ""}

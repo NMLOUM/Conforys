@@ -19,7 +19,7 @@ function MonEspace() {
   const [chargement,    setChargement]    = useState(true);
 
   useEffect(() => {
-    document.title = "CONFORYS — Mon espace";
+    document.title = "Mon espace";
     return () => { document.title = "CONFORYS"; };
   }, []);
 
@@ -149,7 +149,7 @@ function MonEspace() {
                 {incidents.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-10 text-center text-[#94A3B8]">
-                      Aucune déclaration — utilisez le bouton ci-dessus pour signaler un incident
+                      Aucune déclaration. Utilisez le bouton ci-dessus pour signaler un incident
                     </td>
                   </tr>
                 ) : (

@@ -54,7 +54,7 @@ function FormationDetailPage() {
   const [validationEnCours, setValidationEnCours] = useState(null);
 
   useEffect(() => {
-    document.title = "CONFORYS — Session de formation";
+    document.title = "Session de formation";
     return () => { document.title = "CONFORYS"; };
   }, []);
 

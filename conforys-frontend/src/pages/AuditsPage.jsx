@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Chart from "react-apexcharts";
 import toast from "react-hot-toast";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
@@ -68,83 +67,12 @@ function CarteBibliotheque({ template, onDemarrer }) {
   );
 }
 
-// ── Carte "score de conformité global" ───────────────────────────────────────
-
-function CarteScoreGlobal({ audits }) {
-  const scores = audits.map((a) => a.scoreConformite).filter((s) => s != null);
-  const moyenne = scores.length === 0 ? null : Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
-  const valeur = moyenne ?? 0;
-
-  return (
-    <div className="p-5 rounded-lg text-white" style={{ backgroundColor: "#0D2B4E" }}>
-      <p className="text-xs font-semibold uppercase tracking-wide opacity-80 mb-2">
-        Score de conformité global
-      </p>
-      <p className="text-3xl font-bold mb-3">{moyenne != null ? `${moyenne}%` : "—"}</p>
-      <div className="h-1.5 rounded-full bg-white/20 overflow-hidden">
-        <div className="h-full rounded-full bg-white" style={{ width: `${valeur}%` }} />
-      </div>
-      <p className="text-[11px] opacity-70 mt-2">
-        {scores.length === 0 ? "Aucun audit noté pour l'instant" : `Moyenne sur ${scores.length} audit${scores.length > 1 ? "s" : ""} noté${scores.length > 1 ? "s" : ""}`}
-      </p>
-    </div>
-  );
-}
-
-// ── Évolution du score de conformité dans le temps (audits terminés) ────────
-
-function GraphiqueEvolutionScore({ historique }) {
-  if (historique.length === 0) {
-    return (
-      <div className="p-5 rounded-lg border border-[#E2E8F0] bg-white">
-        <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-2">
-          Évolution du score de conformité
-        </p>
-        <p className="text-sm text-[#94A3B8]">Aucun audit terminé pour l'instant.</p>
-      </div>
-    );
-  }
-
-  const categories = historique.map((h) =>
-    new Date(h.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })
-  );
-
-  const options = {
-    chart: { type: "line", toolbar: { show: false }, animations: { enabled: false } },
-    colors: ["#0D2B4E"],
-    stroke: { width: 2, curve: "smooth" },
-    markers: { size: 4, colors: ["#0D2B4E"], strokeWidth: 0 },
-    xaxis: {
-      categories,
-      labels: { style: { colors: "#64748B", fontSize: "11px" } },
-      axisBorder: { color: "#E2E8F0" },
-    },
-    yaxis: {
-      min: 0, max: 100,
-      labels: { style: { colors: "#64748B", fontSize: "11px" }, formatter: (v) => `${Math.round(v)}%` },
-    },
-    grid: { borderColor: "#F1F5F9" },
-    dataLabels: { enabled: false },
-    tooltip: { y: { formatter: (v) => `${v}%` } },
-  };
-
-  return (
-    <div className="p-5 rounded-lg border border-[#E2E8F0] bg-white">
-      <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-3">
-        Évolution du score de conformité
-      </p>
-      <Chart type="line" options={options} series={[{ name: "Score", data: historique.map((h) => h.score) }]} height={220} />
-    </div>
-  );
-}
-
 function AuditsPage() {
   const user = useAuthStore((s) => s.user);
   const { can } = useRole();
   const [audits,     setAudits]     = useState([]);
   const [sites,      setSites]      = useState([]);
   const [templates,  setTemplates]  = useState([]);
-  const [historique, setHistorique] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [showModal,  setShowModal]  = useState(false);
   const [erreurForm, setErreurForm] = useState("");
@@ -163,7 +91,7 @@ function AuditsPage() {
     useTable(audits, ["titre", "reference"]);
 
   useEffect(() => {
-    document.title = "CONFORYS — Audits";
+    document.title = "Audits";
     return () => { document.title = "CONFORYS"; };
   }, []);
 
@@ -182,7 +110,6 @@ function AuditsPage() {
     charger();
     api.get("/sites").then((r) => setSites(r.data.data || [])).catch(() => {});
     api.get("/audits/templates").then((r) => setTemplates(r.data.data || [])).catch(() => {});
-    api.get("/audits/historique-scores").then((r) => setHistorique(r.data.data || [])).catch(() => {});
   }, []);
 
   // Cliquer une carte de la bibliothèque ouvre directement le formulaire,
@@ -199,7 +126,7 @@ function AuditsPage() {
     setErreurForm("");
     try {
       await api.post("/audits", data);
-      toast.success("Audit programmé — checklist générée avec succès");
+      toast.success("Audit programmé, checklist générée avec succès");
       setShowModal(false);
       charger();
     } catch (err) {
@@ -216,24 +143,6 @@ function AuditsPage() {
 
   return (
     <AppLayout titre="Audits internes">
-      {/* ── Bannière d'intro + score global ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="lg:col-span-2 p-5 rounded-lg border border-[#E2E8F0] bg-white">
-          <p className="text-sm font-semibold text-[#1E293B] mb-1">Audits ISO 45001</p>
-          <p className="text-xs text-[#64748B] leading-relaxed">
-            Démarrez un audit depuis un des templates ci-dessous. La checklist est générée
-            automatiquement et le score de conformité est calculé en fonction de la criticité
-            de chaque point de contrôle.
-          </p>
-        </div>
-        <CarteScoreGlobal audits={audits} />
-      </div>
-
-      {/* ── Évolution du score de conformité ── */}
-      <div className="mb-6">
-        <GraphiqueEvolutionScore historique={historique} />
-      </div>
-
       {/* ── Bibliothèque de templates ── */}
       {can("RESPONSABLE_QHSE") && (
         <div className="mb-6">
@@ -370,7 +279,7 @@ function AuditsPage() {
                     <div>
                       <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Site</label>
                       <select {...register("siteId")} className={inputCls("siteId")}>
-                        <option value="">— Sélectionner un site —</option>
+                        <option value="">Sélectionner un site</option>
                         {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
                       </select>
                       {errors.siteId && <p className="mt-1 text-xs text-[#DC2626]">{errors.siteId.message}</p>}

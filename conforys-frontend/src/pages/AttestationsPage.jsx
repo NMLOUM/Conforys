@@ -18,7 +18,7 @@ function AttestationsPage() {
   const [filtreStatut,    setFiltreStatut]    = useState("");
 
   useEffect(() => {
-    document.title = "CONFORYS — Attestations";
+    document.title = "Attestations";
     return () => { document.title = "CONFORYS"; };
   }, []);
 

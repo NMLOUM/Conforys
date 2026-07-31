@@ -18,14 +18,14 @@ const CONFIG = {
 };
 
 const LABELS_CAT = {
-  EPI_STOCK:       "EPI — Stock",
-  EPI_PERIME:      "EPI — Péremption",
-  EPI_INSPECTION:  "EPI — Inspection",
+  EPI_STOCK:       "Stock EPI",
+  EPI_PERIME:      "Péremption EPI",
+  EPI_INSPECTION:  "Inspection EPI",
   HABILITATION:    "Habilitation",
   AUDIT_RETARD:    "Audit en retard",
   INCIDENT_GRAVE:  "Incident grave",
   ATTESTATION_EXPIREE:   "Attestation expirée",
-  ATTESTATION_RECYCLAGE: "Attestation — Recyclage",
+  ATTESTATION_RECYCLAGE: "Recyclage attestation",
 };
 
 function AlertesCritiques({ alertes = [] }) {

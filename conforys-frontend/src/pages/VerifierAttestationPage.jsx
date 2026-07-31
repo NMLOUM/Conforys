@@ -11,7 +11,7 @@ function VerifierAttestationPage() {
   const [chargement, setChargement] = useState(true);
 
   useEffect(() => {
-    document.title = "CONFORYS — Vérification d'attestation";
+    document.title = "Vérification d'attestation";
   }, []);
 
   useEffect(() => {

@@ -11,7 +11,7 @@ function NotificationsPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    document.title = "CONFORYS — Notifications";
+    document.title = "Notifications";
     return () => { document.title = "CONFORYS"; };
   }, []);
 

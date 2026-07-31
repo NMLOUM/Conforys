@@ -117,7 +117,7 @@ function RisqueDetailPage() {
   const [confirmerSuppression, setConfirmerSuppression] = useState(false);
 
   useEffect(() => {
-    document.title = "CONFORYS — Risque DUERP";
+    document.title = "Risque DUERP";
     return () => { document.title = "CONFORYS"; };
   }, []);
 
@@ -290,7 +290,7 @@ function RisqueDetailPage() {
                     </span>
                   )}
                 </h2>
-                <p className="text-xs text-[#64748B] mt-0.5">Piste d'audit — lecture seule</p>
+                <p className="text-xs text-[#64748B] mt-0.5">Piste d'audit (lecture seule)</p>
               </div>
               <svg className={`w-4 h-4 text-[#94A3B8] shrink-0 transition-transform duration-200 ${showHistorique ? "rotate-180" : ""}`}
                 viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -376,7 +376,7 @@ function RisqueDetailPage() {
           ) : (
             <div className="p-5 border border-[#E2E8F0] rounded-lg bg-white">
               <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-2">Cotation résiduelle</p>
-              <p className="text-xs text-[#94A3B8]">Non renseignée — à évaluer une fois les mesures de prévention appliquées.</p>
+              <p className="text-xs text-[#94A3B8]">Non renseignée. À évaluer une fois les mesures de prévention appliquées.</p>
             </div>
           )}
         </div>

@@ -221,7 +221,7 @@ function LigneQuestion({ question, onReponse, disabled }) {
               {uploading ? (
                 <span className="flex items-center gap-2 text-xs text-[#64748B]"><Spinner /> Envoi…</span>
               ) : photoUrl ? (
-                <span className="text-xs font-medium text-[#0D2B4E]">Photo envoyée — cliquer pour changer</span>
+                <span className="text-xs font-medium text-[#0D2B4E]">Photo envoyée, cliquer pour changer</span>
               ) : (
                 <span className="text-xs text-[#64748B]">Sélectionner une photo</span>
               )}
@@ -355,7 +355,7 @@ function SectionCapa({ auditId, nombreNonConformes, auditTermine, can, actions, 
         </p>
       )}
       {auditTermine && nombreNonConformes === 0 && (
-        <p className="text-xs text-[#2E7D32]">Aucune non-conformité — aucun plan d'action nécessaire.</p>
+        <p className="text-xs text-[#2E7D32]">Aucune non-conformité, aucun plan d'action nécessaire.</p>
       )}
 
       {actions.length > 0 && (
@@ -414,7 +414,7 @@ function AuditDetailPage() {
   const [telechargementPdf, setTelechargementPdf] = useState(false);
 
   useEffect(() => {
-    document.title = "CONFORYS — Audit";
+    document.title = "Audit";
     return () => { document.title = "CONFORYS"; };
   }, []);
 
@@ -580,8 +580,8 @@ function AuditDetailPage() {
         {audit.statut !== "EN_COURS" && (
           <p className="mt-2 text-xs text-[#94A3B8] italic">
             {audit.statut === "PLANIFIE" && "Cliquez sur « Démarrer » pour commencer à répondre à la checklist."}
-            {audit.statut === "TERMINE" && "Audit finalisé — les réponses sont en lecture seule."}
-            {audit.statut === "ANNULE" && "Audit annulé — les réponses sont en lecture seule."}
+            {audit.statut === "TERMINE" && "Audit finalisé. Les réponses sont en lecture seule."}
+            {audit.statut === "ANNULE" && "Audit annulé. Les réponses sont en lecture seule."}
           </p>
         )}
       </div>

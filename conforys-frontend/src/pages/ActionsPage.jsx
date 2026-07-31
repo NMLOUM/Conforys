@@ -278,7 +278,7 @@ function ActionsPage() {
     useTable(actionsFiltrees, ["description"]);
 
   useEffect(() => {
-    document.title = isEmploye ? "CONFORYS — Mes actions" : "CONFORYS — Actions correctives";
+    document.title = isEmploye ? "Mes actions" : "Actions correctives";
     charger();
     if (isQhse) {
       api.get("/users").then((r) => setUsers(r.data.data || [])).catch(() => {});

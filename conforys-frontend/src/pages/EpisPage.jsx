@@ -284,7 +284,7 @@ function EpisPage() {
     useTable(episFiltres, ["designation", "type"]);
 
   useEffect(() => {
-    document.title = "CONFORYS — EPI";
+    document.title = "EPI";
     return () => { document.title = "CONFORYS"; };
   }, []);
 
@@ -848,7 +848,7 @@ function EpisPage() {
                         Envoi de la photo…
                       </span>
                     ) : photoUrl ? (
-                      <span className="font-medium text-[#0D2B4E]">Photo envoyée — cliquer pour changer</span>
+                      <span className="font-medium text-[#0D2B4E]">Photo envoyée, cliquer pour changer</span>
                     ) : (
                       <span className="text-[#64748B]">Sélectionner une photo</span>
                     )}
@@ -872,7 +872,7 @@ function EpisPage() {
               <div>
                 <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Site</label>
                 <select {...register("siteId")} className={inputCls("siteId")}>
-                  <option value="">— Sélectionner un site —</option>
+                  <option value="">Sélectionner un site</option>
                   {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
                 </select>
                 {errors.siteId && <p className="mt-1 text-xs text-[#DC2626]">{errors.siteId.message}</p>}
@@ -931,7 +931,7 @@ function EpisPage() {
                   onChange={(e) => setFormAffectation((f) => ({ ...f, employeId: e.target.value }))}
                   className={inputCls("employeId")}
                 >
-                  <option value="">— Sélectionner un employé —</option>
+                  <option value="">Sélectionner un employé</option>
                   {users.map((u) => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
                 </select>
               </div>
