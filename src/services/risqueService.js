@@ -3,7 +3,8 @@
 // de générer une action de prévention (réutilise ActionCorrective) pour les
 // risques élevés ou critiques.
 const prisma = require("../config/prisma");
-const { enregistrerRisque, getHistoriqueByRisque: getHistorique } = require("./historiqueService");
+const { enregistrerRisque, enregistrerAction, getHistoriqueByRisque: getHistorique } = require("./historiqueService");
+const { creer: creerNotification } = require("./notificationService");
 
 // Erreur métier avec code HTTP — cohérent avec les autres services
 class ErreurMetier extends Error {
@@ -228,6 +229,11 @@ const genererActionDepuisRisque = async (risqueId, auteurId, entrepriseId) => {
     include: { responsable: { select: { id: true, nom: true, prenom: true } } },
   });
   await enregistrerRisque(risqueId, auteurId, "Action de prévention générée");
+  await enregistrerAction(action.id, auteurId, "Action créée", `Générée depuis le risque : ${risque.danger}`);
+  await creerNotification(
+    action.responsableId, "ACTION_ASSIGNEE", "Action corrective assignée",
+    action.description.slice(0, 120), `/actions/${action.id}`
+  );
   return action;
 };
 

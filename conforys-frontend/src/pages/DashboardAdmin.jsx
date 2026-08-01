@@ -13,7 +13,7 @@ function KpiCard({ label, value, sub, subColor = "text-[#64748B]", valueColor = 
       className="bg-white rounded-lg p-5 flex flex-col justify-between"
       style={{ minHeight: "112px", border: "1px solid #E2E8F0" }}
     >
-      <p className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{label}</p>
+      <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide">{label}</p>
       <p className="text-[36px] font-bold leading-none" style={{ color: valueColor }}>{value ?? "—"}</p>
       <p className={`text-[12px] ${subColor}`}>{sub || " "}</p>
     </div>
@@ -103,7 +103,7 @@ function DashboardAdmin() {
 
           {/* Accès rapides */}
           <div className="bg-white border border-[#E2E8F0] rounded-lg p-5">
-            <h2 className="text-base font-semibold text-[#1E293B] mb-4">Accès rapides</h2>
+            <h2 className="text-lg font-semibold text-navy mb-4">Accès rapides</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {ACCES.map((a) => (
                 <button
@@ -121,7 +121,7 @@ function DashboardAdmin() {
           {/* Graphiques + Alertes */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white border border-[#E2E8F0] rounded-lg p-5">
-              <h2 className="text-base font-semibold text-[#1E293B] mb-4">Incidents par gravité</h2>
+              <h2 className="text-lg font-semibold text-navy mb-4">Incidents par gravité</h2>
               <GraviteChart data={stats?.parGravite ?? []} />
             </div>
             <div className="md:col-span-2">
@@ -132,14 +132,14 @@ function DashboardAdmin() {
           {/* Derniers incidents */}
           <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">
             <div className="px-5 py-4 border-b border-[#E2E8F0]">
-              <h2 className="text-base font-semibold text-[#1E293B]">Incidents récents</h2>
+              <h2 className="text-lg font-semibold text-navy">Incidents récents</h2>
             </div>
             <div className="overflow-x-auto">
             <table className="w-full min-w-[600px] text-sm">
               <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                 <tr>
                   {["Référence", "Type", "Site", "Déclaré par", "Gravité", "Statut"].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">
                       {h}
                     </th>
                   ))}

@@ -16,7 +16,7 @@ const getAllActions = async (req, res) => {
 // GET /api/actions/mes-actions — actions assignées au connecté, tous rôles
 const getMesActions = async (req, res) => {
   try {
-    const actions = await actionService.getMesActions(req.user.userId);
+    const actions = await actionService.getMesActions(req.user.userId, req.user.entrepriseId);
     res.status(200).json({ success: true, data: actions });
   } catch (error) {
     handleErreur(res, error);
@@ -84,7 +84,7 @@ const cloturerAction = async (req, res) => {
 // PUT /api/actions/:id/progresser — responsable uniquement (tous rôles), A_FAIRE → EN_COURS
 const progresserAction = async (req, res) => {
   try {
-    const action = await actionService.progresserAction(req.params.id, req.user.userId);
+    const action = await actionService.progresserAction(req.params.id, req.user.userId, req.user.entrepriseId);
     res.status(200).json({ success: true, data: action });
   } catch (error) {
     handleErreur(res, error);

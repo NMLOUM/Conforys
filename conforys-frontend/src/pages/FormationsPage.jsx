@@ -75,7 +75,7 @@ function CartesSynthese({ stats }) {
       {cartes.map((c) => (
         <div key={c.label} className="bg-white rounded-lg p-5 flex flex-col justify-between"
           style={{ minHeight: "108px", border: "1px solid #E2E8F0", borderLeft: `4px solid ${c.accent}` }}>
-          <p className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{c.label}</p>
+          <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide">{c.label}</p>
           <p className="text-[28px] font-bold leading-none" style={{ color: c.accent }}>{c.value}</p>
           <p className="text-[12px] text-[#94A3B8]">{c.sub}</p>
         </div>
@@ -88,7 +88,7 @@ function CartesSynthese({ stats }) {
 function BibliothequeModules({ filtreTheme, onFiltrer }) {
   return (
     <div className="mb-5">
-      <p className="text-sm font-semibold text-navy mb-2">Bibliothèque de modules</p>
+      <p className="text-[15px] font-semibold text-[#1E293B] mb-2">Bibliothèque de modules</p>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {Object.entries(THEMES).map(([cle, { label, Icone }]) => {
           const actif = filtreTheme === cle;
@@ -236,7 +236,7 @@ function FormationsPage() {
     <AppLayout titre="Formations">
       <div className="flex items-center justify-between mb-1">
         <div>
-          <h1 className="text-lg font-semibold text-navy">Formations</h1>
+          <h1 className="text-2xl font-bold text-navy">Formations</h1>
           <p className="text-xs text-[#94A3B8] mt-0.5">Tableau de bord <span className="mx-1">›</span> Formations</p>
         </div>
         {peutGerer && (
@@ -275,7 +275,7 @@ function FormationsPage() {
               <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                 <tr>
                   {["Session", "Date", "Participants", "Statut", "Progression", peutGerer ? "Actions" : null].filter(Boolean).map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{h}</th>
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -360,7 +360,7 @@ function FormationsPage() {
           onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
           <div className="w-full max-w-lg bg-white rounded-lg border border-[#E2E8F0] p-6 mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-semibold text-[#1E293B]">{formationEnEdition ? "Modifier la session" : "Nouvelle session"}</h2>
+              <h2 className="text-lg font-semibold text-navy">{formationEnEdition ? "Modifier la session" : "Nouvelle session"}</h2>
               <button onClick={() => setShowModal(false)}
                 className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition text-base leading-none">
                 &#x2715;
@@ -373,18 +373,18 @@ function FormationsPage() {
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
-                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Titre</label>
+                <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Titre</label>
                 <input type="text" {...register("titre")} placeholder="ex: Sécurité incendie" className={inputCls("titre")} />
                 {errors.titre && <p className="mt-1 text-xs text-[#DC2626]">{errors.titre.message}</p>}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Formateur</label>
+                  <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Formateur</label>
                   <input type="text" {...register("formateur")} placeholder="Nom du formateur" className={inputCls("formateur")} />
                   {errors.formateur && <p className="mt-1 text-xs text-[#DC2626]">{errors.formateur.message}</p>}
                 </div>
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Thème</label>
+                  <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Thème</label>
                   <select {...register("theme")} className={inputCls("theme")}>
                     <option value="">Aucun</option>
                     {Object.entries(THEMES).map(([cle, { label }]) => <option key={cle} value={cle}>{label}</option>)}
@@ -393,23 +393,23 @@ function FormationsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Date de début</label>
+                  <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Date de début</label>
                   <input type="date" {...register("dateDebut")} className={inputCls("dateDebut")} />
                   {errors.dateDebut && <p className="mt-1 text-xs text-[#DC2626]">{errors.dateDebut.message}</p>}
                 </div>
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Date de fin</label>
+                  <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Date de fin</label>
                   <input type="date" {...register("dateFin")} className={inputCls("dateFin")} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Durée (heures)</label>
+                  <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Durée (heures)</label>
                   <input type="number" step="0.5" {...register("dureeHeures")} placeholder="ex: 7" className={inputCls("dureeHeures")} />
                   {errors.dureeHeures && <p className="mt-1 text-xs text-[#DC2626]">{errors.dureeHeures.message}</p>}
                 </div>
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Site</label>
+                  <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Site</label>
                   <select {...register("siteId")} className={inputCls("siteId")}>
                     <option value="">Sélectionner un site</option>
                     {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
@@ -419,7 +419,7 @@ function FormationsPage() {
               </div>
 
               <div>
-                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Participants</label>
+                <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Participants</label>
                 <div className="border border-[#E2E8F0] rounded-md max-h-40 overflow-y-auto divide-y divide-[#F1F5F9]">
                   {users.length === 0 ? (
                     <p className="px-3 py-3 text-sm text-[#94A3B8]">Aucun utilisateur disponible.</p>

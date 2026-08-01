@@ -47,4 +47,11 @@ const cloturerActionSchema = z.object({
     .min(5, "Le commentaire doit faire au moins 5 caractères."),
 });
 
-module.exports = { actionSchema, updateActionSchema, cloturerActionSchema };
+// Filtres de la vue globale (?statut=&priorite=&responsableId=), tous facultatifs
+const listeActionsSchema = z.object({
+  statut:        z.enum(["A_FAIRE", "EN_COURS", "TERMINE", "ANNULE"]).optional(),
+  priorite:      z.enum(["FAIBLE", "MOYEN", "ELEVE", "CRITIQUE"]).optional(),
+  responsableId: z.string().uuid("Identifiant responsable invalide.").optional(),
+});
+
+module.exports = { actionSchema, updateActionSchema, cloturerActionSchema, listeActionsSchema };

@@ -2,6 +2,8 @@
 // recenser les causes potentielles par catégorie, et méthode des 5 Pourquoi
 // pour remonter jusqu'à la cause profonde. Une seule analyse par incident.
 const prisma = require("../config/prisma");
+const { enregistrer, enregistrerAction } = require("./historiqueService");
+const { creer: creerNotification } = require("./notificationService");
 
 class ErreurMetier extends Error {
   constructor(message, statusCode = 400) {
@@ -134,6 +136,12 @@ const genererActionDepuisAnalyse = async (incidentId, entrepriseId) => {
     include: { responsable: { select: { id: true, nom: true, prenom: true } } },
   });
   await prisma.analyseCauses.update({ where: { id: analyse.id }, data: { actionGenereeLe: new Date() } });
+  await enregistrer(incidentId, analyse.auteurId, "Action corrective ajoutée", action.description.slice(0, 120));
+  await enregistrerAction(action.id, analyse.auteurId, "Action créée", "Générée depuis l'analyse des causes");
+  await creerNotification(
+    action.responsableId, "ACTION_ASSIGNEE", "Action corrective assignée",
+    action.description.slice(0, 120), `/actions/${action.id}`
+  );
   return action;
 };
 

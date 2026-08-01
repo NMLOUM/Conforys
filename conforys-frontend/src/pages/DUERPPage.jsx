@@ -72,7 +72,7 @@ function BarreRepartition({ risques }) {
 
   return (
     <div className="p-5 bg-white border border-[#E2E8F0] rounded-xl">
-      <p className="text-sm font-semibold text-navy mb-1">Répartition par niveau</p>
+      <p className="text-[15px] font-semibold text-[#1E293B] mb-1">Répartition par niveau</p>
       <p className="text-xs text-[#94A3B8] mb-4">
         {total} risque{total !== 1 ? "s" : ""} · {traites} traité{traites !== 1 ? "s" : ""}
       </p>
@@ -113,7 +113,7 @@ function StatutRevision({ statut, onMarquerRevise, enCours, peutGerer }) {
     <div className="p-5 bg-white border border-[#E2E8F0] rounded-xl">
       <div className="flex items-center gap-2 mb-3">
         <CalendarCheck size={16} color={statut.enRetard ? "#DC2626" : "#2E7D32"} strokeWidth={2} className="shrink-0" />
-        <p className="text-sm font-semibold text-navy">Révision annuelle</p>
+        <p className="text-[15px] font-semibold text-[#1E293B]">Révision annuelle</p>
       </div>
       <div className="space-y-1.5 text-xs text-[#475569]">
         <p>Dernière révision : <span className="font-medium text-[#1E293B]">{formatDate(statut.dateDerniereRevision)}</span></p>
@@ -143,7 +143,7 @@ function RisquesPrioritaires({ risques, onGenerer, genererEnCoursId }) {
     <div className="p-5 bg-white border border-[#E2E8F0] rounded-xl">
       <div className="flex items-center gap-2 mb-3">
         <AlertTriangle size={16} color="#DC2626" strokeWidth={2} className="shrink-0" />
-        <p className="text-sm font-semibold text-navy">Risques prioritaires</p>
+        <p className="text-[15px] font-semibold text-[#1E293B]">Risques prioritaires</p>
       </div>
       {prioritaires.length === 0 ? (
         <p className="text-xs text-[#94A3B8]">Aucun risque élevé/critique en attente d'action.</p>
@@ -173,7 +173,7 @@ function MatriceRisques({ cellules, filtreCase, onFiltrer }) {
 
   return (
     <div className="p-5 bg-white border border-[#E2E8F0] rounded-xl">
-      <p className="text-sm font-semibold text-navy mb-1">Matrice des risques</p>
+      <p className="text-[15px] font-semibold text-[#1E293B] mb-1">Matrice des risques</p>
       <p className="text-xs text-[#94A3B8] mb-4">Probabilité × Gravité : cliquez une case pour filtrer le tableau</p>
 
       <div className="flex gap-1.5 max-w-[340px]">
@@ -448,7 +448,7 @@ function DUERPPage() {
     <AppLayout titre="DUERP">
       <div className="flex items-start justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-lg font-semibold text-navy">Évaluation des risques</h1>
+          <h1 className="text-2xl font-bold text-navy">Évaluation des risques</h1>
           <p className="text-xs text-[#94A3B8] mt-0.5">Tableau de bord <span className="mx-1">›</span> DUERP</p>
         </div>
         <button onClick={telechargerPdf} disabled={telechargementPdf}
@@ -461,28 +461,28 @@ function DUERPPage() {
       {/* ── Barre de filtres persistante ── */}
       <div className="flex flex-wrap items-end gap-3 p-4 bg-white border border-[#E2E8F0] rounded-xl mb-5">
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide">Site</label>
+          <label className="text-xs font-medium text-[#64748B] uppercase tracking-wide">Site</label>
           <select value={filtreSite} onChange={(e) => setFiltreSite(e.target.value)} className={selectCls}>
             <option value="">Tous les sites</option>
             {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
           </select>
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide">Catégorie</label>
+          <label className="text-xs font-medium text-[#64748B] uppercase tracking-wide">Catégorie</label>
           <select value={filtreCategorie} onChange={(e) => setFiltreCategorie(e.target.value)} className={selectCls}>
             <option value="">Toutes catégories</option>
             {Object.entries(CATEGORIES).map(([cle, label]) => <option key={cle} value={cle}>{label}</option>)}
           </select>
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide">Niveau</label>
+          <label className="text-xs font-medium text-[#64748B] uppercase tracking-wide">Niveau</label>
           <select value={filtreNiveau} onChange={(e) => setFiltreNiveau(e.target.value)} className={selectCls}>
             <option value="">Tous niveaux</option>
             {Object.entries(CONFIG_NIVEAU).map(([cle, c]) => <option key={cle} value={cle}>{c.label}</option>)}
           </select>
         </div>
         <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
-          <label className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide">Recherche</label>
+          <label className="text-xs font-medium text-[#64748B] uppercase tracking-wide">Recherche</label>
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none" />
             <input type="text" placeholder="Danger, zone…" value={recherche} onChange={(e) => setRecherche(e.target.value)}
@@ -508,14 +508,14 @@ function DUERPPage() {
           ) : (
             <div className="border border-[#E2E8F0] rounded-xl overflow-hidden bg-white">
               <div className="px-5 py-4 border-b border-[#E2E8F0]">
-                <p className="text-sm font-semibold text-navy">Registre des risques</p>
+                <p className="text-[15px] font-semibold text-[#1E293B]">Registre des risques</p>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[980px] text-sm">
                   <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                     <tr>
                       {["Danger", "Catégorie", "Zone", "Probabilité", "Gravité", "Initial", "Résiduel", "Mesures", peutGerer ? "Action" : null].filter(Boolean).map((h) => (
-                        <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{h}</th>
+                        <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -612,7 +612,7 @@ function DUERPPage() {
           onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
           <div className="w-full max-w-lg bg-white rounded-lg border border-[#E2E8F0] p-6 mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-semibold text-[#1E293B]">{risqueEnEdition ? "Modifier le risque" : "Nouveau risque"}</h2>
+              <h2 className="text-lg font-semibold text-navy">{risqueEnEdition ? "Modifier le risque" : "Nouveau risque"}</h2>
               <button onClick={() => setShowModal(false)}
                 className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition text-base leading-none">
                 &#x2715;
@@ -625,24 +625,24 @@ function DUERPPage() {
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div>
-                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Danger identifié</label>
+                <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Danger identifié</label>
                 <input type="text" {...register("danger")} placeholder="ex: Chute de hauteur" className={inputCls("danger")} />
                 {errors.danger && <p className="mt-1 text-xs text-[#DC2626]">{errors.danger.message}</p>}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Catégorie</label>
+                  <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Catégorie</label>
                   <select {...register("categorie")} className={inputCls("categorie")}>
                     {Object.entries(CATEGORIES).map(([cle, label]) => <option key={cle} value={cle}>{label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Zone / poste</label>
+                  <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Zone / poste</label>
                   <input type="text" {...register("zone")} placeholder="ex: Atelier soudure" className={inputCls("zone")} />
                 </div>
               </div>
               <div>
-                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Site</label>
+                <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Site</label>
                 <select {...register("siteId")} className={inputCls("siteId")}>
                   <option value="">Sélectionner un site</option>
                   {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
@@ -650,7 +650,7 @@ function DUERPPage() {
                 {errors.siteId && <p className="mt-1 text-xs text-[#DC2626]">{errors.siteId.message}</p>}
               </div>
               <div>
-                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+                <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
                   Description <span className="font-normal normal-case text-[#94A3B8]">(optionnel)</span>
                 </label>
                 <textarea {...register("description")} rows={2} className={inputCls("description")} />
@@ -658,7 +658,7 @@ function DUERPPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Probabilité</label>
+                  <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Probabilité</label>
                   <select {...register("probabilite")} className={inputCls("probabilite")}>
                     <option value="">Choisir</option>
                     {[1, 2, 3, 4].map((p) => <option key={p} value={p}>{LABELS_PROBABILITE[p]} ({p})</option>)}
@@ -666,7 +666,7 @@ function DUERPPage() {
                   {errors.probabilite && <p className="mt-1 text-xs text-[#DC2626]">{errors.probabilite.message}</p>}
                 </div>
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Gravité</label>
+                  <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Gravité</label>
                   <select {...register("gravite")} className={inputCls("gravite")}>
                     <option value="">Choisir</option>
                     {[1, 2, 3, 4].map((g) => <option key={g} value={g}>{LABELS_GRAVITE[g]} ({g})</option>)}
@@ -684,14 +684,14 @@ function DUERPPage() {
               )}
 
               <div>
-                <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+                <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
                   Mesures de prévention <span className="font-normal normal-case text-[#94A3B8]">(optionnel)</span>
                 </label>
                 <textarea {...register("mesuresPrevention")} rows={3} placeholder="Mesures existantes ou à mettre en place…" className={inputCls("mesuresPrevention")} />
               </div>
 
               <div className="pt-2 border-t border-[#F1F5F9]">
-                <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-2">
+                <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-2">
                   Cotation résiduelle <span className="font-normal normal-case text-[#94A3B8]">(après mesures, optionnel)</span>
                 </p>
                 <div className="grid grid-cols-2 gap-4">
@@ -738,7 +738,7 @@ function DUERPPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
           onClick={(e) => e.target === e.currentTarget && setRisqueASupprimer(null)}>
           <div className="w-full max-w-sm bg-white rounded-lg border border-[#E2E8F0] p-6 mx-4">
-            <h2 className="text-base font-semibold text-[#1E293B] mb-2">Supprimer ce risque ?</h2>
+            <h2 className="text-lg font-semibold text-navy mb-2">Supprimer ce risque ?</h2>
             <p className="text-sm text-[#64748B] mb-5">
               « <span className="font-medium text-[#1E293B]">{risqueASupprimer.danger}</span> » sera définitivement supprimé du registre DUERP. Cette action est irréversible.
             </p>

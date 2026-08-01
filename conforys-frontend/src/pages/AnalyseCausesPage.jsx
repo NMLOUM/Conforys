@@ -55,7 +55,7 @@ function AnalyseCausesPage() {
 
       {/* ── En-tête ── */}
       <div className="mb-6 pb-5 border-b border-[#E2E8F0]">
-        <h1 className="text-lg font-semibold text-navy">Analyse des causes racines</h1>
+        <h1 className="text-2xl font-bold text-navy">Analyse des causes racines</h1>
         <p className="text-sm text-[#64748B] mt-1">Méthodes : Ishikawa (5M) et 5 Pourquoi</p>
       </div>
 

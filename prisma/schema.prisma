@@ -783,6 +783,7 @@ enum TypeNotification {
   EPI_STOCK_BAS // EPI sous le seuil d'alerte
   HABILITATION_EXPIRE // Habilitation expirant bientôt
   ACTION_EN_RETARD // Action corrective en retard
+  ACTION_ASSIGNEE // Action corrective assignée à un responsable
   AUDIT_PLANIFIE // Audit planifié à venir
 }
 

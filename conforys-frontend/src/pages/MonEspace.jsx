@@ -84,7 +84,7 @@ function MonEspace() {
           {/* En-tête personnel */}
           <div className="bg-white border border-[#E2E8F0] rounded-lg p-6 flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-[#1E293B]">Bonjour, {prenom}</h2>
+              <h1 className="text-2xl font-bold text-navy">Bonjour, {prenom}</h1>
               <p className="text-sm text-[#64748B] mt-0.5 capitalize">{dateJour}</p>
             </div>
             <div className="text-right text-sm text-[#64748B]">
@@ -121,7 +121,7 @@ function MonEspace() {
                 className="bg-white rounded-lg p-5 flex flex-col justify-between"
                 style={{ minHeight: "108px", border: "1px solid #E2E8F0", borderLeft: `4px solid ${c.accent}` }}
               >
-                <p className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{c.label}</p>
+                <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide">{c.label}</p>
                 <p className="text-[34px] font-bold leading-none" style={{ color: c.accent }}>{c.value}</p>
                 <p className="text-[12px] text-[#94A3B8]">{c.sub}</p>
               </div>
@@ -141,7 +141,7 @@ function MonEspace() {
               <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                 <tr>
                   {["Référence", "Type", "Date", "Gravité", "Statut"].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{h}</th>
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
               </thead>

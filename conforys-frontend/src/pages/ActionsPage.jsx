@@ -2,11 +2,13 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
-  Search, AlertTriangle, ArrowRight, History, Clock, ShieldCheck,
-  Filter, MoreVertical, ChevronLeft, ChevronRight, CheckCircle2, PartyPopper,
+  Search, ArrowRight,
+  Filter, MoreVertical, ChevronLeft, ChevronRight, PartyPopper,
 } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
+import Badge from "../components/ui/Badge";
+import AvatarInitiales from "../components/ui/AvatarInitiales";
 import { useRole } from "../hooks/useRole";
 import { useTable } from "../hooks/useTable";
 
@@ -62,60 +64,10 @@ function Spinner({ size = 4 }) {
   );
 }
 
-function AvatarInitiales({ prenom, nom }) {
-  const init = `${prenom?.[0] ?? ""}${nom?.[0] ?? ""}`.toUpperCase() || "?";
-  return (
-    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 select-none"
-      style={{ backgroundColor: "rgba(3, 22, 53, 0.08)", color: C.primary }}>
-      {init}
-    </div>
-  );
-}
-
-// Pastille de statut : "En retard" prend le pas sur le statut sous-jacent, comme dans le mockup
-function PastilleStatut({ statut, enRetard }) {
-  if (enRetard) {
-    return (
-      <span className="px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 w-fit whitespace-nowrap"
-        style={{ backgroundColor: C.errorContainer, color: C.error }}>
-        <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: C.error }} />
-        En retard
-      </span>
-    );
-  }
-  if (statut === "TERMINE") {
-    return (
-      <span className="px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 w-fit whitespace-nowrap"
-        style={{ backgroundColor: `${C.secondaryContainer}33`, color: C.secondaryContainer }}>
-        <CheckCircle2 size={13} /> Clôturé
-      </span>
-    );
-  }
-  if (statut === "EN_COURS") {
-    return (
-      <span className="px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 w-fit whitespace-nowrap"
-        style={{ backgroundColor: C.secondaryFixed, color: C.onSecondaryFixed }}>
-        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: C.secondary }} />
-        En cours
-      </span>
-    );
-  }
-  if (statut === "ANNULE") {
-    return (
-      <span className="px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 w-fit whitespace-nowrap"
-        style={{ backgroundColor: "#eceef4", color: C.onSurfaceVariant }}>
-        Annulé
-      </span>
-    );
-  }
-  return (
-    <span className="px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 w-fit whitespace-nowrap"
-      style={{ backgroundColor: C.surfaceContainerHighest, color: "#1E293B" }}>
-      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: C.outlineVariant }} />
-      À planifier
-    </span>
-  );
-}
+// Libellés spécifiques à cette page pour certains statuts (le composant Badge
+// partagé utilise "À faire"/"Terminé" par défaut ; cette page affiche "À
+// planifier"/"Clôturé" à la place — même couleur/forme, texte adapté au contexte CAPA).
+const LIBELLE_BADGE_STATUT = { A_FAIRE: "À planifier", TERMINE: "Clôturé" };
 
 // Menu kebab par ligne — Clôturer / Modifier / Commencer / Supprimer selon rôle et statut
 function MenuActions({ action, isQhse, isEmploye, enSuppression, enProgression, onCloturer, onModifier, onCommencer, onSupprimer }) {
@@ -201,7 +153,7 @@ function ModalCloturerAction({ action, onSuccess, onClose }) {
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="w-full max-w-md bg-white rounded-xl mx-4">
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b" style={{ borderColor: C.outlineVariant }}>
-          <h3 className="text-base font-semibold text-[#1E293B]">Clôturer une action</h3>
+          <h3 className="text-[15px] font-semibold text-[#1E293B]">Clôturer une action</h3>
           <button type="button" onClick={onClose}
             className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#f8f9ff]">
             &#x2715;
@@ -213,7 +165,7 @@ function ModalCloturerAction({ action, onSuccess, onClose }) {
           </div>
           {erreur && <p className="text-xs p-3 rounded-lg" style={{ color: C.error, backgroundColor: C.errorContainer }}>{erreur}</p>}
           <div>
-            <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>
+            <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>
               Commentaire de clôture *
             </label>
             <textarea value={commentaire} onChange={(e) => setCommentaire(e.target.value)}
@@ -227,7 +179,7 @@ function ModalCloturerAction({ action, onSuccess, onClose }) {
             Annuler
           </button>
           <button type="button" onClick={soumettre} disabled={envoi}
-            className="px-4 py-2 text-sm font-bold text-white rounded-lg disabled:opacity-50 transition-opacity hover:opacity-90"
+            className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50 transition-opacity hover:opacity-90"
             style={{ backgroundColor: C.success }}>
             {envoi ? "Clôture en cours…" : "Confirmer la clôture"}
           </button>
@@ -278,7 +230,7 @@ function ModalModifierAction({ action, users, onSuccess, onClose }) {
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="w-full max-w-lg bg-white rounded-xl mx-4">
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b" style={{ borderColor: C.outlineVariant }}>
-          <h3 className="text-base font-semibold text-[#1E293B]">Modifier l'action</h3>
+          <h3 className="text-[15px] font-semibold text-[#1E293B]">Modifier l'action</h3>
           <button type="button" onClick={onClose}
             className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#f8f9ff]">
             &#x2715;
@@ -287,13 +239,13 @@ function ModalModifierAction({ action, users, onSuccess, onClose }) {
         <div className="px-6 py-5 space-y-4">
           {erreur && <p className="text-xs p-3 rounded-lg" style={{ color: C.error, backgroundColor: C.errorContainer }}>{erreur}</p>}
           <div>
-            <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Description *</label>
+            <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Description *</label>
             <textarea value={form.description} onChange={(e) => set("description", e.target.value)}
               rows={3} className={`${inputClsFull} resize-none`} style={{ borderColor: C.outlineVariant }} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Priorité</label>
+              <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Priorité</label>
               <select value={form.priorite} onChange={(e) => set("priorite", e.target.value)} className={inputClsFull} style={{ borderColor: C.outlineVariant }}>
                 <option value="FAIBLE">Faible</option>
                 <option value="MOYEN">Moyen</option>
@@ -302,7 +254,7 @@ function ModalModifierAction({ action, users, onSuccess, onClose }) {
               </select>
             </div>
             <div>
-              <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Statut</label>
+              <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Statut</label>
               <select value={form.statut} onChange={(e) => set("statut", e.target.value)} className={inputClsFull} style={{ borderColor: C.outlineVariant }}>
                 <option value="A_FAIRE">À planifier</option>
                 <option value="EN_COURS">En cours</option>
@@ -313,11 +265,11 @@ function ModalModifierAction({ action, users, onSuccess, onClose }) {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Date limite</label>
+              <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Date limite</label>
               <input type="date" value={form.dateLimite} onChange={(e) => set("dateLimite", e.target.value)} className={inputClsFull} style={{ borderColor: C.outlineVariant }} />
             </div>
             <div>
-              <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Responsable</label>
+              <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Responsable</label>
               <select value={form.responsableId} onChange={(e) => set("responsableId", e.target.value)} className={inputClsFull} style={{ borderColor: C.outlineVariant }}>
                 {users.map((u) => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
               </select>
@@ -330,7 +282,7 @@ function ModalModifierAction({ action, users, onSuccess, onClose }) {
             Annuler
           </button>
           <button type="button" onClick={soumettre} disabled={envoi}
-            className="px-4 py-2 text-sm font-bold text-white rounded-lg disabled:opacity-50 transition-opacity hover:opacity-90"
+            className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50 transition-opacity hover:opacity-90"
             style={{ backgroundColor: C.primary }}>
             {envoi ? "Enregistrement…" : "Enregistrer"}
           </button>
@@ -443,46 +395,50 @@ function ActionsPage() {
     <AppLayout titre={titre}>
       <div>
 
+        {/* ── En-tête de page ── */}
+        <div className="mb-5">
+          <h1 className="text-2xl font-bold text-navy">{titre}</h1>
+          <p className="text-sm text-[#64748B] mt-0.5">
+            Suivi des actions correctives et préventives (CAPA){isEmploye ? " qui vous sont assignées" : ""}
+          </p>
+        </div>
+
         {!chargement && !erreur && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
 
             {/* Carte "Action prioritaire" */}
             {actionPrioritaire ? (
-              <div className="lg:col-span-2 relative overflow-hidden text-white rounded-xl p-8 flex flex-col justify-between"
-                style={{ backgroundColor: C.primary }}>
-                <AlertTriangle size={140} className="absolute top-0 right-0 opacity-10 -mt-4 -mr-4" />
-                <div className="relative z-10">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
-                      style={{ backgroundColor: C.secondary, color: "white" }}>
+              <div className="lg:col-span-2 text-white rounded-xl p-5 flex flex-col justify-between"
+                style={{ backgroundColor: "#0D2B4E" }}>
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider"
+                      style={{ backgroundColor: "#DC2626", color: "white" }}>
                       Action prioritaire
                     </span>
                   </div>
-                  <h2 className="text-3xl font-bold mb-2">
+                  <h2 className="text-2xl font-bold text-white mb-1">
                     {referenceOrigine(actionPrioritaire) || `#${actionPrioritaire.id.slice(0, 8).toUpperCase()}`}
                   </h2>
-                  <p className="text-lg max-w-xl" style={{ color: "#b6c6ef" }}>{actionPrioritaire.description}</p>
+                  <p className="text-sm max-w-xl" style={{ color: "#b6c6ef" }}>{actionPrioritaire.description}</p>
                 </div>
-                <div className="relative z-10 flex items-center gap-8 mt-8">
-                  <div>
-                    <p className="text-xs font-bold uppercase" style={{ color: "#8293b8" }}>Échéance</p>
-                    <p className="font-semibold">
+                <div className="flex items-center gap-6 mt-4">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-medium uppercase tracking-wide" style={{ color: "#8293b8" }}>Échéance</span>
+                    <span className="text-sm font-semibold">
                       {actionPrioritaire.dateLimite
                         ? new Date(actionPrioritaire.dateLimite).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })
                         : "Non renseignée"}
-                    </p>
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-xs font-bold uppercase" style={{ color: "#8293b8" }}>Priorité</p>
-                    <div className="flex items-center gap-1" style={{ color: C.secondaryFixed }}>
-                      <AlertTriangle size={14} />
-                      <span className="font-semibold">{LABELS_PRIORITE[actionPrioritaire.priorite]}</span>
-                    </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-medium uppercase tracking-wide" style={{ color: "#8293b8" }}>Priorité</span>
+                    <span className="text-sm font-semibold">{LABELS_PRIORITE[actionPrioritaire.priorite]}</span>
                   </div>
                   <button onClick={() => navigate(`/actions/${actionPrioritaire.id}`)}
-                    className="ml-auto flex items-center gap-2 bg-white px-6 py-3 rounded-lg font-bold hover:bg-[#d8e2ff] transition-all active:scale-95"
-                    style={{ color: C.primary }}>
-                    Voir les détails <ArrowRight size={18} />
+                    className="ml-auto flex items-center gap-2 bg-white px-5 py-2.5 text-sm rounded-lg font-semibold hover:bg-[#d8e2ff] transition-all active:scale-95"
+                    style={{ color: "#0D2B4E" }}>
+                    Voir les détails <ArrowRight size={16} />
                   </button>
                 </div>
               </div>
@@ -490,48 +446,27 @@ function ActionsPage() {
               <div className="lg:col-span-2 rounded-xl p-8 flex flex-col items-center justify-center text-center gap-2"
                 style={{ backgroundColor: C.surfaceContainerLow }}>
                 <PartyPopper size={32} color={C.secondaryContainer} />
-                <p className="font-bold" style={{ color: C.primary }}>Aucune action urgente en attente</p>
+                <p className="font-semibold" style={{ color: C.primary }}>Aucune action urgente en attente</p>
                 <p className="text-sm" style={{ color: C.onSurfaceVariant }}>Toutes les actions en cours sont sous contrôle.</p>
               </div>
             )}
 
             {/* Résumé CAPA */}
-            <div className="rounded-xl p-6 flex flex-col justify-between" style={{ backgroundColor: "rgba(255,255,255,0.8)" }}>
+            <div className="rounded-lg border border-[#E2E8F0] p-6 flex flex-col justify-between" style={{ backgroundColor: "#F8FAFC" }}>
               <div>
-                <h3 className="text-base font-semibold text-[#1E293B] mb-5">Résumé CAPA</h3>
-                <div className="space-y-5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: C.errorContainer, color: "#93000a" }}>
-                        <History size={17} />
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>En retard</p>
-                        <p className="text-xl font-bold" style={{ color: C.error }}>{kpis.enRetard}</p>
-                      </div>
-                    </div>
+                <h2 className="text-lg font-semibold text-navy mb-4">Résumé CAPA</h2>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold" style={{ color: "#DC2626" }}>{kpis.enRetard}</span>
+                    <span className="text-sm" style={{ color: C.onSurfaceVariant }}>En retard</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: C.surfaceContainerHighest, color: C.primary }}>
-                        <Clock size={17} />
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>En cours</p>
-                        <p className="text-xl font-bold" style={{ color: C.primary }}>{kpis.enCours}</p>
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold" style={{ color: "#EA580C" }}>{kpis.enCours}</span>
+                    <span className="text-sm" style={{ color: C.onSurfaceVariant }}>En cours</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${C.secondaryContainer}33`, color: C.secondaryContainer }}>
-                        <ShieldCheck size={17} />
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Clôturées</p>
-                        <p className="text-xl font-bold" style={{ color: C.secondary }}>{kpis.termine}</p>
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold" style={{ color: "#2E7D32" }}>{kpis.termine}</span>
+                    <span className="text-sm" style={{ color: C.onSurfaceVariant }}>Clôturées</span>
                   </div>
                 </div>
               </div>
@@ -540,10 +475,10 @@ function ActionsPage() {
         )}
 
         {/* ── Tableau de suivi CAPA ── */}
-        <div className="bg-white rounded-xl overflow-hidden">
+        <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">
           <div className="p-6 border-b flex flex-wrap gap-4 justify-between items-center" style={{ borderColor: C.outlineVariant }}>
             <div>
-              <h2 className="text-base font-semibold text-[#1E293B]">Plan d'Actions Correctives et Préventives (CAPA)</h2>
+              <h2 className="text-lg font-semibold text-navy">Plan d'Actions Correctives et Préventives (CAPA)</h2>
               <p className="text-sm" style={{ color: C.onSurfaceVariant }}>
                 Suivi en temps réel des actions de mise en conformité{isEmploye ? " qui vous sont assignées" : ""}
               </p>
@@ -595,31 +530,26 @@ function ActionsPage() {
           ) : (
             <>
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead className="text-[11px] font-semibold uppercase tracking-wide" style={{ backgroundColor: C.surfaceContainer, color: C.onSurfaceVariant }}>
+              <table className="w-full min-w-[760px] text-sm">
+                <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                   <tr>
-                    <th className="px-6 py-4">Origine</th>
-                    <th className="px-6 py-4">Action</th>
-                    <th className="px-6 py-4">Responsable</th>
-                    <th className="px-6 py-4">Date limite</th>
-                    <th className="px-6 py-4">Statut</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide min-w-[140px]">Origine</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">Action</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">Responsable</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">Date limite</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">Statut</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-[#64748B] uppercase tracking-wide">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y text-sm" style={{ color: "#1E293B" }}>
+                <tbody className="divide-y divide-[#F1F5F9]">
                   {affiches.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-5 py-16 text-center">
-                        <div className="flex flex-col items-center gap-2">
-                          <span className="text-3xl">✓</span>
-                          <p className="text-sm" style={{ color: C.onSurfaceVariant }}>
-                            {recherche
-                              ? "Aucune action ne correspond à la recherche."
-                              : isEmploye
-                              ? "Aucune action corrective ne vous est assignée."
-                              : "Aucune action corrective enregistrée."}
-                          </p>
-                        </div>
+                      <td colSpan={6} className="px-4 py-12 text-center text-[#94A3B8]">
+                        {recherche
+                          ? "Aucune action ne correspond à la recherche."
+                          : isEmploye
+                          ? "Aucune action corrective ne vous est assignée."
+                          : "Aucune action corrective enregistrée."}
                       </td>
                     </tr>
                   ) : (
@@ -631,44 +561,45 @@ function ActionsPage() {
 
                       return (
                         <tr key={action.id} onClick={() => navigate(`/actions/${action.id}`)}
-                          className="transition-colors group cursor-pointer hover:bg-[#eff4ff]"
-                          style={{ borderColor: C.outlineVariant }}>
+                          className="group hover:bg-[#F8FAFC] transition-colors cursor-pointer">
 
-                          <td className="px-6 py-5 font-bold" style={{ color: C.primary }}>
-                            {reference || <span className="font-normal" style={{ color: C.onSurfaceVariant }}>Sans origine</span>}
+                          <td className="px-4 py-3 text-xs whitespace-nowrap">
+                            {reference
+                              ? <span className="font-semibold text-[#0D2B4E] group-hover:underline">{reference}</span>
+                              : <span className="text-[#94A3B8]">Sans origine</span>}
                           </td>
 
-                          <td className="px-6 py-5">
+                          <td className="px-4 py-3">
                             <div className="max-w-xs">
-                              <p className="font-semibold truncate">{action.description}</p>
+                              <p className="text-sm text-[#1E293B] truncate">{action.description}</p>
                               {action.commentaireCloture && (
-                                <p className="text-xs italic truncate" style={{ color: C.onSurfaceVariant }}>
+                                <p className="text-xs italic truncate text-[#94A3B8]">
                                   Clôture : {action.commentaireCloture}
                                 </p>
                               )}
                             </div>
                           </td>
 
-                          <td className="px-6 py-5">
+                          <td className="px-4 py-3">
                             {action.responsable ? (
-                              <div className="flex items-center gap-2">
-                                <AvatarInitiales prenom={action.responsable.prenom} nom={action.responsable.nom} />
-                                <span>{action.responsable.prenom} {action.responsable.nom}</span>
-                              </div>
+                              <AvatarInitiales prenom={action.responsable.prenom} nom={action.responsable.nom} />
                             ) : (
-                              <span style={{ color: C.onSurfaceVariant }}>Non assigné</span>
+                              <span className="text-sm text-[#94A3B8]">Non assigné</span>
                             )}
                           </td>
 
-                          <td className="px-6 py-5 font-mono text-sm" style={{ color: enRetard ? C.error : "#1E293B" }}>
+                          <td className="px-4 py-3 text-sm whitespace-nowrap" style={{ color: enRetard ? "#DC2626" : "#64748B" }}>
                             {action.dateLimite ? new Date(action.dateLimite).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) : "Non renseignée"}
                           </td>
 
-                          <td className="px-6 py-5">
-                            <PastilleStatut statut={action.statut} enRetard={enRetard} />
+                          <td className="px-4 py-3">
+                            <Badge
+                              variant={enRetard ? "EN_RETARD" : action.statut}
+                              label={enRetard ? undefined : LIBELLE_BADGE_STATUT[action.statut]}
+                            />
                           </td>
 
-                          <td className="px-6 py-5 text-right">
+                          <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <MenuActions
                               action={action} isQhse={isQhse} isEmploye={isEmploye}
                               enSuppression={enSuppression} enProgression={enProgression}
@@ -697,7 +628,7 @@ function ActionsPage() {
                   </button>
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
                     <button key={n} onClick={() => setPage(n)}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-colors"
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-colors"
                       style={n === page
                         ? { backgroundColor: C.primary, color: "white" }
                         : { color: "#1E293B" }}>

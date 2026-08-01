@@ -24,6 +24,7 @@ function JournalActivitePage() {
   const [entries,    setEntries]    = useState([]);
   const [users,      setUsers]      = useState([]);
   const [chargement, setChargement] = useState(true);
+  const [erreurListe, setErreurListe] = useState("");
 
   const [filtreType,   setFiltreType]   = useState("");
   const [filtreAuteur, setFiltreAuteur] = useState("");
@@ -49,6 +50,7 @@ function JournalActivitePage() {
     pg         = page,
   } = {}) => {
     setChargement(true);
+    setErreurListe("");
     try {
       const params = { page: pg, limit: 20 };
       if (typeAction) params.typeAction = typeAction;
@@ -61,6 +63,7 @@ function JournalActivitePage() {
       setTotalPages(res.data.totalPages || 1);
     } catch (e) {
       console.error("Erreur chargement journal d'activité:", e);
+      setErreurListe("Impossible de charger le journal d'activité. Vérifiez votre connexion et réessayez.");
     } finally {
       setChargement(false);
     }
@@ -99,7 +102,7 @@ function JournalActivitePage() {
   return (
     <AppLayout titre="Journal d'activité">
       <div className="mb-5">
-        <h1 className="text-lg font-semibold text-navy">Journal d'activité</h1>
+        <h1 className="text-2xl font-bold text-navy">Journal d'activité</h1>
         <p className="text-sm text-[#64748B] mt-1">
           Vue agrégée, en lecture seule, de toutes les actions effectuées sur l'ensemble des incidents.
         </p>
@@ -108,25 +111,25 @@ function JournalActivitePage() {
       {/* ── Filtres ── */}
       <div className="flex flex-wrap items-end gap-3 mb-4 p-4 bg-white border border-[#E2E8F0] rounded-lg">
         <div>
-          <label className="block mb-1 text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">Type d'action</label>
+          <label className="block mb-1 text-xs font-medium text-[#64748B] uppercase tracking-wide">Type d'action</label>
           <select value={filtreType} onChange={(e) => changerFiltre("typeAction", e.target.value, setFiltreType)} className={inputCls}>
             <option value="">Tous</option>
             {OPTIONS_TYPE.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
         <div>
-          <label className="block mb-1 text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">Utilisateur</label>
+          <label className="block mb-1 text-xs font-medium text-[#64748B] uppercase tracking-wide">Utilisateur</label>
           <select value={filtreAuteur} onChange={(e) => changerFiltre("auteurId", e.target.value, setFiltreAuteur)} className={inputCls}>
             <option value="">Tous</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
           </select>
         </div>
         <div>
-          <label className="block mb-1 text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">Du</label>
+          <label className="block mb-1 text-xs font-medium text-[#64748B] uppercase tracking-wide">Du</label>
           <input type="date" value={dateDebut} onChange={(e) => changerFiltre("debut", e.target.value, setDateDebut)} className={inputCls} />
         </div>
         <div>
-          <label className="block mb-1 text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">Au</label>
+          <label className="block mb-1 text-xs font-medium text-[#64748B] uppercase tracking-wide">Au</label>
           <input type="date" value={dateFin} onChange={(e) => changerFiltre("fin", e.target.value, setDateFin)} className={inputCls} />
         </div>
         {filtresActifs && (
@@ -140,6 +143,13 @@ function JournalActivitePage() {
       {/* ── Tableau ── */}
       {chargement ? (
         <p className="text-sm text-[#64748B]">Chargement…</p>
+      ) : erreurListe ? (
+        <div className="p-4 text-sm text-[#DC2626] bg-red-50 border border-red-200 rounded-md flex items-center justify-between">
+          <span>{erreurListe}</span>
+          <button onClick={() => charger()} className="ml-4 text-xs font-semibold underline shrink-0">
+            Réessayer
+          </button>
+        </div>
       ) : (
         <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white">
           <div className="overflow-x-auto">
@@ -147,7 +157,7 @@ function JournalActivitePage() {
               <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                 <tr>
                   {["Date / heure", "Auteur", "Action", "Incident"].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{h}</th>
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
               </thead>

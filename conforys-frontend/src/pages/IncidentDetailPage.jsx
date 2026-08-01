@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Lock, FileText, Send, Download } from "lucide-react";
+import { Lock, FileText, Send, Download, Info, History, MessageSquare, AlertCircle, Paperclip, MessageCircle, AlertTriangle, Plus, Pencil, ListChecks, Image as ImageIcon } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import Badge from "../components/ui/Badge";
@@ -18,12 +18,31 @@ const LABELS_TYPE = {
   INCIDENT_ENVIRONNEMENTAL: "Incident environnemental",
 };
 
-const OPTIONS_PRIORITE = [
-  { value: "FAIBLE",   label: "Faible" },
-  { value: "MOYEN",    label: "Moyen" },
-  { value: "ELEVE",    label: "Élevé" },
-  { value: "CRITIQUE", label: "Critique" },
-];
+// Couleur d'accent selon la gravité — même palette que la page liste (CONFIGS_GRAVITE)
+const COULEUR_GRAVITE = { FAIBLE: "#2E7D32", MOYEN: "#CA8A04", GRAVE: "#EA580C", CRITIQUE: "#DC2626" };
+
+// Couleur des points de la frise d'historique, selon le type d'événement —
+// donne un vrai repère visuel (bleu = déclaration, orange = changement de
+// statut, vert = clôture, rouge = rejet) au lieu d'un point navy uniforme.
+const couleurHistorique = (action) => {
+  if (action.startsWith("Incident déclaré"))   return "#2563EB";
+  if (action.includes("CLOS"))                  return "#2E7D32";
+  if (action.includes("REJETE"))                return "#DC2626";
+  if (action.startsWith("Statut changé"))        return "#EA580C";
+  if (action.startsWith("Action corrective"))    return "#0D2B4E";
+  if (action.startsWith("Photo"))                return "#64748B";
+  return "#94A3B8";
+};
+
+// Icône de la pastille de la frise, selon le type d'événement — même principe
+// que le journal d'audit CAPA (pastille pleine + icône blanche).
+const iconeHistorique = (action) => {
+  if (action.startsWith("Incident déclaré"))   return Plus;
+  if (action.startsWith("Statut changé"))       return Pencil;
+  if (action.startsWith("Action corrective"))   return ListChecks;
+  if (action.startsWith("Photo"))               return ImageIcon;
+  return History;
+};
 
 // Validation des fichiers avant upload ImgBB
 const TYPES_ACCEPTES   = ["image/jpeg", "image/png", "image/webp"];
@@ -39,19 +58,12 @@ const validerFichier = (fichier) => {
   return null; // pas d'erreur
 };
 
-// Une action est en retard si sa date limite est dépassée et qu'elle n'est pas terminée/annulée
-const estEnRetard = (a) =>
-  a.dateLimite &&
-  new Date(a.dateLimite) < new Date() &&
-  a.statut !== "TERMINE" &&
-  a.statut !== "ANNULE";
-
 // ── Composants utilitaires ────────────────────────────────────────────────────
 
 function LigneInfo({ label, children }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide mb-0.5">
+      <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-0.5">
         {label}
       </p>
       <p className="text-sm text-[#1E293B]">{children || "—"}</p>
@@ -77,50 +89,6 @@ const formatTaille = (octets) => {
   if (octets < 1024 * 1024) return `${Math.round(octets / 1024)} Ko`;
   return `${(octets / 1024 / 1024).toFixed(1)} Mo`;
 };
-
-const COULEUR_PRIORITE = { FAIBLE: "#94A3B8", MOYEN: "#EA580C", ELEVE: "#DC2626", CRITIQUE: "#DC2626" };
-
-// ── Action corrective — présentation compacte (encart Actions correctives) ───
-
-function ActionCorrectiveItem({ action, isQhse, enSuppression, onCloturer, onModifier, onSupprimer }) {
-  const enRetard = estEnRetard(action);
-  const peutAgir = isQhse && action.statut !== "TERMINE" && action.statut !== "ANNULE";
-  return (
-    <div className="p-3 rounded-md hover:bg-white transition-colors">
-      <div className="flex items-start gap-2.5">
-        <span className="w-2 h-2 rounded-full mt-1.5 shrink-0"
-          style={{ backgroundColor: COULEUR_PRIORITE[action.priorite] || "#94A3B8" }} />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm text-[#1E293B] line-clamp-2">{action.description}</p>
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            <Badge variant={action.statut} />
-            {enRetard && <Badge variant="EN_RETARD" />}
-            <span className="text-xs text-[#64748B]">
-              {action.responsable ? `${action.responsable.prenom} ${action.responsable.nom}` : "—"}
-              {action.dateLimite && ` · éch. ${new Date(action.dateLimite).toLocaleDateString("fr-FR")}`}
-            </span>
-          </div>
-          {peutAgir && (
-            <div className="flex items-center gap-3 mt-2">
-              <button type="button" onClick={onCloturer} className="text-xs font-semibold" style={{ color: "#2E7D32" }}>
-                Clôturer
-              </button>
-              <button type="button" onClick={onModifier} className="text-xs font-medium text-[#475569] hover:text-[#0D2B4E] transition-colors">
-                Modifier
-              </button>
-            </div>
-          )}
-        </div>
-        {isQhse && (
-          <button type="button" onClick={onSupprimer} disabled={enSuppression} title="Supprimer définitivement"
-            className="shrink-0 w-6 h-6 flex items-center justify-center rounded text-[#DC2626] hover:bg-red-50 transition-colors disabled:opacity-40 text-xs">
-            {enSuppression ? <Spinner size={3} /> : "✕"}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ── Pièce jointe — ligne bandeau (nom / taille / date) ────────────────────────
 
@@ -161,7 +129,7 @@ function CommentaireItem({ commentaire }) {
   const initiales = `${commentaire.auteur?.prenom?.[0] || ""}${commentaire.auteur?.nom?.[0] || ""}`.toUpperCase();
   return (
     <div className="flex items-start gap-2.5">
-      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+      <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
         style={{ backgroundColor: "#0D2B4E" }}>
         {initiales || "?"}
       </div>
@@ -170,305 +138,13 @@ function CommentaireItem({ commentaire }) {
           <p className="text-xs font-semibold text-[#1E293B]">
             {commentaire.auteur ? `${commentaire.auteur.prenom} ${commentaire.auteur.nom}` : "Utilisateur"}
           </p>
-          <p className="text-[10px] text-[#94A3B8]">
+          <p className="text-[11px] text-[#94A3B8]">
             {new Date(commentaire.createdAt).toLocaleString("fr-FR", {
               day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
             })}
           </p>
         </div>
         <p className="text-sm text-[#475569] mt-0.5 whitespace-pre-wrap">{commentaire.contenu}</p>
-      </div>
-    </div>
-  );
-}
-
-// ── Modale "Ajouter une action corrective" ────────────────────────────────────
-
-function ModalAjoutAction({ incidentId, users, onSuccess, onClose }) {
-  const [form,   setForm]   = useState({ description: "", priorite: "MOYEN", dateLimite: "", responsableId: "" });
-  const [erreur, setErreur] = useState("");
-  const [envoi,  setEnvoi]  = useState(false);
-
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-
-  const soumettre = async () => {
-    if (!form.description.trim()) { setErreur("La description est obligatoire."); return; }
-    if (!form.responsableId)       { setErreur("Sélectionnez un responsable."); return; }
-    setErreur("");
-    setEnvoi(true);
-    try {
-      await api.post(`/incidents/${incidentId}/actions`, {
-        description:   form.description,
-        priorite:      form.priorite,
-        dateLimite:    form.dateLimite || null,
-        responsableId: form.responsableId,
-      });
-      toast.success("Action corrective ajoutée");
-      onSuccess();
-    } catch (err) {
-      const msg = err.response?.data?.message || "Erreur lors de l'ajout.";
-      setErreur(msg);
-      toast.error(msg);
-    } finally {
-      setEnvoi(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-lg bg-white rounded-lg border border-[#E2E8F0] mx-4">
-        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#F1F5F9]">
-          <h3 className="text-base font-semibold text-[#1E293B]">Ajouter une action corrective</h3>
-          <button type="button" onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition">
-            &#x2715;
-          </button>
-        </div>
-
-        <div className="px-6 py-5 space-y-4">
-          {erreur && (
-            <p className="text-xs text-[#DC2626] p-3 bg-red-50 border border-red-200 rounded-md">{erreur}</p>
-          )}
-          <div>
-            <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
-              Description *
-            </label>
-            <textarea value={form.description} onChange={(e) => set("description", e.target.value)}
-              rows={3} placeholder="Décrivez l'action à mener…" className={`${inputCls} resize-none`} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
-                Priorité
-              </label>
-              <select value={form.priorite} onChange={(e) => set("priorite", e.target.value)} className={inputCls}>
-                {OPTIONS_PRIORITE.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
-                Date limite
-              </label>
-              <input type="date" value={form.dateLimite} onChange={(e) => set("dateLimite", e.target.value)}
-                className={inputCls} />
-            </div>
-          </div>
-          <div>
-            <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
-              Responsable *
-            </label>
-            <select value={form.responsableId} onChange={(e) => set("responsableId", e.target.value)} className={inputCls}>
-              <option value="">Sélectionner un responsable</option>
-              {users.map((u) => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#F1F5F9]">
-          <button type="button" onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
-            Annuler
-          </button>
-          <button type="button" onClick={soumettre} disabled={envoi}
-            className="px-4 py-2 text-sm font-semibold text-white rounded-md disabled:opacity-50 transition-colors"
-            style={{ backgroundColor: "#0D2B4E" }}>
-            {envoi ? "Enregistrement…" : "Ajouter"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Modale "Clôturer une action" ──────────────────────────────────────────────
-
-function ModalCloturerAction({ action, onSuccess, onClose }) {
-  const [commentaire, setCommentaire] = useState("");
-  const [erreur,      setErreur]      = useState("");
-  const [envoi,       setEnvoi]       = useState(false);
-
-  const soumettre = async () => {
-    if (!commentaire.trim() || commentaire.trim().length < 5) {
-      setErreur("Le commentaire doit faire au moins 5 caractères."); return;
-    }
-    setErreur("");
-    setEnvoi(true);
-    try {
-      await api.put(`/actions/${action.id}/cloturer`, { commentaireCloture: commentaire });
-      toast.success("Action clôturée avec succès");
-      onSuccess();
-    } catch (err) {
-      const msg = err.response?.data?.message || "Erreur lors de la clôture.";
-      setErreur(msg);
-      toast.error(msg);
-    } finally {
-      setEnvoi(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-md bg-white rounded-lg border border-[#E2E8F0] mx-4">
-        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#F1F5F9]">
-          <h3 className="text-base font-semibold text-[#1E293B]">Clôturer une action</h3>
-          <button type="button" onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition">
-            &#x2715;
-          </button>
-        </div>
-        <div className="px-6 py-5 space-y-4">
-          <div className="p-3 rounded-md bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#475569]">
-            {action.description}
-          </div>
-          {erreur && (
-            <p className="text-xs text-[#DC2626] p-3 bg-red-50 border border-red-200 rounded-md">{erreur}</p>
-          )}
-          <div>
-            <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
-              Commentaire de clôture *
-            </label>
-            <textarea value={commentaire} onChange={(e) => setCommentaire(e.target.value)}
-              rows={4} placeholder="Décrivez comment l'action a été réalisée…"
-              className={`${inputCls} resize-none`} />
-          </div>
-        </div>
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#F1F5F9]">
-          <button type="button" onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
-            Annuler
-          </button>
-          <button type="button" onClick={soumettre} disabled={envoi}
-            className="px-4 py-2 text-sm font-semibold text-white rounded-md disabled:opacity-50 transition-colors"
-            style={{ backgroundColor: "#2E7D32" }}>
-            {envoi ? "Clôture en cours…" : "Confirmer la clôture"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Modale de modification d'une action (QHSE/ADMIN) ─────────────────────────
-
-function ModalModifierAction({ action, users, onSuccess, onClose }) {
-  const [form, setForm] = useState({
-    description:   action.description,
-    priorite:      action.priorite,
-    statut:        action.statut,
-    dateLimite:    action.dateLimite
-      ? new Date(action.dateLimite).toISOString().split("T")[0]
-      : "",
-    responsableId: action.responsableId,
-  });
-  const [erreur, setErreur] = useState("");
-  const [envoi,  setEnvoi]  = useState(false);
-
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-
-  const soumettre = async () => {
-    if (form.description.trim().length < 5) {
-      setErreur("La description doit faire au moins 5 caractères."); return;
-    }
-    setErreur("");
-    setEnvoi(true);
-    try {
-      await api.put(`/actions/${action.id}`, {
-        description:   form.description,
-        priorite:      form.priorite,
-        statut:        form.statut,
-        dateLimite:    form.dateLimite || null,
-        responsableId: form.responsableId,
-      });
-      toast.success("Action modifiée avec succès");
-      onSuccess();
-    } catch (err) {
-      const msg = err.response?.data?.message || "Erreur lors de la modification.";
-      setErreur(msg);
-      toast.error(msg);
-    } finally {
-      setEnvoi(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-lg bg-white rounded-lg border border-[#E2E8F0] mx-4">
-        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#F1F5F9]">
-          <h3 className="text-base font-semibold text-[#1E293B]">Modifier l'action</h3>
-          <button type="button" onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition">
-            &#x2715;
-          </button>
-        </div>
-        <div className="px-6 py-5 space-y-4">
-          {erreur && (
-            <p className="text-xs text-[#DC2626] p-3 bg-red-50 border border-red-200 rounded-md">{erreur}</p>
-          )}
-          <div>
-            <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
-              Description *
-            </label>
-            <textarea value={form.description} onChange={(e) => set("description", e.target.value)}
-              rows={3} className={`${inputCls} resize-none`} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
-                Priorité
-              </label>
-              <select value={form.priorite} onChange={(e) => set("priorite", e.target.value)} className={inputCls}>
-                <option value="FAIBLE">Faible</option>
-                <option value="MOYEN">Moyen</option>
-                <option value="ELEVE">Élevé</option>
-                <option value="CRITIQUE">Critique</option>
-              </select>
-            </div>
-            <div>
-              <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
-                Statut
-              </label>
-              <select value={form.statut} onChange={(e) => set("statut", e.target.value)} className={inputCls}>
-                <option value="A_FAIRE">À faire</option>
-                <option value="EN_COURS">En cours</option>
-                <option value="ANNULE">Annulé</option>
-              </select>
-              <p className="mt-1 text-[10px] text-[#94A3B8]">
-                Pour clôturer, utilisez le bouton « Clôturer ».
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
-                Date limite
-              </label>
-              <input type="date" value={form.dateLimite} onChange={(e) => set("dateLimite", e.target.value)}
-                className={inputCls} />
-            </div>
-            <div>
-              <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
-                Responsable
-              </label>
-              <select value={form.responsableId} onChange={(e) => set("responsableId", e.target.value)} className={inputCls}>
-                {users.map((u) => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
-              </select>
-            </div>
-          </div>
-        </div>
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#F1F5F9]">
-          <button type="button" onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
-            Annuler
-          </button>
-          <button type="button" onClick={soumettre} disabled={envoi}
-            className="px-4 py-2 text-sm font-semibold text-white rounded-md disabled:opacity-50 transition-colors"
-            style={{ backgroundColor: "#0D2B4E" }}>
-            {envoi ? "Enregistrement…" : "Enregistrer"}
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -500,7 +176,7 @@ function ModalRejeter({ onConfirm, onClose }) {
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="w-full max-w-md bg-white rounded-lg border border-[#E2E8F0] mx-4">
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#F1F5F9]">
-          <h3 className="text-base font-semibold text-[#1E293B]">Rejeter l'incident</h3>
+          <h3 className="text-[15px] font-semibold text-[#1E293B]">Rejeter l'incident</h3>
           <button type="button" onClick={onClose}
             className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition">
             &#x2715;
@@ -511,7 +187,7 @@ function ModalRejeter({ onConfirm, onClose }) {
             <p className="text-xs text-[#DC2626] p-3 bg-red-50 border border-red-200 rounded-md">{erreur}</p>
           )}
           <div>
-            <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+            <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
               Motif de rejet *
             </label>
             <textarea
@@ -549,21 +225,12 @@ function IncidentDetailPage() {
 
   // Données
   const [incident,     setIncident]     = useState(null);
-  const [actions,      setActions]      = useState([]);
   const [pieces,       setPieces]       = useState([]);
   const [historique,   setHistorique]   = useState([]);
   const [commentaires, setCommentaires] = useState([]);
-  const [users,        setUsers]        = useState([]);
   const [chargement, setChargement] = useState(true);
   const [telechargementPdf, setTelechargementPdf] = useState(false);
   const [erreurPage, setErreurPage] = useState("");
-
-  // Modales actions correctives
-  const [showAjout,     setShowAjout]     = useState(false);
-  const [actionCloture, setActionCloture] = useState(null);
-  const [actionModif,   setActionModif]   = useState(null);
-  // IDs des actions en cours de suppression (optimistic)
-  const [suppressionActionIds, setSuppActionIds] = useState(new Set());
 
   // Workflow de statut
   const [actionStatutEnCours, setActionStatutEnCours] = useState(false);
@@ -581,12 +248,12 @@ function IncidentDetailPage() {
   useEffect(() => {
     document.title = "Détail incident";
     charger();
-    api.get("/users").then((r) => setUsers(r.data.data || [])).catch(() => {});
     return () => { document.title = "CONFORYS"; };
   }, [id]);
 
-  // Charge l'incident, ses actions et ses pièces jointes en parallèle.
-  // Les sous-ressources (actions, pièces) n'empêchent pas l'affichage si elles échouent.
+  // Charge l'incident et ses pièces jointes en parallèle.
+  // Les sous-ressources (pièces, historique, commentaires) n'empêchent pas
+  // l'affichage si elles échouent.
   const charger = async () => {
     setChargement(true);
     setErreurPage("");
@@ -595,13 +262,11 @@ function IncidentDetailPage() {
       setIncident(resInc.data.data);
 
       // Chargement non-bloquant des sous-ressources
-      const [resAct, resPieces, resHist, resComm] = await Promise.allSettled([
-        api.get(`/incidents/${id}/actions`),
+      const [resPieces, resHist, resComm] = await Promise.allSettled([
         api.get(`/incidents/${id}/pieces-jointes`),
         api.get(`/incidents/${id}/historique`),
         api.get(`/incidents/${id}/commentaires`),
       ]);
-      if (resAct.status    === "fulfilled") setActions(resAct.value.data.data      || []);
       if (resPieces.status === "fulfilled") setPieces(resPieces.value.data.data    || []);
       if (resHist.status   === "fulfilled") setHistorique(resHist.value.data.data  || []);
       if (resComm.status   === "fulfilled") setCommentaires(resComm.value.data.data || []);
@@ -609,25 +274,6 @@ function IncidentDetailPage() {
       setErreurPage("Impossible de charger l'incident.");
     } finally {
       setChargement(false);
-    }
-  };
-
-  const chargerActions = async () => {
-    const res = await api.get(`/incidents/${id}/actions`);
-    setActions(res.data.data || []);
-  };
-
-  const supprimerAction = async (actionId) => {
-    if (!window.confirm("Supprimer définitivement cette action corrective ?")) return;
-    setSuppActionIds((prev) => new Set([...prev, actionId]));
-    try {
-      await api.delete(`/actions/${actionId}`);
-      toast.success("Action supprimée");
-      setActions((prev) => prev.filter((a) => a.id !== actionId));
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Erreur lors de la suppression.");
-    } finally {
-      setSuppActionIds((prev) => { const s = new Set(prev); s.delete(actionId); return s; });
     }
   };
 
@@ -750,6 +396,7 @@ function IncidentDetailPage() {
       setPieces((prev) => prev.filter((p) => p.id !== pieceId));
     } catch (err) {
       console.error("Erreur suppression pièce jointe:", err);
+      toast.error(err.response?.data?.message || "Erreur lors de la suppression de la pièce jointe.");
     } finally {
       setSuppIds((prev) => { const s = new Set(prev); s.delete(pieceId); return s; });
     }
@@ -819,10 +466,11 @@ function IncidentDetailPage() {
         <span className="text-[#1E293B] font-medium">{incident.numeroReference}</span>
       </div>
 
-      {/* ── En-tête (sans cadre) ── */}
-      <div className="flex items-start justify-between mb-6 pb-5 border-b border-[#E2E8F0]">
+      {/* ── En-tête — accent coloré selon la gravité ── */}
+      <div className="flex items-start justify-between mb-6 pb-5 pl-4 border-b border-l-4 border-[#E2E8F0]"
+        style={{ borderLeftColor: COULEUR_GRAVITE[incident.gravite] || "#94A3B8" }}>
         <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="text-lg font-semibold text-navy">{incident.numeroReference}</h1>
+          <h1 className="text-2xl font-bold text-navy">{incident.numeroReference}</h1>
           <Badge variant={incident.gravite} />
           <Badge variant={incident.statut} />
         </div>
@@ -846,7 +494,8 @@ function IncidentDetailPage() {
 
         return (
           <div className="mb-5 p-4 bg-white border border-[#E2E8F0] rounded-lg flex items-center justify-between gap-4">
-            <p className="text-xs text-[#64748B]">
+            <p className="flex items-center gap-2 text-xs text-[#64748B]">
+              <AlertCircle size={14} color="#0D2B4E" className="shrink-0" />
               {peutSoumettre       && "Cet incident est en brouillon. Soumettez-le pour traitement."}
               {peutValiderRejeter  && "Cet incident attend votre décision."}
               {peutCloturer        && "L'enquête est terminée. Clôturez cet incident."}
@@ -891,7 +540,12 @@ function IncidentDetailPage() {
       {/* ── Informations (sans cadre, fond léger pour regrouper) ── */}
       <div className="mb-6 p-5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0] flex items-stretch gap-8">
         <div className="flex-1 min-w-0">
-          <h2 className="text-base font-semibold text-[#1E293B] mb-4">Informations</h2>
+          <h2 className="text-lg font-semibold text-navy mb-4 flex items-center gap-2.5">
+            <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "#0D2B4E1A" }}>
+              <Info size={15} color="#0D2B4E" />
+            </span>
+            Informations
+          </h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 mb-5">
             <LigneInfo label="Type">{LABELS_TYPE[incident.type] ?? incident.type}</LigneInfo>
             <LigneInfo label="Site">{incident.site?.nom}</LigneInfo>
@@ -918,14 +572,14 @@ function IncidentDetailPage() {
           </div>
 
           <div>
-            <p className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide mb-1">Description</p>
+            <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-1">Description</p>
             <p className="text-sm text-[#1E293B] leading-relaxed">{incident.description}</p>
           </div>
 
           {incident.motifRejet && (
             <div className="mt-4 p-3 rounded-md bg-red-50 border border-red-200">
-              <p className="text-[10px] font-semibold text-[#DC2626] uppercase tracking-wide mb-1">
-                Motif de rejet
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold text-[#DC2626] uppercase tracking-wide mb-1">
+                <AlertTriangle size={12} /> Motif de rejet
               </p>
               <p className="text-sm text-[#DC2626]">{incident.motifRejet}</p>
             </div>
@@ -946,43 +600,8 @@ function IncidentDetailPage() {
         )}
       </div>
 
-      {/* ── Actions correctives + Analyse des causes (côte à côte) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6 items-start">
-        <div className="p-5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-base font-semibold text-[#1E293B]">Actions correctives</h2>
-              <p className="text-xs text-[#64748B] mt-0.5">{actions.length} action(s)</p>
-            </div>
-            {isQhse && (
-              <button onClick={() => setShowAjout(true)}
-                className="shrink-0 px-3 py-1.5 text-xs font-semibold text-white rounded-md transition-colors"
-                style={{ backgroundColor: "#0D2B4E" }}>
-                + Ajouter
-              </button>
-            )}
-          </div>
-          <div className="divide-y divide-[#E2E8F0] overflow-y-auto" style={{ maxHeight: 420 }}>
-            {actions.length === 0 ? (
-              <p className="py-10 text-center text-[#94A3B8] text-sm">
-                Aucune action corrective enregistrée
-              </p>
-            ) : (
-              actions.map((action) => (
-                <ActionCorrectiveItem
-                  key={action.id}
-                  action={action}
-                  isQhse={isQhse}
-                  enSuppression={suppressionActionIds.has(action.id)}
-                  onCloturer={() => setActionCloture(action)}
-                  onModifier={() => setActionModif(action)}
-                  onSupprimer={() => supprimerAction(action.id)}
-                />
-              ))
-            )}
-          </div>
-        </div>
-
+      {/* ── Analyse des causes ── */}
+      <div className="mb-6">
         <AnalyseCausesApercu incident={incident} peutGerer={isQhse} />
       </div>
 
@@ -991,7 +610,10 @@ function IncidentDetailPage() {
 
         {/* Historique — lecture seule, immuable */}
         <div className="p-5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
-          <h2 className="text-base font-semibold text-[#1E293B]">
+          <h2 className="text-lg font-semibold text-navy flex items-center gap-2.5">
+            <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "#0D2B4E1A" }}>
+              <History size={15} color="#0D2B4E" />
+            </span>
             Historique
             {historique.length > 0 && (
               <span className="ml-2 text-[11px] font-normal text-[#94A3B8]">
@@ -1006,45 +628,51 @@ function IncidentDetailPage() {
             {historique.length === 0 ? (
               <p className="text-sm text-[#94A3B8] py-8">Aucune entrée d'historique.</p>
             ) : (
-              <ol>
-                {historique.map((entree, i) => {
-                  const isLast = i === historique.length - 1;
-                  return (
-                    <li key={entree.id} className="flex gap-3">
-                      <div className="flex flex-col items-center shrink-0">
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#0D2B4E] border-2 border-white ring-1 ring-[#CBD5E1] mt-1 shrink-0" />
-                        {!isLast && <div className="w-px flex-1 bg-[#E2E8F0] my-1" />}
-                      </div>
-                      <div className="pb-4">
-                        <p className="text-sm font-medium text-[#1E293B] leading-snug">{entree.action}</p>
-                        {entree.details && (
-                          <p className="text-xs text-[#64748B] mt-0.5 italic">{entree.details}</p>
-                        )}
-                        <p className="text-xs text-[#94A3B8] mt-1">
-                          {entree.auteur ? `${entree.auteur.prenom} ${entree.auteur.nom}` : "Système"}
-                          {" · "}
-                          {new Date(entree.dateAction).toLocaleString("fr-FR", {
-                            day: "2-digit", month: "short", year: "numeric",
-                            hour: "2-digit", minute: "2-digit",
-                          })}
-                        </p>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
+              historique.map((entree, i) => {
+                const isLast = i === historique.length - 1;
+                const couleur = couleurHistorique(entree.action);
+                const Icone = iconeHistorique(entree.action);
+                return (
+                  <div key={entree.id} className="relative pl-8">
+                    {!isLast && <div className="absolute left-3 top-0 bottom-0 w-px bg-[#E2E8F0]" />}
+                    <div className="absolute left-0 top-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: couleur }}>
+                      <Icone size={12} color="white" />
+                    </div>
+                    <div className="pb-5">
+                      <p className="text-sm font-medium text-[#1E293B] leading-snug">{entree.action}</p>
+                      {entree.details && (
+                        <p className="text-xs text-[#64748B] mt-0.5 italic">{entree.details}</p>
+                      )}
+                      <p className="text-[11px] text-[#94A3B8] mt-1">
+                        {entree.auteur ? `${entree.auteur.prenom} ${entree.auteur.nom}` : "Système"}
+                        {" · "}
+                        {new Date(entree.dateAction).toLocaleString("fr-FR", {
+                          day: "2-digit", month: "short", year: "numeric",
+                          hour: "2-digit", minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
 
         {/* Espace collaboratif — pièces jointes + commentaires */}
         <div className="p-5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
-          <h2 className="text-base font-semibold text-[#1E293B] mb-4">Espace collaboratif</h2>
+          <h2 className="text-lg font-semibold text-navy mb-4 flex items-center gap-2.5">
+            <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "#0D2B4E1A" }}>
+              <MessageSquare size={15} color="#0D2B4E" />
+            </span>
+            Espace collaboratif
+          </h2>
 
           {/* Pièces jointes */}
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide">
-              Pièces jointes ({pieces.length})
+            <p className="flex items-center gap-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
+              <Paperclip size={13} /> Pièces jointes ({pieces.length})
             </p>
             <label
               className="px-3 py-1.5 text-xs font-semibold text-white rounded-md cursor-pointer transition-colors select-none"
@@ -1110,8 +738,8 @@ function IncidentDetailPage() {
 
           {/* Commentaires */}
           <div className="mt-6 pt-5 border-t border-[#E2E8F0]">
-            <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-3">
-              Commentaires ({commentaires.length})
+            <p className="flex items-center gap-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide mb-3">
+              <MessageCircle size={13} /> Commentaires ({commentaires.length})
             </p>
 
             {commentaires.length === 0 ? (
@@ -1141,29 +769,6 @@ function IncidentDetailPage() {
         <ModalRejeter
           onConfirm={confirmerRejet}
           onClose={() => setShowModalRejet(false)}
-        />
-      )}
-      {showAjout && (
-        <ModalAjoutAction
-          incidentId={id}
-          users={users}
-          onSuccess={() => { setShowAjout(false); chargerActions(); }}
-          onClose={() => setShowAjout(false)}
-        />
-      )}
-      {actionCloture && (
-        <ModalCloturerAction
-          action={actionCloture}
-          onSuccess={() => { setActionCloture(null); chargerActions(); }}
-          onClose={() => setActionCloture(null)}
-        />
-      )}
-      {actionModif && (
-        <ModalModifierAction
-          action={actionModif}
-          users={users}
-          onSuccess={() => { setActionModif(null); chargerActions(); }}
-          onClose={() => setActionModif(null)}
         />
       )}
     </AppLayout>

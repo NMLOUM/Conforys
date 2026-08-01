@@ -146,7 +146,7 @@ function AuditsPage() {
       {/* ── Bibliothèque de templates ── */}
       {can("RESPONSABLE_QHSE") && (
         <div className="mb-6">
-          <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-3">
+          <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-3">
             Bibliothèque de templates
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -176,7 +176,7 @@ function AuditsPage() {
             <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
               <tr>
                 {["Référence", "Titre", "Type", "Date prévue", "Statut", "Score"].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{h}</th>
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -230,7 +230,7 @@ function AuditsPage() {
           onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
           <div className="w-full max-w-lg bg-white rounded-lg border border-[#E2E8F0] mx-4 flex flex-col" style={{ maxHeight: "90vh" }}>
             <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-[#F1F5F9] shrink-0">
-              <h2 className="text-base font-semibold text-[#1E293B]">Programmer une inspection</h2>
+              <h2 className="text-lg font-semibold text-navy">Programmer une inspection</h2>
               <button onClick={() => setShowModal(false)}
                 className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition text-base leading-none">
                 &#x2715;
@@ -251,14 +251,14 @@ function AuditsPage() {
                   </p>
                   <div className="space-y-4">
                     <div>
-                      <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Template</label>
+                      <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Template</label>
                       <div className="flex items-center gap-2 px-3 py-2.5 rounded-md border border-[#E2E8F0] bg-[#F8FAFC]">
                         {templateChoisi && <IconeTemplate id={templateChoisi.id} />}
                         <span className="text-sm font-medium text-[#1E293B]">{templateChoisi?.nom ?? "—"}</span>
                       </div>
                     </div>
                     <div>
-                      <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Titre</label>
+                      <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Titre</label>
                       <input type="text" {...register("titre")} placeholder="ex: Audit sécurité Q2 2026" className={inputCls("titre")} />
                       {errors.titre && <p className="mt-1 text-xs text-[#DC2626]">{errors.titre.message}</p>}
                     </div>
@@ -272,12 +272,12 @@ function AuditsPage() {
                   </p>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Date prévue</label>
+                      <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Date prévue</label>
                       <input type="date" {...register("datePrevue")} className={inputCls("datePrevue")} />
                       {errors.datePrevue && <p className="mt-1 text-xs text-[#DC2626]">{errors.datePrevue.message}</p>}
                     </div>
                     <div>
-                      <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Site</label>
+                      <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Site</label>
                       <select {...register("siteId")} className={inputCls("siteId")}>
                         <option value="">Sélectionner un site</option>
                         {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}

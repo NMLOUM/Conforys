@@ -49,7 +49,7 @@ function ModalCreerUser({ entreprises, onSuccess, onClose }) {
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="w-full max-w-lg bg-white rounded-lg border border-[#E2E8F0] mx-4">
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#F1F5F9]">
-          <h3 className="text-base font-semibold text-[#1E293B]">Nouvel utilisateur</h3>
+          <h3 className="text-[15px] font-semibold text-[#1E293B]">Nouvel utilisateur</h3>
           <button type="button" onClick={onClose}
             className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition">
             &#x2715;
@@ -61,35 +61,35 @@ function ModalCreerUser({ entreprises, onSuccess, onClose }) {
           )}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Prénom *</label>
+              <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Prénom *</label>
               <input value={form.prenom} onChange={(e) => set("prenom", e.target.value)}
                 className={inputCls} placeholder="Prénom" />
             </div>
             <div>
-              <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Nom *</label>
+              <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Nom *</label>
               <input value={form.nom} onChange={(e) => set("nom", e.target.value)}
                 className={inputCls} placeholder="Nom" />
             </div>
           </div>
           <div>
-            <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Email *</label>
+            <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Email *</label>
             <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)}
               className={inputCls} placeholder="adresse@email.com" />
           </div>
           <div>
-            <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Mot de passe *</label>
+            <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Mot de passe *</label>
             <input type="password" value={form.password} onChange={(e) => set("password", e.target.value)}
               className={inputCls} placeholder="Minimum 8 caractères" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Rôle *</label>
+              <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Rôle *</label>
               <select value={form.role} onChange={(e) => set("role", e.target.value)} className={inputCls}>
                 {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Entreprise *</label>
+              <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Entreprise *</label>
               <select value={form.entrepriseId} onChange={(e) => set("entrepriseId", e.target.value)} className={inputCls}>
                 {entreprises.map((e) => <option key={e.id} value={e.id}>{e.nom}</option>)}
               </select>
@@ -147,7 +147,7 @@ function ModalModifierUser({ user, onSuccess, onClose }) {
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="w-full max-w-lg bg-white rounded-lg border border-[#E2E8F0] mx-4">
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#F1F5F9]">
-          <h3 className="text-base font-semibold text-[#1E293B]">Modifier l'utilisateur</h3>
+          <h3 className="text-[15px] font-semibold text-[#1E293B]">Modifier l'utilisateur</h3>
           <button type="button" onClick={onClose}
             className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition">
             &#x2715;
@@ -159,29 +159,29 @@ function ModalModifierUser({ user, onSuccess, onClose }) {
           )}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Prénom *</label>
+              <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Prénom *</label>
               <input value={form.prenom} onChange={(e) => set("prenom", e.target.value)}
                 className={inputCls} placeholder="Prénom" />
             </div>
             <div>
-              <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Nom *</label>
+              <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Nom *</label>
               <input value={form.nom} onChange={(e) => set("nom", e.target.value)}
                 className={inputCls} placeholder="Nom" />
             </div>
           </div>
           <div>
-            <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Email *</label>
+            <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Email *</label>
             <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)}
               className={inputCls} placeholder="adresse@email.com" />
           </div>
           <div>
-            <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">Rôle *</label>
+            <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Rôle *</label>
             <select value={form.role} onChange={(e) => set("role", e.target.value)} className={inputCls}>
               {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </div>
           <div>
-            <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+            <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
               Nouveau mot de passe <span className="text-[#94A3B8] normal-case font-normal">(laisser vide pour ne pas changer)</span>
             </label>
             <input type="password" value={form.password} onChange={(e) => set("password", e.target.value)}
@@ -297,7 +297,7 @@ function UsersPage() {
             <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
               <tr>
                 {["Utilisateur", "Email", "Rôle", "Entreprise", "Statut", ...(isAdmin ? ["Actions"] : [])].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">
                     {h}
                   </th>
                 ))}

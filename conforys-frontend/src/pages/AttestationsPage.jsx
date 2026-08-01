@@ -65,7 +65,7 @@ function AttestationsPage() {
     <AppLayout titre="Attestations">
       <div className="flex items-center justify-between mb-1">
         <div>
-          <h1 className="text-lg font-semibold text-navy">Attestations de formation</h1>
+          <h1 className="text-2xl font-bold text-navy">Attestations de formation</h1>
           <p className="text-xs text-[#94A3B8] mt-0.5">Tableau de bord <span className="mx-1">›</span> Attestations</p>
         </div>
         <button
@@ -116,7 +116,7 @@ function AttestationsPage() {
               <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                 <tr>
                   {["Bénéficiaire", "Formation", "Origine", "Obtenue le", "Expire le", "Statut", "Actions"].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{h}</th>
+                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
               </thead>

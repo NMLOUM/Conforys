@@ -65,7 +65,7 @@ function ModalCloturerAction({ action, onSuccess, onClose }) {
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="w-full max-w-md bg-white rounded-lg border border-[#E2E8F0] mx-4">
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#F1F5F9]">
-          <h3 className="text-base font-semibold text-[#1E293B]">Clôturer l'action</h3>
+          <h3 className="text-[15px] font-semibold text-[#1E293B]">Clôturer l'action</h3>
           <button type="button" onClick={onClose}
             className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition">
             &#x2715;
@@ -77,7 +77,7 @@ function ModalCloturerAction({ action, onSuccess, onClose }) {
           </div>
           {erreur && <p className="text-xs text-[#DC2626] p-3 bg-red-50 border border-red-200 rounded-md">{erreur}</p>}
           <div>
-            <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+            <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
               Commentaire de clôture *
             </label>
             <textarea value={commentaire} onChange={(e) => setCommentaire(e.target.value)}
@@ -203,7 +203,7 @@ function RisqueDetailPage() {
         </Link>
         <div className="flex flex-wrap items-center justify-between gap-3 mt-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-lg font-semibold text-navy">{risque.danger}</h1>
+            <h1 className="text-2xl font-bold text-navy">{risque.danger}</h1>
             <BadgeNiveau niveau={niveauQualitatif} />
           </div>
           {peutGerer && (
@@ -227,12 +227,12 @@ function RisqueDetailPage() {
         {/* ── Colonne gauche ── */}
         <div className="lg:col-span-2 space-y-4">
           <div className="p-5 border border-[#E2E8F0] rounded-lg bg-white">
-            <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-3">Description</p>
+            <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-3">Description</p>
             <p className="text-sm text-[#1E293B]">{risque.description || "Aucune description renseignée."}</p>
           </div>
 
           <div className="p-5 border border-[#E2E8F0] rounded-lg bg-white">
-            <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-3">Mesures de prévention</p>
+            <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-3">Mesures de prévention</p>
             <p className="text-sm text-[#1E293B] whitespace-pre-wrap">{risque.mesuresPrevention || "Aucune mesure renseignée."}</p>
           </div>
 
@@ -282,7 +282,7 @@ function RisqueDetailPage() {
             <button type="button" onClick={() => setShowHistorique((v) => !v)}
               className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#F8FAFC] transition-colors">
               <div className="text-left">
-                <h2 className="text-base font-semibold text-[#1E293B]">
+                <h2 className="text-lg font-semibold text-navy">
                   Historique
                   {historique.length > 0 && (
                     <span className="ml-2 text-[11px] font-normal text-[#94A3B8]">
@@ -339,7 +339,7 @@ function RisqueDetailPage() {
         {/* ── Colonne droite — cotation ── */}
         <div className="space-y-4">
           <div className="p-5 border border-[#E2E8F0] rounded-lg bg-white">
-            <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-3">Cotation initiale</p>
+            <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-3">Cotation initiale</p>
             <div className="flex items-center justify-between text-sm mb-2">
               <span className="text-[#64748B]">Probabilité</span>
               <span className="font-semibold text-[#1E293B]">{LABELS_PROBABILITE[risque.probabilite]}</span>
@@ -349,7 +349,7 @@ function RisqueDetailPage() {
               <span className="font-semibold text-[#1E293B]">{LABELS_GRAVITE[risque.gravite]}</span>
             </div>
             <div className="flex items-center justify-between pt-3 border-t border-[#F1F5F9]">
-              <span className="text-xs font-semibold text-[#475569] uppercase tracking-wide">Niveau</span>
+              <span className="text-xs font-medium text-[#64748B] uppercase tracking-wide">Niveau</span>
               <div className="flex items-center gap-2">
                 <BadgeNiveau niveau={niveauQualitatif} />
                 <span className="text-xs text-[#94A3B8]">({risque.niveauRisque}/16)</span>
@@ -359,7 +359,7 @@ function RisqueDetailPage() {
 
           {(risque.probabiliteResiduelle && risque.graviteResiduelle) ? (
             <div className="p-5 border border-[#E2E8F0] rounded-lg bg-white">
-              <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-3">Cotation résiduelle</p>
+              <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-3">Cotation résiduelle</p>
               <div className="flex items-center justify-between text-sm mb-2">
                 <span className="text-[#64748B]">Probabilité</span>
                 <span className="font-semibold text-[#1E293B]">{LABELS_PROBABILITE[risque.probabiliteResiduelle]}</span>
@@ -369,13 +369,13 @@ function RisqueDetailPage() {
                 <span className="font-semibold text-[#1E293B]">{LABELS_GRAVITE[risque.graviteResiduelle]}</span>
               </div>
               <div className="flex items-center justify-between pt-3 border-t border-[#F1F5F9]">
-                <span className="text-xs font-semibold text-[#475569] uppercase tracking-wide">Niveau résiduel</span>
+                <span className="text-xs font-medium text-[#64748B] uppercase tracking-wide">Niveau résiduel</span>
                 <BadgeNiveau niveau={niveauQualitatifResiduel} />
               </div>
             </div>
           ) : (
             <div className="p-5 border border-[#E2E8F0] rounded-lg bg-white">
-              <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-2">Cotation résiduelle</p>
+              <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-2">Cotation résiduelle</p>
               <p className="text-xs text-[#94A3B8]">Non renseignée. À évaluer une fois les mesures de prévention appliquées.</p>
             </div>
           )}
@@ -394,7 +394,7 @@ function RisqueDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
           onClick={(e) => e.target === e.currentTarget && setConfirmerSuppression(false)}>
           <div className="w-full max-w-sm bg-white rounded-lg border border-[#E2E8F0] p-6 mx-4">
-            <h2 className="text-base font-semibold text-[#1E293B] mb-2">Supprimer ce risque ?</h2>
+            <h2 className="text-lg font-semibold text-navy mb-2">Supprimer ce risque ?</h2>
             <p className="text-sm text-[#64748B] mb-5">
               « <span className="font-medium text-[#1E293B]">{risque.danger}</span> » sera définitivement supprimé du registre DUERP. Cette action est irréversible.
             </p>

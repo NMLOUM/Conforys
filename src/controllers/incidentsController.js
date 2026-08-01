@@ -35,7 +35,7 @@ const getIncidentById = async (req, res) => {
 // Crée un nouvel incident — le déclarant est tiré du token, jamais du corps
 const createIncident = async (req, res) => {
   try {
-    const incident = await incidentService.createIncident(req.body, req.user.userId);
+    const incident = await incidentService.createIncident(req.body, req.user.userId, req.user.entrepriseId);
     res.status(201).json({ success: true, data: incident });
   } catch (error) {
     handleErreur(res, error);
@@ -45,7 +45,7 @@ const createIncident = async (req, res) => {
 // Met à jour un incident
 const updateIncident = async (req, res) => {
   try {
-    const incident = await incidentService.updateIncident(req.params.id, req.body, req.user.entrepriseId);
+    const incident = await incidentService.updateIncident(req.params.id, req.body, req.user.entrepriseId, req.user.userId);
     res.status(200).json({ success: true, data: incident });
   } catch (error) {
     handleErreur(res, error);

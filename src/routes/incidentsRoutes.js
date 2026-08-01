@@ -8,8 +8,8 @@ const {
 } = require("../controllers/incidentsController");
 const { protect }   = require("../middlewares/authMiddleware");
 const { authorize } = require("../middlewares/roleMiddleware");
-const { validate }  = require("../middlewares/validate");
-const { incidentSchema } = require("../validators/incidentValidator");
+const { validate, validateQuery } = require("../middlewares/validate");
+const { incidentSchema, updateIncidentSchema, listeIncidentsSchema, rejeterIncidentSchema } = require("../validators/incidentValidator");
 const { getActionsByIncident, createAction } = require("../controllers/actionController");
 const { actionSchema } = require("../validators/actionValidator");
 const { getPiecesByIncident, addPieceJointe } = require("../controllers/pieceJointeController");
@@ -23,7 +23,7 @@ const {
 const { updateAnalyseSchema } = require("../validators/analyseCausesValidator");
 
 // Lecture  →  tous les rôles authentifiés
-router.get("/",    protect, getAllIncidents);
+router.get("/",    protect, validateQuery(listeIncidentsSchema), getAllIncidents);
 router.get("/:id", protect, getIncidentById);
 
 // Rapport PDF  →  RESPONSABLE_QHSE et ADMIN uniquement
@@ -33,7 +33,7 @@ router.get("/:id/rapport-pdf", protect, authorize("RESPONSABLE_QHSE", "ADMIN"), 
 router.post("/", protect, validate(incidentSchema), createIncident);
 
 // Modification générique  →  RESPONSABLE_QHSE uniquement (mise à jour de champs hors workflow)
-router.put("/:id", protect, authorize("RESPONSABLE_QHSE"), updateIncident);
+router.put("/:id", protect, authorize("RESPONSABLE_QHSE"), validate(updateIncidentSchema), updateIncident);
 
 // Suppression  →  ADMIN uniquement (maintenance technique)
 router.delete("/:id", protect, authorize("ADMIN"), deleteIncident);
@@ -46,7 +46,7 @@ router.put("/:id/soumettre", protect, soumettre);
 router.put("/:id/valider",  protect, authorize("RESPONSABLE_QHSE"), valider);
 
 // OUVERT → REJETE : RESPONSABLE_QHSE rejette
-router.put("/:id/rejeter",  protect, authorize("RESPONSABLE_QHSE"), rejeter);
+router.put("/:id/rejeter",  protect, authorize("RESPONSABLE_QHSE"), validate(rejeterIncidentSchema), rejeter);
 
 // EN_COURS → CLOS : RESPONSABLE_QHSE clôture
 router.put("/:id/cloturer", protect, authorize("RESPONSABLE_QHSE"), cloturer);

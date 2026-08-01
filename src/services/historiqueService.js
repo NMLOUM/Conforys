@@ -14,10 +14,13 @@ const enregistrer = async (incidentId, auteurId, action, details = null) => {
 };
 
 // Retourne l'historique complet d'un incident, du plus récent au plus ancien.
+// Scopé à l'entreprise du demandeur (isolation multi-tenant) — renvoie un
+// tableau vide si l'incident n'existe pas ou appartient à une autre entreprise
+// (le contrôleur vérifie séparément l'existence de l'incident pour un 404 propre).
 // Inclut nom/prénom de l'auteur pour l'affichage côté client.
-const getHistoriqueByIncident = async (incidentId) => {
+const getHistoriqueByIncident = async (incidentId, entrepriseId) => {
   return await prisma.historiqueIncident.findMany({
-    where:   { incidentId },
+    where:   { incidentId, incident: { declarePar: { entrepriseId } } },
     include: { auteur: { select: { id: true, nom: true, prenom: true } } },
     orderBy: { dateAction: "desc" },
   });

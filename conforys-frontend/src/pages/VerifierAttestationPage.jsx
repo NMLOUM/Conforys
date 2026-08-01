@@ -32,7 +32,7 @@ function VerifierAttestationPage() {
             <span className="text-xl font-bold text-navy tracking-wide" translate="no">CONFORYS</span>
             <span className="text-[10px] font-semibold text-vert bg-vert/15 px-1.5 py-0.5 rounded uppercase tracking-wider">QHSE</span>
           </div>
-          <h1 className="text-2xl font-semibold text-[#1E293B]">Vérification d'attestation</h1>
+          <h1 className="text-2xl font-bold text-navy">Vérification d'attestation</h1>
         </div>
 
         <div className="bg-white border border-[#E2E8F0] rounded-lg p-7 text-center">

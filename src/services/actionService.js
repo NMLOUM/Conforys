@@ -1,5 +1,6 @@
 const prisma = require("../config/prisma");
 const { enregistrer, enregistrerAction } = require("./historiqueService");
+const { creer: creerNotification } = require("./notificationService");
 
 // Erreur métier avec code HTTP (400/403/404) — évite de renvoyer 500 sur des cas attendus
 class ErreurMetier extends Error {
@@ -30,10 +31,19 @@ const getActionsByIncident = async (incidentId, entrepriseId) => {
   });
 };
 
+// Vérifie que l'utilisateur assigné comme responsable appartient bien à
+// l'entreprise du demandeur — empêche d'assigner (par erreur ou par un id
+// deviné) une action à un utilisateur d'une autre entreprise.
+const verifierResponsable = async (responsableId, entrepriseId) => {
+  const utilisateur = await prisma.user.findFirst({ where: { id: responsableId, entrepriseId } });
+  if (!utilisateur) throw new ErreurMetier("Responsable introuvable dans votre entreprise.", 404);
+};
+
 // Crée une nouvelle action corrective liée à un incident
 const createAction = async (incidentId, data, auteurId, entrepriseId) => {
   const incident = await prisma.incident.findFirst({ where: { id: incidentId, declarePar: { entrepriseId } } });
   if (!incident) throw new ErreurMetier("Incident introuvable.", 404);
+  await verifierResponsable(data.responsableId, entrepriseId);
 
   const action = await prisma.actionCorrective.create({
     data: {
@@ -47,6 +57,10 @@ const createAction = async (incidentId, data, auteurId, entrepriseId) => {
   });
   await enregistrer(incidentId, auteurId, "Action corrective ajoutée", action.description.slice(0, 120));
   await enregistrerAction(action.id, auteurId, "Action créée");
+  await creerNotification(
+    action.responsableId, "ACTION_ASSIGNEE", "Action corrective assignée",
+    action.description.slice(0, 120), `/actions/${action.id}`
+  );
   return action;
 };
 
@@ -115,6 +129,10 @@ const updateAction = async (id, data, entrepriseId, auteurId) => {
     );
   }
 
+  if (data.responsableId !== undefined) {
+    await verifierResponsable(data.responsableId, entrepriseId);
+  }
+
   const misAJour = await prisma.actionCorrective.update({
     where: { id },
     data: {
@@ -133,6 +151,13 @@ const updateAction = async (id, data, entrepriseId, auteurId) => {
     await enregistrerAction(id, auteurId, `Statut changé : ${action.statut} → ${data.statut}`);
   } else {
     await enregistrerAction(id, auteurId, "Action modifiée");
+  }
+
+  if (data.responsableId !== undefined && data.responsableId !== action.responsableId) {
+    await creerNotification(
+      data.responsableId, "ACTION_ASSIGNEE", "Action corrective assignée",
+      misAJour.description.slice(0, 120), `/actions/${id}`
+    );
   }
 
   return misAJour;
@@ -159,9 +184,8 @@ const cloturerAction = async (id, commentaireCloture, entrepriseId, auteurId) =>
 };
 
 // Permet au responsable assigné de démarrer son action (A_FAIRE → EN_COURS)
-const progresserAction = async (id, userId) => {
-  const action = await prisma.actionCorrective.findUnique({ where: { id } });
-  if (!action) throw new ErreurMetier("Action introuvable.", 404);
+const progresserAction = async (id, userId, entrepriseId) => {
+  const action = await verifierAppartenance(id, entrepriseId);
   if (action.responsableId !== userId)
     throw new ErreurMetier("Vous n'êtes pas responsable de cette action.", 403);
   if (action.statut !== "A_FAIRE")
@@ -245,16 +269,39 @@ const genererActionsDepuisAudit = async (auditId, entrepriseId) => {
 
     if (aCreer.length > 0) {
       await prisma.actionCorrective.createMany({ data: aCreer });
+      // createMany ne renvoie pas les lignes créées — on les relit pour
+      // journaliser chacune individuellement dans son propre historique.
+      const creees = await prisma.actionCorrective.findMany({
+        where: { auditId, description: { in: aCreer.map((a) => a.description) } },
+        select: { id: true, description: true },
+      });
+      for (const a of creees) {
+        await enregistrerAction(a.id, audit.auditeurId, "Action créée", `Générée depuis l'audit : ${audit.reference}`);
+        await creerNotification(
+          audit.auditeurId, "ACTION_ASSIGNEE", "Action corrective assignée",
+          a.description.slice(0, 120), `/actions/${a.id}`
+        );
+      }
     }
   }
 
   return await getActionsByAudit(auditId, entrepriseId);
 };
 
-// Actions assignées à l'utilisateur connecté — tous rôles (vue "Mes actions")
-const getMesActions = async (userId) => {
+// Actions assignées à l'utilisateur connecté — tous rôles (vue "Mes actions").
+// Scope entreprise ajouté en défense en profondeur (le responsable ne devrait
+// jamais être hors entreprise grâce à verifierResponsable, mais on ne prend pas
+// le risque d'exposer une action mal assignée par un autre chemin).
+const getMesActions = async (userId, entrepriseId) => {
   return await prisma.actionCorrective.findMany({
-    where: { responsableId: userId },
+    where: {
+      responsableId: userId,
+      OR: [
+        { incident: { declarePar: { entrepriseId } } },
+        { audit: { auditeur: { entrepriseId } } },
+        { risque: { site: { entrepriseId } } },
+      ],
+    },
     include: INCLUDE_ACTION,
     orderBy: [{ dateLimite: "asc" }, { createdAt: "desc" }],
   });

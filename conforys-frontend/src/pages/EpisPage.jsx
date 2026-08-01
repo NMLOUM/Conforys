@@ -112,9 +112,9 @@ function CarteEtatStock({ epis }) {
   const niveauOptimal = total === 0 ? 100 : Math.round((nbOk / total) * 100);
 
   return (
-    <div className="lg:col-span-4 bg-white rounded-xl p-5 flex flex-col gap-4">
+    <div className="lg:col-span-4 bg-white border border-[#E2E8F0] rounded-lg p-5 flex flex-col gap-4">
       <div className="flex justify-between items-start">
-        <h3 className="text-base font-semibold text-[#1E293B]">État du stock</h3>
+        <h2 className="text-lg font-semibold text-navy">État du stock</h2>
         <BarChart3 size={18} color={C.secondary} />
       </div>
       <div className="space-y-2">
@@ -144,18 +144,18 @@ function CarteRepartitionGlobale({ epis, affectations }) {
   const uniteAffectees = affectations.filter((a) => a.statut === "ACTIVE").length;
 
   return (
-    <div className="lg:col-span-8 bg-white rounded-xl p-5 flex items-center justify-between gap-6">
+    <div className="lg:col-span-8 bg-white border border-[#E2E8F0] rounded-lg p-5 flex items-center justify-between gap-6">
       <div className="flex-1">
-        <h3 className="text-base font-semibold text-[#1E293B]">Répartition globale</h3>
+        <h2 className="text-lg font-semibold text-navy">Répartition globale</h2>
         <p className="text-sm mt-0.5" style={{ color: C.onSurfaceVariant }}>Équipements actuellement en circulation dans l'entreprise.</p>
         <div className="mt-4 flex gap-8">
           <div>
             <p className="text-xl font-bold" style={{ color: C.primary }}>{uniteAffectees}</p>
-            <p className="text-[11px] uppercase tracking-wider font-semibold" style={{ color: C.onSurfaceVariant }}>Unités affectées</p>
+            <p className="text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Unités affectées</p>
           </div>
           <div className="border-l pl-8" style={{ borderColor: C.outlineVariant }}>
             <p className="text-xl font-bold" style={{ color: nbAlerte > 0 ? C.secondary : C.onSurfaceVariant }}>{nbAlerte}</p>
-            <p className="text-[11px] uppercase tracking-wider font-semibold" style={{ color: C.onSurfaceVariant }}>En alerte</p>
+            <p className="text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>En alerte</p>
           </div>
         </div>
       </div>
@@ -193,7 +193,7 @@ function CarteEpi({ epi, affectationsActives }) {
   const statutFg = perime ? C.error : enAlerteStock ? C.onSecondaryContainer : "#1b5e20";
 
   return (
-    <div className="bg-white rounded-xl overflow-hidden flex flex-col"
+    <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden flex flex-col"
       style={enAlerteStock ? { outline: `2px solid ${C.secondary}` } : undefined}>
       <div className="h-32 relative">
         <BandeauEpi photoUrl={epi.photoUrl} type={epi.type} />
@@ -212,7 +212,7 @@ function CarteEpi({ epi, affectationsActives }) {
         <div className="flex justify-between items-end border-t pt-3 mt-3" style={{ borderColor: C.outlineVariant }}>
           <div>
             <p className="text-xs" style={{ color: C.onSurfaceVariant }}>Stock</p>
-            <p className="text-sm font-bold" style={{ color: enAlerteStock ? C.secondary : C.primary }}>{epi.quantite} / {epi.seuilAlerte}</p>
+            <p className="text-sm font-semibold" style={{ color: enAlerteStock ? C.secondary : C.primary }}>{epi.quantite} / {epi.seuilAlerte}</p>
           </div>
           <div className="text-right">
             <p className="text-xs" style={{ color: C.onSurfaceVariant }}>Dernière inspection</p>
@@ -495,7 +495,7 @@ function EpisPage() {
         <div className="flex items-end justify-between mb-6">
           <div>
             <p className="text-xs text-[#94A3B8] mb-1">Tableau de bord <span className="mx-1">›</span> Gestion des EPI</p>
-            <h2 className="text-lg font-semibold text-navy">Inventaire des équipements de protection</h2>
+            <h1 className="text-2xl font-bold text-navy">Inventaire des équipements de protection</h1>
           </div>
           <div className="flex gap-2">
             <button onClick={() => setShowFiltres((v) => !v)}
@@ -507,7 +507,7 @@ function EpisPage() {
             </button>
             {peutGerer && (
               <button onClick={ouvrirCreation}
-                className="px-4 py-2 text-sm font-bold text-white rounded-lg flex items-center gap-2 shadow-sm transition-opacity hover:opacity-90"
+                className="px-4 py-2 text-sm font-semibold text-white rounded-lg flex items-center gap-2 shadow-sm transition-opacity hover:opacity-90"
                 style={{ backgroundColor: C.primary }}>
                 <Plus size={15} /> Nouvel EPI
               </button>
@@ -525,7 +525,7 @@ function EpisPage() {
 
         {/* ── Panneau de filtres (repliable) ── */}
         {showFiltres && (
-          <div className="flex flex-wrap items-center gap-3 mb-4 p-4 bg-white rounded-xl">
+          <div className="flex flex-wrap items-center gap-3 mb-4 p-4 bg-white border border-[#E2E8F0] rounded-lg">
             <select value={filtreStatut} onChange={(e) => setFiltreStatut(e.target.value)}
               className="py-2 pl-3 pr-7 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 transition"
               style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>
@@ -565,7 +565,7 @@ function EpisPage() {
           <>
             {/* ── Grille de cartes ── */}
             {affiches.length === 0 ? (
-              <div className="p-12 text-center rounded-xl bg-white mb-6" style={{ color: C.onSurfaceVariant }}>
+              <div className="p-12 text-center rounded-lg border border-[#E2E8F0] bg-white mb-6" style={{ color: C.onSurfaceVariant }}>
                 {recherche || filtresActifs ? "Aucun EPI ne correspond aux critères." : "Aucun EPI enregistré"}
               </div>
             ) : (
@@ -581,16 +581,16 @@ function EpisPage() {
             )}
 
             {/* ── Tableau détaillé ── */}
-            <div className="bg-white rounded-xl overflow-hidden mb-6">
+            <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden mb-6">
               <div className="p-5" style={{ backgroundColor: C.surface }}>
-                <h3 className="text-base font-semibold text-[#1E293B]">Inventaire détaillé</h3>
+                <h3 className="text-[15px] font-semibold text-[#1E293B]">Inventaire détaillé</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[720px] text-sm">
                   <thead style={{ backgroundColor: C.surfaceContainerLow, color: C.onSurfaceVariant }}>
                     <tr>
                       {["Désignation", "Type", "Site", "Stock", "Seuil", "Statut", "Péremption", "Actions"].map((h) => (
-                        <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wide">{h}</th>
+                        <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -627,7 +627,7 @@ function EpisPage() {
                                     Inspecter
                                   </button>
                                   <button onClick={() => ouvrirModalAffecter(epi)} disabled={epi.quantite <= 0}
-                                    className="px-2.5 py-1 text-xs font-bold text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity hover:opacity-90"
+                                    className="px-2.5 py-1 text-xs font-semibold text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity hover:opacity-90"
                                     style={{ backgroundColor: C.primary }}>
                                     Affecter
                                   </button>
@@ -665,9 +665,9 @@ function EpisPage() {
         {showModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
             onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
-            <div className="w-full max-w-md bg-white rounded-xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="w-full max-w-md bg-white rounded-lg border border-[#E2E8F0] mx-4 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b" style={{ borderColor: C.outlineVariant }}>
-                <h2 className="text-base font-semibold text-[#1E293B]">{epiEnEdition ? "Modifier l'EPI" : "Nouvel EPI"}</h2>
+                <h2 className="text-lg font-semibold text-navy">{epiEnEdition ? "Modifier l'EPI" : "Nouvel EPI"}</h2>
                 <button onClick={() => setShowModal(false)}
                   className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#f8f9ff]">
                   &#x2715;
@@ -679,25 +679,25 @@ function EpisPage() {
                   <div className="p-3 text-sm rounded-lg" style={{ color: C.error, backgroundColor: C.errorContainer }}>{erreurForm}</div>
                 )}
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Désignation</label>
+                  <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Désignation</label>
                   <input type="text" {...register("designation")} placeholder="ex: Casque de chantier" className={inputCls("designation")} style={{ borderColor: errors.designation ? C.error : C.outlineVariant }} />
                   {errors.designation && <p className="mt-1 text-xs" style={{ color: C.error }}>{errors.designation.message}</p>}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Type</label>
+                    <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Type</label>
                     <input type="text" {...register("type")} placeholder="ex: Protection tête" className={inputCls("type")} style={{ borderColor: errors.type ? C.error : C.outlineVariant }} />
                     {errors.type && <p className="mt-1 text-xs" style={{ color: C.error }}>{errors.type.message}</p>}
                   </div>
                   <div>
-                    <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Référence</label>
+                    <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Référence</label>
                     <input type="text" {...register("reference")} placeholder="ex: REF-4521" className={inputCls("reference")} style={{ borderColor: C.outlineVariant }} />
                   </div>
                 </div>
 
                 {/* ── Photo de l'EPI (facultatif) ── */}
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>
+                  <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>
                     Photo <span className="font-normal normal-case" style={{ color: C.onSurfaceVariant }}>(facultatif)</span>
                   </label>
                   <div className="flex items-center gap-3">
@@ -727,18 +727,18 @@ function EpisPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Quantité</label>
+                    <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Quantité</label>
                     <input type="number" {...register("quantite")} min={0} className={inputCls("quantite")} style={{ borderColor: errors.quantite ? C.error : C.outlineVariant }} />
                     {errors.quantite && <p className="mt-1 text-xs" style={{ color: C.error }}>{errors.quantite.message}</p>}
                   </div>
                   <div>
-                    <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Seuil d'alerte</label>
+                    <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Seuil d'alerte</label>
                     <input type="number" {...register("seuilAlerte")} min={0} className={inputCls("seuilAlerte")} style={{ borderColor: errors.seuilAlerte ? C.error : C.outlineVariant }} />
                     {errors.seuilAlerte && <p className="mt-1 text-xs" style={{ color: C.error }}>{errors.seuilAlerte.message}</p>}
                   </div>
                 </div>
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Site</label>
+                  <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Site</label>
                   <select {...register("siteId")} className={inputCls("siteId")} style={{ borderColor: errors.siteId ? C.error : C.outlineVariant }}>
                     <option value="">Sélectionner un site</option>
                     {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
@@ -747,14 +747,14 @@ function EpisPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>
+                    <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>
                       Fréquence d'inspection <span className="font-normal normal-case" style={{ color: C.onSurfaceVariant }}>(jours)</span>
                     </label>
                     <input type="number" {...register("frequenceInspectionJours")} min={1} placeholder="ex: 180" className={inputCls("frequenceInspectionJours")} style={{ borderColor: errors.frequenceInspectionJours ? C.error : C.outlineVariant }} />
                     {errors.frequenceInspectionJours && <p className="mt-1 text-xs" style={{ color: C.error }}>{errors.frequenceInspectionJours.message}</p>}
                   </div>
                   <div>
-                    <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Péremption</label>
+                    <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Péremption</label>
                     <input type="date" {...register("datePeremption")} className={inputCls("datePeremption")} style={{ borderColor: C.outlineVariant }} />
                   </div>
                 </div>
@@ -764,7 +764,7 @@ function EpisPage() {
                     Annuler
                   </button>
                   <button type="submit" disabled={isSubmitting}
-                    className="px-4 py-2 text-sm font-bold text-white rounded-lg disabled:opacity-50 transition-opacity hover:opacity-90"
+                    className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50 transition-opacity hover:opacity-90"
                     style={{ backgroundColor: C.primary }}>
                     {isSubmitting ? "Enregistrement…" : "Enregistrer"}
                   </button>
@@ -778,9 +778,9 @@ function EpisPage() {
         {showModalAffecter && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
             onClick={(e) => e.target === e.currentTarget && setShowModalAffecter(false)}>
-            <div className="w-full max-w-sm bg-white rounded-xl mx-4">
+            <div className="w-full max-w-sm bg-white rounded-lg border border-[#E2E8F0] mx-4">
               <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b" style={{ borderColor: C.outlineVariant }}>
-                <h2 className="text-base font-semibold text-[#1E293B]">Affecter un EPI</h2>
+                <h2 className="text-lg font-semibold text-navy">Affecter un EPI</h2>
                 <button onClick={() => setShowModalAffecter(false)}
                   className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#f8f9ff]">
                   &#x2715;
@@ -792,7 +792,7 @@ function EpisPage() {
                   <div className="p-3 text-sm rounded-lg" style={{ color: C.error, backgroundColor: C.errorContainer }}>{erreurAffectation}</div>
                 )}
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Employé</label>
+                  <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Employé</label>
                   <select value={formAffectation.employeId} onChange={(e) => setFormAffectation((f) => ({ ...f, employeId: e.target.value }))}
                     className={inputClsFull} style={{ borderColor: C.outlineVariant }}>
                     <option value="">Sélectionner un employé</option>
@@ -800,7 +800,7 @@ function EpisPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>
+                  <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>
                     Poste <span className="font-normal normal-case" style={{ color: C.onSurfaceVariant }}>(optionnel)</span>
                   </label>
                   <input type="text" value={formAffectation.poste} onChange={(e) => setFormAffectation((f) => ({ ...f, poste: e.target.value }))}
@@ -813,7 +813,7 @@ function EpisPage() {
                   Annuler
                 </button>
                 <button type="button" onClick={soumettreAffectation} disabled={envoiAffectation}
-                  className="px-4 py-2 text-sm font-bold text-white rounded-lg disabled:opacity-50 transition-opacity hover:opacity-90"
+                  className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50 transition-opacity hover:opacity-90"
                   style={{ backgroundColor: C.primary }}>
                   {envoiAffectation ? "Affectation…" : "Affecter"}
                 </button>
@@ -826,9 +826,9 @@ function EpisPage() {
         {showModalInspection && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
             onClick={(e) => e.target === e.currentTarget && setShowModalInspection(false)}>
-            <div className="w-full max-w-sm bg-white rounded-xl mx-4">
+            <div className="w-full max-w-sm bg-white rounded-lg border border-[#E2E8F0] mx-4">
               <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b" style={{ borderColor: C.outlineVariant }}>
-                <h2 className="text-base font-semibold text-[#1E293B]">Enregistrer une inspection</h2>
+                <h2 className="text-lg font-semibold text-navy">Enregistrer une inspection</h2>
                 <button onClick={() => setShowModalInspection(false)}
                   className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#f8f9ff]">
                   &#x2715;
@@ -837,7 +837,7 @@ function EpisPage() {
               <div className="px-6 py-5 space-y-4">
                 <p className="text-sm" style={{ color: C.onSurfaceVariant }}>{epiAInspecter?.designation}</p>
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Date d'inspection</label>
+                  <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Date d'inspection</label>
                   <input type="date" value={formInspection.dateInspection}
                     onChange={(e) => setFormInspection((f) => ({ ...f, dateInspection: e.target.value }))}
                     className={inputClsFull} style={{ borderColor: C.outlineVariant }} />
@@ -849,7 +849,7 @@ function EpisPage() {
                   <label htmlFor="conforme" className="text-sm" style={{ color: "#1E293B" }}>L'EPI est conforme</label>
                 </div>
                 <div>
-                  <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>
+                  <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>
                     Commentaire <span className="font-normal normal-case" style={{ color: C.onSurfaceVariant }}>(optionnel)</span>
                   </label>
                   <textarea value={formInspection.commentaire}
@@ -863,7 +863,7 @@ function EpisPage() {
                   Annuler
                 </button>
                 <button type="button" onClick={soumettreInspection} disabled={envoiInspection}
-                  className="px-4 py-2 text-sm font-bold text-white rounded-lg disabled:opacity-50 transition-opacity hover:opacity-90"
+                  className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50 transition-opacity hover:opacity-90"
                   style={{ backgroundColor: C.primary }}>
                   {envoiInspection ? "Enregistrement…" : "Enregistrer"}
                 </button>

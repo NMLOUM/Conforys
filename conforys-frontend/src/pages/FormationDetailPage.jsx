@@ -139,7 +139,7 @@ function FormationDetailPage() {
         </Link>
         <div className="flex flex-wrap items-center justify-between gap-3 mt-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-lg font-semibold text-navy">{formation.titre}</h1>
+            <h1 className="text-2xl font-bold text-navy">{formation.titre}</h1>
             <BadgeStatut statut={formation.statut} />
             {theme && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#F8FAFC] border border-[#E2E8F0] text-[#475569]">
@@ -182,14 +182,14 @@ function FormationDetailPage() {
       </div>
 
       {/* ── Participants ── */}
-      <p className="text-sm font-semibold text-navy mb-2">Participants</p>
+      <p className="text-[15px] font-semibold text-[#1E293B] mb-2">Participants</p>
       <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
             <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
               <tr>
                 {["Participant", "Présent", "Validation", peutGerer ? "Actions" : null].filter(Boolean).map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{h}</th>
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>

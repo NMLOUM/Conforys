@@ -41,7 +41,7 @@ function Login() {
             <span className="text-xl font-bold text-navy tracking-wide" translate="no">CONFORYS</span>
             <span className="text-[10px] font-semibold text-vert bg-vert/15 px-1.5 py-0.5 rounded uppercase tracking-wider">QHSE</span>
           </div>
-          <h1 className="text-2xl font-semibold text-[#1E293B]">Connexion</h1>
+          <h1 className="text-2xl font-bold text-navy">Connexion</h1>
           <p className="mt-1.5 text-sm text-[#64748B]">Accédez à votre espace QHSE</p>
         </div>
 
@@ -56,7 +56,7 @@ function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+              <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
                 Adresse email
               </label>
               <input
@@ -71,7 +71,7 @@ function Login() {
             </div>
 
             <div>
-              <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+              <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
                 Mot de passe
               </label>
               <input

@@ -11,6 +11,7 @@ export const COULEUR_TYPE_NOTIFICATION = {
   HABILITATION_EXPIRE: "#EA580C",
   INCIDENT_DECLARE:    "#0D2B4E",
   AUDIT_PLANIFIE:      "#0D2B4E",
+  ACTION_ASSIGNEE:     "#0D2B4E",
 };
 
 const INTERVALLE_POLLING_MS = 60_000;
@@ -154,7 +155,7 @@ function NotificationBell() {
                       {n.titre}
                     </p>
                     <p className="text-xs text-[#64748B] mt-0.5 line-clamp-2">{n.message}</p>
-                    <p className="text-[10px] text-[#94A3B8] mt-1">{formatDateRelative(n.createdAt)}</p>
+                    <p className="text-[11px] text-[#94A3B8] mt-1">{formatDateRelative(n.createdAt)}</p>
                   </div>
                 </button>
               ))

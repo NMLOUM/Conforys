@@ -109,10 +109,15 @@ const getIncidentById = async (id, entrepriseId) => {
 // La génération de la référence et l'insertion sont dans le même $transaction :
 // si deux requêtes simultanées génèrent la même référence, la contrainte @unique
 // déclenche une erreur P2002 sur la seconde — on réessaie jusqu'à 3 fois.
-const createIncident = async (data, userId) => {
+const createIncident = async (data, userId, entrepriseId) => {
   if (new Date(data.dateIncident) > new Date()) {
     throw new ErreurMetier("La date de l'incident ne peut pas être dans le futur.");
   }
+
+  // Le site déclaré doit appartenir à l'entreprise du déclarant — empêche de
+  // rattacher un incident à un site d'une autre entreprise (id deviné/énuméré).
+  const site = await prisma.site.findFirst({ where: { id: data.siteId, entrepriseId } });
+  if (!site) throw new ErreurMetier("Site introuvable.", 404);
 
   for (let tentative = 0; tentative < 3; tentative++) {
     try {
@@ -138,8 +143,7 @@ const createIncident = async (data, userId) => {
       await enregistrer(incident.id, userId, "Incident déclaré", `Référence : ${incident.numeroReference}`);
 
       // Notification des QHSE de l'entreprise — best-effort, ne bloque jamais la déclaration
-      const declarant = await prisma.user.findUnique({ where: { id: userId }, select: { entrepriseId: true } });
-      if (declarant) await notifierDeclaration(incident, declarant.entrepriseId);
+      await notifierDeclaration(incident, entrepriseId);
 
       return incident;
     } catch (err) {
@@ -150,15 +154,19 @@ const createIncident = async (data, userId) => {
   }
 };
 
-// Met à jour un incident — vérifie d'abord qu'il appartient à l'entreprise du demandeur
-const updateIncident = async (id, data, entrepriseId) => {
+// Met à jour un incident — vérifie d'abord qu'il appartient à l'entreprise du demandeur.
+// `data` est déjà restreint aux champs hors-workflow par updateIncidentSchema
+// (statut/déclarant/site ne peuvent pas être modifiés ici).
+const updateIncident = async (id, data, entrepriseId, userId) => {
   const existant = await prisma.incident.findFirst({ where: { id, declarePar: { entrepriseId } } });
   if (!existant) throw new ErreurMetier("Incident introuvable.", 404);
 
-  return await prisma.incident.update({
+  const mis_a_jour = await prisma.incident.update({
     where: { id },
     data,
   });
+  await enregistrer(id, userId, "Incident modifié");
+  return mis_a_jour;
 };
 
 // Supprime un incident — vérifie d'abord qu'il appartient à l'entreprise du demandeur

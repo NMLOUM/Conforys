@@ -1,11 +1,18 @@
  const historiqueService = require("../services/historiqueService");
 const actionService     = require("../services/actionService");
+const incidentService   = require("../services/incidentService");
 const { handleErreur }  = require("../utils/handleErreur");
 
-// GET /api/incidents/:id/historique — piste d'audit en lecture seule
+// GET /api/incidents/:id/historique — piste d'audit en lecture seule, scopée à
+// l'entreprise du demandeur (vérifie l'appartenance de l'incident avant de
+// lire son historique, comme le fait déjà getHistoriqueAction).
 const getHistorique = async (req, res) => {
   try {
-    const historique = await historiqueService.getHistoriqueByIncident(req.params.id);
+    const incident = await incidentService.getIncidentById(req.params.id, req.user.entrepriseId);
+    if (!incident) {
+      return res.status(404).json({ success: false, message: "Incident introuvable." });
+    }
+    const historique = await historiqueService.getHistoriqueByIncident(req.params.id, req.user.entrepriseId);
     res.status(200).json({ success: true, data: historique });
   } catch (error) {
     handleErreur(res, error);

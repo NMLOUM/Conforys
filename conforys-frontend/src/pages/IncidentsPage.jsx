@@ -12,6 +12,7 @@ import AppLayout from "../components/layouts/AppLayout";
 import { useAuthStore } from "../store/authStore";
 import { useRole } from "../hooks/useRole";
 import Badge from "../components/ui/Badge";
+import AvatarInitiales from "../components/ui/AvatarInitiales";
 import { incidentSchema } from "../validators/incidentSchema";
 
 // ── Données statiques ────────────────────────────────────────────────────────
@@ -144,7 +145,7 @@ function Etape2({ valeurs, setValue, errors, register, sites }) {
     <div className="space-y-4 pt-1">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+          <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
             Date et heure *
           </label>
           <input
@@ -157,7 +158,7 @@ function Etape2({ valeurs, setValue, errors, register, sites }) {
           )}
         </div>
         <div>
-          <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+          <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
             Site *
           </label>
           <select {...register("siteId")} className={inputCls("siteId")}>
@@ -173,7 +174,7 @@ function Etape2({ valeurs, setValue, errors, register, sites }) {
       </div>
 
       <div>
-        <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+        <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
           Lieu précis
         </label>
         <input
@@ -185,7 +186,7 @@ function Etape2({ valeurs, setValue, errors, register, sites }) {
       </div>
 
       <div>
-        <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+        <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
           Description *
         </label>
         <div className="relative">
@@ -205,7 +206,7 @@ function Etape2({ valeurs, setValue, errors, register, sites }) {
       </div>
 
       <div>
-        <label className="block mb-2 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+        <label className="block mb-2 text-xs font-medium text-[#64748B] uppercase tracking-wide">
           Gravité *
         </label>
         <div className="flex gap-2">
@@ -331,7 +332,7 @@ function Etape3({ media, onChange }) {
 
       {/* ── Photo ── */}
       <div>
-        <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-2">
+        <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-2">
           Photo de l'incident{" "}
           <span className="font-normal normal-case text-[#94A3B8]">(facultatif)</span>
         </p>
@@ -398,7 +399,7 @@ function Etape3({ media, onChange }) {
 
       {/* ── GPS ── */}
       <div>
-        <p className="text-xs font-semibold text-[#475569] uppercase tracking-wide mb-2">
+        <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-2">
           Géolocalisation GPS{" "}
           <span className="font-normal normal-case text-[#94A3B8]">(facultatif)</span>
         </p>
@@ -448,7 +449,7 @@ function Etape4({ valeurs, sites, media }) {
 
   const Ligne = ({ label, children }) => (
     <div className="flex gap-4 py-2.5 border-b border-[#F1F5F9] last:border-none">
-      <span className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wide w-28 shrink-0 pt-0.5">
+      <span className="text-xs font-medium text-[#64748B] uppercase tracking-wide w-28 shrink-0 pt-0.5">
         {label}
       </span>
       <span className="text-sm text-[#1E293B] leading-relaxed">{children || "—"}</span>
@@ -576,7 +577,7 @@ function IncidentWizard({ sites, onSuccess, onClose }) {
               style={{ backgroundColor: "rgba(46, 125, 50, 0.1)" }}>
               <CheckCircle2 size={26} color="#2E7D32" strokeWidth={2} />
             </div>
-            <h2 className="text-base font-semibold text-[#1E293B] mb-1">Incident déclaré avec succès</h2>
+            <h2 className="text-lg font-semibold text-navy mb-1">Incident déclaré avec succès</h2>
             <p className="text-sm text-[#64748B] leading-relaxed max-w-xs">
               Enregistré en brouillon. Vous pourrez le soumettre pour traitement depuis sa fiche.
             </p>
@@ -624,7 +625,7 @@ function IncidentWizard({ sites, onSuccess, onClose }) {
         {/* En-tête */}
         <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-[#F1F5F9] shrink-0">
           <div>
-            <h2 className="text-base font-semibold text-[#1E293B]">Déclarer un incident</h2>
+            <h2 className="text-lg font-semibold text-navy">Déclarer un incident</h2>
             <p className="text-xs text-[#94A3B8] mt-0.5">
               Étape {etape} sur {ETAPES_WIZARD.length}
             </p>
@@ -745,7 +746,7 @@ function ModalRejeter({ incident, onConfirm, onClose }) {
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="w-full max-w-md bg-white rounded-lg border border-[#E2E8F0] mx-4">
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#F1F5F9]">
-          <h3 className="text-base font-semibold text-[#1E293B]">Rejeter l'incident</h3>
+          <h3 className="text-[15px] font-semibold text-[#1E293B]">Rejeter l'incident</h3>
           <button type="button" onClick={onClose}
             className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition">
             &#x2715;
@@ -759,7 +760,7 @@ function ModalRejeter({ incident, onConfirm, onClose }) {
             <p className="text-xs text-[#DC2626] p-3 bg-red-50 border border-red-200 rounded-md">{erreur}</p>
           )}
           <div>
-            <label className="block mb-1.5 text-xs font-semibold text-[#475569] uppercase tracking-wide">
+            <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
               Motif de rejet *
             </label>
             <textarea
@@ -855,24 +856,9 @@ function CarteKpi({ icon: Icon, label, value, couleur = "#0D2B4E", alerte = fals
         <Icon size={16} color={couleur} strokeWidth={2} />
       </div>
       <div className="min-w-0">
-        <p className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wide truncate">{label}</p>
+        <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide truncate">{label}</p>
         <p className="text-xl font-bold leading-tight" style={{ color: couleur }}>{value}</p>
       </div>
-    </div>
-  );
-}
-
-// ── Avatar initiales (déclarant) ──────────────────────────────────────────────
-function AvatarInitiales({ prenom, nom }) {
-  if (!prenom && !nom) return <span className="text-[#94A3B8]">—</span>;
-  const initiales = `${prenom?.[0] ?? ""}${nom?.[0] ?? ""}`.toUpperCase();
-  return (
-    <div className="flex items-center gap-2 min-w-0">
-      <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
-        style={{ backgroundColor: "#0D2B4E" }}>
-        {initiales || "?"}
-      </div>
-      <span className="text-sm text-[#1E293B] truncate">{prenom} {nom}</span>
     </div>
   );
 }
@@ -887,6 +873,7 @@ function IncidentsPage() {
   const [incidents,      setIncidents]      = useState([]);
   const [sites,          setSites]          = useState([]);
   const [chargement,     setChargement]     = useState(true);
+  const [erreurListe,    setErreurListe]    = useState("");
   const [showWizard,     setShowWizard]     = useState(false);
   const [erreurAction,   setErreurAction]   = useState("");
   const [actionEnCours,  setActionEnCours]  = useState(null);
@@ -915,6 +902,7 @@ function IncidentsPage() {
   // charger accepte des overrides pour éviter les décalages liés aux mises à jour asynchrones de l'état React
   const charger = async ({ statut = filtreStatut, type = filtreType, gravite = filtreGravite, pg = page } = {}) => {
     setChargement(true);
+    setErreurListe("");
     try {
       const params = { page: pg, limit: 20 };
       if (statut)  params.statut  = statut;
@@ -926,6 +914,7 @@ function IncidentsPage() {
       setTotalPages(res.data.totalPages || 1);
     } catch (e) {
       console.error("Erreur chargement incidents:", e);
+      setErreurListe("Impossible de charger les incidents. Vérifiez votre connexion et réessayez.");
     } finally {
       setChargement(false);
     }
@@ -1078,7 +1067,7 @@ function IncidentsPage() {
       {/* ── En-tête ── */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-lg font-semibold text-navy">Gestion des incidents</h1>
+          <h1 className="text-2xl font-bold text-navy">Gestion des incidents</h1>
           <p className="text-sm text-[#64748B] mt-0.5">Suivi des événements et risques QHSE</p>
         </div>
         <button
@@ -1178,6 +1167,13 @@ function IncidentsPage() {
       {/* ── Tableau ── */}
       {chargement ? (
         <p className="text-sm text-[#64748B]">Chargement…</p>
+      ) : erreurListe ? (
+        <div className="p-4 text-sm text-[#DC2626] bg-red-50 border border-red-200 rounded-md flex items-center justify-between">
+          <span>{erreurListe}</span>
+          <button onClick={() => charger()} className="ml-4 text-xs font-semibold underline shrink-0">
+            Réessayer
+          </button>
+        </div>
       ) : (
         <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white">
           <div className="overflow-x-auto">
@@ -1187,7 +1183,7 @@ function IncidentsPage() {
                 {["Référence", "Date", "Type", "Gravité", "Statut", "Déclarant", "Actions"].map((h) => (
                   <th
                     key={h}
-                    className="px-4 py-3 text-left text-[11px] font-semibold text-[#64748B] uppercase tracking-wide"
+                    className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide"
                   >
                     {h}
                   </th>

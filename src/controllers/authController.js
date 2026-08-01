@@ -41,6 +41,14 @@ const login = async (req, res) => {
       });
     }
 
+    // Compte désactivé : même message générique, pour ne pas révéler l'existence du compte
+    if (!user.actif) {
+      return res.status(401).json({
+        success: false,
+        message: "Email ou mot de passe incorrect.",
+      });
+    }
+
     // Génération du token JWT — contient id, rôle et entreprise pour le filtrage côté API
     const token = jwt.sign(
       { userId: user.id, role: user.role, entrepriseId: user.entrepriseId },

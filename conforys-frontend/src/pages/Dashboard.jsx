@@ -1,13 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  AlertTriangle, ClipboardCheck, ShieldCheck, BadgeCheck, FileWarning, Eye, Download,
+} from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
-import ScoreGauge from "../components/dashboard/ScoreGauge";
 import GraviteChart from "../components/dashboard/GraviteChart";
 import TypeChart from "../components/dashboard/TypeChart";
 import EvolutionChart from "../components/dashboard/EvolutionChart";
 import AlertesATraiter from "../components/dashboard/AlertesATraiter";
-import AccesRapides from "../components/dashboard/AccesRapides";
 import Badge from "../components/ui/Badge";
 import toast from "react-hot-toast";
 
@@ -18,21 +19,34 @@ const TYPE_LABEL = {
   INCIDENT_ENVIRONNEMENTAL: "Environnemental",
 };
 
-// â”€â”€ Composant carte KPI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-function KpiCard({ label, value, sub, subColor, valueColor = "#0D2B4E" }) {
+// ── Carte KPI (icône + libellé + valeur + sous-info ou barre de progression) ──
+function KpiCard({ icon: Icon, iconColor = "#0D2B4E", label, value, valueColor, sub, subColor, progress }) {
   return (
-    <div
-      className="bg-white rounded-lg p-5 flex flex-col justify-between"
-      style={{ minHeight: "112px", border: "1px solid #E2E8F0" }}
-    >
-      <p className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">{label}</p>
-      <p className="text-[36px] font-bold leading-none" style={{ color: valueColor }}>{value}</p>
-      <p className={`text-[12px] ${subColor || "text-[#94A3B8]"}`}>{sub || " "}</p>
+    <div className="bg-white rounded-lg p-4 border border-[#E2E8F0] shadow-sm flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-2">
+        <span className="p-2 rounded-lg shrink-0" style={{ backgroundColor: `${iconColor}1A` }}>
+          <Icon size={18} color={iconColor} />
+        </span>
+        <span className="text-[11px] font-medium uppercase tracking-wide text-[#94A3B8] text-right">{label}</span>
+      </div>
+      <div>
+        <p className="text-xl font-bold leading-none" style={{ color: valueColor || "#0D2B4E" }}>{value}</p>
+        {progress != null ? (
+          <div className="mt-2">
+            <div className="w-full h-1.5 rounded-full bg-[#F1F5F9] overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${Math.min(progress, 100)}%`, backgroundColor: iconColor }} />
+            </div>
+            <p className="text-[11px] text-[#94A3B8] mt-1.5">{sub}</p>
+          </div>
+        ) : (
+          <p className={`text-[11px] mt-1.5 ${subColor || "text-[#94A3B8]"}`}>{sub}</p>
+        )}
+      </div>
     </div>
   );
 }
 
-// â”€â”€ Export du bilan de sÃ©curitÃ© PDF sur une pÃ©riode â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Export du bilan de sécurité PDF sur une période (bouton + panneau) ────
 function ExportBilan() {
   const premierJourMois = () => {
     const d = new Date();
@@ -41,14 +55,24 @@ function ExportBilan() {
   };
   const aujourdHui = () => new Date().toISOString().split("T")[0];
 
+  const [ouvert, setOuvert] = useState(false);
   const [sites, setSites] = useState([]);
   const [dateDebut, setDateDebut] = useState(premierJourMois());
   const [dateFin, setDateFin] = useState(aujourdHui());
   const [siteId, setSiteId] = useState("");
   const [genererEnCours, setGenererEnCours] = useState(false);
+  const conteneurRef = useRef(null);
 
   useEffect(() => {
     api.get("/sites").then((r) => setSites(r.data.data || [])).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const fermerSiExterieur = (e) => {
+      if (conteneurRef.current && !conteneurRef.current.contains(e.target)) setOuvert(false);
+    };
+    document.addEventListener("mousedown", fermerSiExterieur);
+    return () => document.removeEventListener("mousedown", fermerSiExterieur);
   }, []);
 
   const genererBilan = async () => {
@@ -74,6 +98,7 @@ function ExportBilan() {
       lien.click();
       lien.remove();
       window.URL.revokeObjectURL(url);
+      setOuvert(false);
     } catch (err) {
       toast.error(err.response?.data?.message || "Erreur lors de la génération du bilan.");
     } finally {
@@ -82,44 +107,58 @@ function ExportBilan() {
   };
 
   const inputCls =
-    "px-3 py-2 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#1E293B] " +
+    "w-full px-3 py-2 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#1E293B] " +
     "focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition";
 
   return (
-    <div className="bg-white border border-[#E2E8F0] rounded-lg p-5">
-      <p className="text-sm font-bold text-navy mb-1">Exporter un bilan</p>
-      <p className="text-xs text-[#94A3B8] mb-4">
-        Bilan de sécurité PDF sur la période choisie, destiné à la direction.
-      </p>
-      <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <label className="block mb-1 text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">Du</label>
-          <input type="date" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} className={inputCls} />
+    <div className="relative" ref={conteneurRef}>
+      <button
+        onClick={() => setOuvert((o) => !o)}
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-navy border border-[#E2E8F0] rounded-md bg-white hover:bg-[#F8FAFC] transition-colors"
+      >
+        <Download size={13} />
+        Exporter un bilan
+      </button>
+      {ouvert && (
+        <div className="absolute right-0 mt-2 w-72 bg-white border border-[#E2E8F0] rounded-lg shadow-lg p-4 z-30">
+          <p className="text-[15px] font-semibold text-[#1E293B] mb-1">Exporter un bilan</p>
+          <p className="text-xs text-[#94A3B8] mb-3">
+            Bilan de sécurité PDF sur la période choisie, destiné à la direction.
+          </p>
+          <div className="flex flex-col gap-3">
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="block mb-1 text-xs font-medium text-[#64748B] uppercase tracking-wide">Du</label>
+                <input type="date" value={dateDebut} onChange={(e) => setDateDebut(e.target.value)} className={inputCls} />
+              </div>
+              <div className="flex-1">
+                <label className="block mb-1 text-xs font-medium text-[#64748B] uppercase tracking-wide">Au</label>
+                <input type="date" value={dateFin} onChange={(e) => setDateFin(e.target.value)} className={inputCls} />
+              </div>
+            </div>
+            <div>
+              <label className="block mb-1 text-xs font-medium text-[#64748B] uppercase tracking-wide">Site</label>
+              <select value={siteId} onChange={(e) => setSiteId(e.target.value)} className={inputCls}>
+                <option value="">Tous les sites</option>
+                {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
+              </select>
+            </div>
+            <button
+              onClick={genererBilan}
+              disabled={genererEnCours}
+              className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors"
+            >
+              <Download size={15} />
+              {genererEnCours ? "Génération…" : "Générer le bilan PDF"}
+            </button>
+          </div>
         </div>
-        <div>
-          <label className="block mb-1 text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">Au</label>
-          <input type="date" value={dateFin} onChange={(e) => setDateFin(e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className="block mb-1 text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">Site</label>
-          <select value={siteId} onChange={(e) => setSiteId(e.target.value)} className={inputCls}>
-            <option value="">Tous les sites</option>
-            {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
-          </select>
-        </div>
-        <button
-          onClick={genererBilan}
-          disabled={genererEnCours}
-          className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors"
-        >
-          {genererEnCours ? "Génération…" : "Générer le bilan PDF"}
-        </button>
-      </div>
+      )}
     </div>
   );
 }
 
-// â”€â”€ Page principale â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Page principale ───────────────────────────────────────────────────
 function Dashboard() {
   const [stats, setStats]           = useState(null);
   const [chargement, setChargement] = useState(true);
@@ -165,10 +204,10 @@ function Dashboard() {
       ) : (
         <div className="space-y-5">
 
-          {/* â”€â”€ EN-TÃŠTE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* ── EN-TÊTE ─────────────────────────────────────────────── */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-semibold text-navy">Vue d'ensemble QHSE</h1>
+              <h1 className="text-2xl font-bold text-navy">Vue d'ensemble QHSE</h1>
               <p className="text-xs text-[#94A3B8] capitalize mt-0.5">{dateAujourdhui}</p>
             </div>
             <div className="flex items-center gap-3">
@@ -180,6 +219,7 @@ function Dashboard() {
                   </span>
                 </div>
               )}
+              <ExportBilan />
               <button
                 onClick={() => navigate("/journal-activite")}
                 className="px-3 py-1.5 text-xs font-semibold text-white rounded-md bg-navy hover:bg-navy/90 transition-colors"
@@ -189,96 +229,67 @@ function Dashboard() {
             </div>
           </div>
 
-          {/* â”€â”€ LIGNE 1 : Score + 5 KPIs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
-
-            {/* Score global */}
-            <div
-              className="col-span-2 sm:col-span-1 lg:col-span-2 bg-white rounded-lg p-5"
-              style={{
-                border: "1px solid #E2E8F0",
-                borderLeft: `4px solid ${
-                  (stats?.scoreGlobal ?? 0) >= 80 ? "#2E7D32" :
-                  (stats?.scoreGlobal ?? 0) >= 50 ? "#EA580C" : "#DC2626"
-                }`
-              }}
-            >
-              <p className="text-[11px] font-semibold text-[#64748B] uppercase tracking-wider mb-1">Score de sécurité</p>
-              <ScoreGauge score={stats?.scoreGlobal ?? 0} />
-              <div className="mt-2 grid grid-cols-3 gap-1 border-t border-[#E2E8F0] pt-2">
-                <div>
-                  <p className="text-[11px] text-[#94A3B8]">Audits</p>
-                  <p className="text-xs font-semibold text-navy">{stats?.tauxConformite ?? 0}%</p>
-                </div>
-                <div className="border-x border-[#E2E8F0] px-2">
-                  <p className="text-[11px] text-[#94A3B8]">EPI</p>
-                  <p className="text-xs font-semibold text-navy">{stats?.conformiteEpi ?? 0}%</p>
-                </div>
-                <div className="pl-2">
-                  <p className="text-[11px] text-[#94A3B8]">Incidents</p>
-                  <p className="text-xs font-semibold text-navy">{stats?.total ?? 0}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Incidents ce mois */}
+          {/* ── LIGNE KPI ───────────────────────────────────────────── */}
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
             <KpiCard
+              icon={AlertTriangle}
+              iconColor={evo > 0 ? "#DC2626" : evo < 0 ? "#2E7D32" : "#64748B"}
               label="Ce mois"
               value={stats?.incidentsMoisCourant ?? 0}
+              valueColor="#0D2B4E"
               sub={tendanceIncidents?.texte ?? "Incidents déclarés"}
               subColor={tendanceIncidents?.couleur}
-              valueColor={
-                evo === null || evo === undefined ? "#0D2B4E" :
-                evo > 0 ? "#DC2626" : evo < 0 ? "#2E7D32" : "#0D2B4E"
-              }
             />
-
-            {/* Audits ce mois */}
             <KpiCard
+              icon={ClipboardCheck}
+              iconColor="#0D2B4E"
               label="Audits réalisés"
               value={stats?.auditsMoisCourant ?? 0}
+              progress={stats?.tauxConformite ?? 0}
               sub={`${stats?.tauxConformite ?? 0}% de conformité`}
-              valueColor="#0D2B4E"
             />
-
-            {/* Conformité EPI */}
             <KpiCard
+              icon={ShieldCheck}
+              iconColor={
+                (stats?.conformiteEpi ?? 0) >= 80 ? "#2E7D32" :
+                (stats?.conformiteEpi ?? 0) >= 50 ? "#EA580C" : "#DC2626"
+              }
               label="Conformité EPI"
               value={`${stats?.conformiteEpi ?? 0}%`}
-              sub={stats?.episEnAlerte > 0 ? `${stats.episEnAlerte} EPI sous le seuil` : "Stocks conformes"}
-              subColor={stats?.episEnAlerte > 0 ? "text-[#EA580C] font-medium" : "text-[#2E7D32]"}
               valueColor={
                 (stats?.conformiteEpi ?? 0) >= 80 ? "#2E7D32" :
                 (stats?.conformiteEpi ?? 0) >= 50 ? "#EA580C" : "#DC2626"
               }
+              progress={stats?.conformiteEpi ?? 0}
+              sub={stats?.episEnAlerte > 0 ? `${stats.episEnAlerte} EPI sous le seuil` : "Stocks conformes"}
             />
-
-            {/* Habilitations */}
             <KpiCard
+              icon={BadgeCheck}
+              iconColor={stats?.habilitationsExpirantes > 0 ? "#EA580C" : "#0D2B4E"}
               label="Habilitations"
               value={stats?.habilitationsExpirantes ?? 0}
+              valueColor={stats?.habilitationsExpirantes > 0 ? "#EA580C" : "#0D2B4E"}
               sub="Expirent dans 30 j."
               subColor={stats?.habilitationsExpirantes > 0 ? "text-[#EA580C] font-medium" : "text-[#94A3B8]"}
-              valueColor={stats?.habilitationsExpirantes > 0 ? "#EA580C" : "#0D2B4E"}
             />
-
-            {/* Risques DUERP */}
             <KpiCard
+              icon={FileWarning}
+              iconColor={stats?.risquesCritiques > 0 ? "#DC2626" : "#0D2B4E"}
               label="Risques DUERP"
               value={stats?.risquesCritiques ?? 0}
+              valueColor={stats?.risquesCritiques > 0 ? "#DC2626" : "#0D2B4E"}
               sub={`${stats?.risquesTotal ?? 0} recensés · ${stats?.risquesTraites ?? 0} traités`}
               subColor={stats?.risquesCritiques > 0 ? "text-[#DC2626] font-medium" : "text-[#94A3B8]"}
-              valueColor={stats?.risquesCritiques > 0 ? "#DC2626" : "#0D2B4E"}
             />
           </div>
 
-          {/* â”€â”€ LIGNE 2 : Évolution 12 mois + Alertes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+          {/* ── LIGNE 2 : Évolution 12 mois + Alertes ──────────────────── */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
 
-            <div className="bg-white border border-[#E2E8F0] rounded-lg p-5 lg:col-span-2">
+            <div className="bg-white border border-[#E2E8F0] rounded-lg shadow-sm p-5 lg:col-span-2">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-sm font-bold text-navy">Évolution des incidents</p>
+                  <p className="text-[15px] font-semibold text-[#1E293B]">Évolution des incidents</p>
                   <p className="text-xs text-[#94A3B8] mt-0.5">Ventilé par type d'incident</p>
                 </div>
                 <div className="flex items-center gap-1">
@@ -300,81 +311,18 @@ function Dashboard() {
               <EvolutionChart data={evolutionData} />
             </div>
 
-            <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">
+            <div className="bg-white border border-[#E2E8F0] rounded-lg shadow-sm overflow-hidden">
               <AlertesATraiter />
             </div>
           </div>
 
-          {/* â”€â”€ LIGNE 3 : Incidents récents + Donut + Type â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-
-            {/* Tableau incidents récents */}
-            <div className="bg-white border border-[#E2E8F0] rounded-lg p-5 lg:col-span-2">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-bold text-navy">5 derniers incidents</p>
-                  {filtreGravite && (
-                    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-navy/10 text-navy font-medium">
-                      {filtreGravite}
-                      <button onClick={() => setFiltreGravite(null)} className="ml-1 hover:text-red-500">✕</button>
-                    </span>
-                  )}
-                </div>
-                <button
-                  onClick={() => navigate("/incidents")}
-                  className="text-xs text-navy/70 hover:text-navy font-medium hover:underline"
-                >
-                  Voir tout →
-                </button>
-              </div>
-              {incidentsAffiches.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-[#E2E8F0]">
-                        <th className="text-left pb-2 font-semibold text-[#64748B] uppercase tracking-wider">Référence</th>
-                        <th className="text-left pb-2 font-semibold text-[#64748B] uppercase tracking-wider hidden sm:table-cell">Déclarant</th>
-                        <th className="text-left pb-2 font-semibold text-[#64748B] uppercase tracking-wider">Gravité</th>
-                        <th className="text-left pb-2 font-semibold text-[#64748B] uppercase tracking-wider">Statut</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#F1F5F9]">
-                      {incidentsAffiches.map((inc) => (
-                        <tr key={inc.id} className="hover:bg-[#F8FAFC] transition-colors cursor-pointer" onClick={() => navigate("/incidents")}>
-                          <td className="py-3 pr-3">
-                            <p className="font-semibold text-navy">{inc.numeroReference}</p>
-                            <p className="text-[#94A3B8] mt-0.5">{TYPE_LABEL[inc.type] || inc.type}</p>
-                          </td>
-                          <td className="py-3 pr-3 text-[#64748B] hidden sm:table-cell">
-                            {inc.declarePar ? `${inc.declarePar.prenom} ${inc.declarePar.nom}` : "—"}
-                          </td>
-                          <td className="py-3 pr-3">
-                            <Badge variant={inc.gravite} />
-                          </td>
-                          <td className="py-3">
-                            <Badge variant={inc.statut} />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <p className="text-sm font-medium text-[#64748B]">
-                    {filtreGravite ? `Aucun incident ${filtreGravite.toLowerCase()}` : "Aucun incident déclaré"}
-                  </p>
-                  <p className="text-xs text-[#94A3B8] mt-1">
-                    {filtreGravite ? "Essayez un autre filtre" : "Les incidents apparaîtront ici"}
-                  </p>
-                </div>
-              )}
-            </div>
+          {/* ── LIGNE 3 : Par gravité + Par type ────────────────────────── */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
 
             {/* Donut gravité — cliquable */}
-            <div className="bg-white border border-[#E2E8F0] rounded-lg p-5">
+            <div className="bg-white border border-[#E2E8F0] rounded-lg shadow-sm p-5">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-bold text-navy">Par gravité</p>
+                <p className="text-[15px] font-semibold text-[#1E293B]">Par gravité</p>
                 <span className="text-xs text-[#94A3B8]">{stats?.total ?? 0} incidents</span>
               </div>
               <GraviteChart
@@ -385,20 +333,80 @@ function Dashboard() {
             </div>
 
             {/* Par type */}
-            <div className="bg-white border border-[#E2E8F0] rounded-lg p-5">
-              <p className="text-sm font-bold text-navy mb-4">Par type</p>
+            <div className="bg-white border border-[#E2E8F0] rounded-lg shadow-sm p-5">
+              <p className="text-[15px] font-semibold text-[#1E293B] mb-4">Par type</p>
               <TypeChart data={typeData} />
             </div>
           </div>
 
-          {/* â”€â”€ LIGNE 4 : Accès rapides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-          <div className="bg-white border border-[#E2E8F0] rounded-lg p-5">
-            <p className="text-sm font-bold text-navy mb-3">Accès rapides</p>
-            <AccesRapides />
+          {/* ── LIGNE 4 : 5 derniers incidents ──────────────────────────── */}
+          <div className="bg-white border border-[#E2E8F0] rounded-lg shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between p-5 pb-4">
+              <div className="flex items-center gap-2">
+                <p className="text-[15px] font-semibold text-[#1E293B]">5 derniers incidents</p>
+                {filtreGravite && (
+                  <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-navy/10 text-navy font-medium">
+                    {filtreGravite}
+                    <button onClick={() => setFiltreGravite(null)} className="ml-1 hover:text-red-500">✕</button>
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => navigate("/incidents")}
+                className="text-xs text-navy/70 hover:text-navy font-medium hover:underline"
+              >
+                Voir tout →
+              </button>
+            </div>
+            {incidentsAffiches.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-[#F8FAFC] border-y border-[#E2E8F0]">
+                      <th className="text-left px-5 py-2 font-medium text-[#64748B] uppercase tracking-wide">Référence</th>
+                      <th className="text-left px-3 py-2 font-medium text-[#64748B] uppercase tracking-wide hidden sm:table-cell">Déclarant</th>
+                      <th className="text-left px-3 py-2 font-medium text-[#64748B] uppercase tracking-wide">Gravité</th>
+                      <th className="text-left px-3 py-2 font-medium text-[#64748B] uppercase tracking-wide">Statut</th>
+                      <th className="text-right px-5 py-2 font-medium text-[#64748B] uppercase tracking-wide">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#F1F5F9]">
+                    {incidentsAffiches.map((inc) => (
+                      <tr key={inc.id} className="hover:bg-[#F8FAFC] transition-colors cursor-pointer group" onClick={() => navigate(`/incidents/${inc.id}`)}>
+                        <td className="py-3 pl-5 pr-3">
+                          <p className="font-semibold text-navy">{inc.numeroReference}</p>
+                          <p className="text-[#94A3B8] mt-0.5">{TYPE_LABEL[inc.type] || inc.type}</p>
+                        </td>
+                        <td className="py-3 pr-3 text-[#64748B] hidden sm:table-cell">
+                          {inc.declarePar ? `${inc.declarePar.prenom} ${inc.declarePar.nom}` : "—"}
+                        </td>
+                        <td className="py-3 pr-3">
+                          <Badge variant={inc.gravite} />
+                        </td>
+                        <td className="py-3 pr-3">
+                          <Badge variant={inc.statut} />
+                        </td>
+                        <td className="py-3 pr-5 text-right">
+                          <span className="inline-flex text-[#94A3B8] group-hover:text-navy transition-colors">
+                            <Eye size={15} />
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <p className="text-sm font-medium text-[#64748B]">
+                  {filtreGravite ? `Aucun incident ${filtreGravite.toLowerCase()}` : "Aucun incident déclaré"}
+                </p>
+                <p className="text-xs text-[#94A3B8] mt-1">
+                  {filtreGravite ? "Essayez un autre filtre" : "Les incidents apparaîtront ici"}
+                </p>
+              </div>
+            )}
           </div>
-
-          {/* â”€â”€ LIGNE 5 : Export du bilan de sÃ©curitÃ© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-          <ExportBilan />
 
         </div>
       )}

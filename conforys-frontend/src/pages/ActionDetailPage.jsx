@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
+import Badge from "../components/ui/Badge";
+import AvatarInitiales from "../components/ui/AvatarInitiales";
 import { useRole } from "../hooks/useRole";
 import { useAuthStore } from "../store/authStore";
 
@@ -24,9 +26,6 @@ const C = {
   error:            "#ba1a1a",
   success:          "#2E7D32",
 };
-
-const LABELS_STATUT = { A_FAIRE: "À faire", EN_COURS: "En cours", TERMINE: "Terminé", ANNULE: "Annulé" };
-const LABELS_PRIORITE = { FAIBLE: "Faible", MOYEN: "Moyen", ELEVE: "Élevé", CRITIQUE: "Critique" };
 
 const TYPES_ACCEPTES   = ["image/jpeg", "image/png", "image/webp"];
 const TAILLE_MAX_OCTET = 5 * 1024 * 1024;
@@ -48,31 +47,6 @@ const inputCls =
   "w-full px-3 py-2.5 text-sm border rounded-lg bg-white text-[#1E293B] placeholder-[#94A3B8]" +
   " focus:outline-none focus:ring-2 transition";
 
-// ── Pastille de statut, style pilule du mockup ───────────────────────────────
-function PastilleStatut({ statut }) {
-  const enCours = statut === "EN_COURS";
-  const termine = statut === "TERMINE";
-  const bg = termine ? "#dcf5e3" : enCours ? C.secondaryFixed : "#eceef4";
-  const fg = termine ? "#1b5e20" : enCours ? C.onSecondaryContainer : C.onSurfaceVariant;
-  const dot = termine ? C.success : enCours ? C.secondaryContainer : C.outlineVariant;
-  return (
-    <span className="px-3 py-1 rounded-full font-semibold text-xs inline-flex items-center gap-1.5" style={{ backgroundColor: bg, color: fg }}>
-      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: dot }} />
-      {LABELS_STATUT[statut] ?? statut}
-    </span>
-  );
-}
-
-function PastillePriorite({ priorite }) {
-  const couleurs = { CRITIQUE: C.error, ELEVE: C.secondary, MOYEN: C.secondaryContainer, FAIBLE: C.outlineVariant };
-  const c = couleurs[priorite] || C.outlineVariant;
-  return (
-    <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wide" style={{ backgroundColor: `${c}1A`, color: c }}>
-      {LABELS_PRIORITE[priorite] ?? priorite}
-    </span>
-  );
-}
-
 // ── Étape de la checklist (bordure gauche colorée façon mockup) ──────────────
 function EtapeItem({ etape, peutGerer, onToggle, onSupprimer }) {
   return (
@@ -85,13 +59,13 @@ function EtapeItem({ etape, peutGerer, onToggle, onSupprimer }) {
         className="mt-1 w-5 h-5 rounded shrink-0" style={{ accentColor: C.primary }} />
       <div className="flex-1 min-w-0">
         <div className="flex justify-between gap-2">
-          <h4 className="text-sm font-bold" style={{ color: "#1E293B" }}>{etape.libelle}</h4>
+          <p className="text-sm text-[#1E293B]">{etape.libelle}</p>
           {etape.complete ? (
-            <span className="text-xs shrink-0" style={{ color: C.onSurfaceVariant }}>
+            <span className="text-[11px] text-[#94A3B8] shrink-0">
               Complété le {new Date(etape.updatedAt).toLocaleDateString("fr-FR")}
             </span>
           ) : (
-            <span className="text-xs font-bold shrink-0" style={{ color: C.secondary }}>À FAIRE</span>
+            <span className="text-xs font-semibold shrink-0" style={{ color: "#EA580C" }}>À faire</span>
           )}
         </div>
       </div>
@@ -123,13 +97,13 @@ function EntreeJournal({ entree, isLast }) {
         <Icone size={12} />
       </div>
       <div className="pb-5">
-        <p className="text-sm font-bold" style={{ color: "#1E293B" }}>
+        <p className="text-sm font-medium text-[#1E293B]">
           {estCommentaire ? `${entree.auteur.prenom} ${entree.auteur.nom}` : entree.action}
         </p>
-        <p className="text-sm" style={{ color: C.onSurfaceVariant }}>
+        <p className="text-sm text-[#475569]">
           {estCommentaire ? entree.contenu : entree.details || null}
         </p>
-        <span className="text-[10px] uppercase font-semibold tracking-wide mt-1 block" style={{ color: "#94A3B8" }}>
+        <span className="text-[11px] font-normal mt-1 block" style={{ color: "#94A3B8" }}>
           {new Date(entree.date).toLocaleString("fr-FR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
         </span>
       </div>
@@ -146,7 +120,7 @@ function DocumentRow({ piece, peutSupprimer, enSuppression, onSupprimer }) {
         {piece.type === "DOCUMENT"
           ? <FileText size={18} color={C.error} />
           : <ImageIcon size={18} color={C.primary} />}
-        <span className="text-sm font-semibold truncate" style={{ color: "#1E293B" }}>{piece.nom || "Fichier"}</span>
+        <span className="text-sm truncate" style={{ color: "#1E293B" }}>{piece.nom || "Fichier"}</span>
       </a>
       <div className="flex items-center gap-2 shrink-0">
         <a href={piece.url} target="_blank" rel="noopener noreferrer" title="Télécharger">
@@ -173,21 +147,25 @@ function ModalCloturerAction({ onSuccess, onClose }) {
     if (commentaire.trim().length < 5) { setErreur("Le commentaire doit faire au moins 5 caractères."); return; }
     setErreur(""); setEnvoi(true);
     try { await onSuccess(commentaire); }
-    catch (err) { setErreur(err.response?.data?.message || "Erreur lors de la clôture."); }
+    catch (err) {
+      const msg = err.response?.data?.message || "Erreur lors de la clôture.";
+      setErreur(msg);
+      toast.error(msg);
+    }
     finally { setEnvoi(false); }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-md bg-white rounded-xl mx-4">
+      <div className="w-full max-w-md bg-white rounded-lg border border-[#E2E8F0] mx-4">
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b" style={{ borderColor: C.outlineVariant }}>
-          <h3 className="text-base font-semibold text-[#1E293B]">Clôturer l'action</h3>
+          <h3 className="text-[15px] font-semibold text-[#1E293B]">Clôturer l'action</h3>
           <button type="button" onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#f8f9ff]">&#x2715;</button>
         </div>
         <div className="px-6 py-5 space-y-4">
           {erreur && <p className="text-xs p-3 rounded-lg" style={{ color: C.error, backgroundColor: "#ffdad6" }}>{erreur}</p>}
           <div>
-            <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Commentaire de clôture *</label>
+            <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Commentaire de clôture *</label>
             <textarea value={commentaire} onChange={(e) => setCommentaire(e.target.value)} rows={4}
               placeholder="Décrivez comment l'action a été réalisée…" className={`${inputCls} resize-none`}
               style={{ borderColor: C.outlineVariant }} />
@@ -195,7 +173,7 @@ function ModalCloturerAction({ onSuccess, onClose }) {
         </div>
         <div className="flex justify-end gap-3 px-6 py-4 border-t" style={{ borderColor: C.outlineVariant }}>
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-semibold rounded-lg border" style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>Annuler</button>
-          <button type="button" onClick={soumettre} disabled={envoi} className="px-4 py-2 text-sm font-bold text-white rounded-lg disabled:opacity-50" style={{ backgroundColor: C.success }}>
+          <button type="button" onClick={soumettre} disabled={envoi} className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ backgroundColor: C.success }}>
             {envoi ? "Clôture en cours…" : "Confirmer la clôture"}
           </button>
         </div>
@@ -219,33 +197,37 @@ function ModalModifierAction({ action, users, onSuccess, onClose }) {
     if (form.description.trim().length < 5) { setErreur("La description doit faire au moins 5 caractères."); return; }
     setErreur(""); setEnvoi(true);
     try { await onSuccess(form); }
-    catch (err) { setErreur(err.response?.data?.message || "Erreur lors de la modification."); }
+    catch (err) {
+      const msg = err.response?.data?.message || "Erreur lors de la modification.";
+      setErreur(msg);
+      toast.error(msg);
+    }
     finally { setEnvoi(false); }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-lg bg-white rounded-xl mx-4">
+      <div className="w-full max-w-lg bg-white rounded-lg border border-[#E2E8F0] mx-4">
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b" style={{ borderColor: C.outlineVariant }}>
-          <h3 className="text-base font-semibold text-[#1E293B]">Modifier l'action</h3>
+          <h3 className="text-[15px] font-semibold text-[#1E293B]">Modifier l'action</h3>
           <button type="button" onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#f8f9ff]">&#x2715;</button>
         </div>
         <div className="px-6 py-5 space-y-4">
           {erreur && <p className="text-xs p-3 rounded-lg" style={{ color: C.error, backgroundColor: "#ffdad6" }}>{erreur}</p>}
           <div>
-            <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Description *</label>
+            <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Description *</label>
             <textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={3}
               className={`${inputCls} resize-none`} style={{ borderColor: C.outlineVariant }} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Priorité</label>
+              <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Priorité</label>
               <select value={form.priorite} onChange={(e) => set("priorite", e.target.value)} className={inputCls} style={{ borderColor: C.outlineVariant }}>
                 <option value="FAIBLE">Faible</option><option value="MOYEN">Moyen</option><option value="ELEVE">Élevé</option><option value="CRITIQUE">Critique</option>
               </select>
             </div>
             <div>
-              <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Statut</label>
+              <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Statut</label>
               <select value={form.statut} onChange={(e) => set("statut", e.target.value)} className={inputCls} style={{ borderColor: C.outlineVariant }}>
                 <option value="A_FAIRE">À faire</option><option value="EN_COURS">En cours</option><option value="ANNULE">Annulé</option>
               </select>
@@ -253,11 +235,11 @@ function ModalModifierAction({ action, users, onSuccess, onClose }) {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Date limite</label>
+              <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Date limite</label>
               <input type="date" value={form.dateLimite} onChange={(e) => set("dateLimite", e.target.value)} className={inputCls} style={{ borderColor: C.outlineVariant }} />
             </div>
             <div>
-              <label className="block mb-1.5 text-xs font-semibold uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Responsable</label>
+              <label className="block mb-1.5 text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Responsable</label>
               <select value={form.responsableId} onChange={(e) => set("responsableId", e.target.value)} className={inputCls} style={{ borderColor: C.outlineVariant }}>
                 {users.map((u) => <option key={u.id} value={u.id}>{u.prenom} {u.nom}</option>)}
               </select>
@@ -266,7 +248,7 @@ function ModalModifierAction({ action, users, onSuccess, onClose }) {
         </div>
         <div className="flex justify-end gap-3 px-6 py-4 border-t" style={{ borderColor: C.outlineVariant }}>
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-semibold rounded-lg border" style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>Annuler</button>
-          <button type="button" onClick={soumettre} disabled={envoi} className="px-4 py-2 text-sm font-bold text-white rounded-lg disabled:opacity-50" style={{ backgroundColor: C.primary }}>
+          <button type="button" onClick={soumettre} disabled={envoi} className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50" style={{ backgroundColor: C.primary }}>
             {envoi ? "Enregistrement…" : "Enregistrer"}
           </button>
         </div>
@@ -486,12 +468,10 @@ function ActionDetailPage() {
           <div>
             <button onClick={() => navigate("/actions")} className="flex items-center gap-1.5 mb-1" style={{ color: C.onSurfaceVariant }}>
               <ArrowLeft size={16} />
-              <span className="text-xs font-bold uppercase tracking-wider">Retour aux actions</span>
+              <span className="text-xs font-semibold uppercase tracking-wide">Retour aux actions</span>
             </button>
-            <h2 className="text-lg font-semibold leading-snug max-w-2xl text-navy">{action.description}</h2>
-            <p className="text-sm mt-0.5" style={{ color: C.onSurfaceVariant }}>
-              Identifiant CAPA : #{action.id.slice(0, 8).toUpperCase()}
-            </p>
+            <h1 className="text-2xl font-bold text-navy">CAPA #{action.id.slice(0, 8).toUpperCase()}</h1>
+            <p className="text-sm text-[#1E293B] mt-1 max-w-2xl leading-relaxed">{action.description}</p>
           </div>
           <div className="flex gap-2 shrink-0">
             {peutGerer && (
@@ -529,42 +509,34 @@ function ActionDetailPage() {
         <div className="grid grid-cols-12 gap-6">
 
           {/* Summary card */}
-          <section className="col-span-12 lg:col-span-8 bg-white rounded-xl p-6">
+          <section className="col-span-12 lg:col-span-8 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-1">
-                <span className="text-xs font-semibold" style={{ color: C.onSurfaceVariant }}>Responsable</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm"
-                    style={{ backgroundColor: C.primaryContainer, color: C.primary }}>
-                    {`${action.responsable?.prenom?.[0] || ""}${action.responsable?.nom?.[0] || ""}`.toUpperCase()}
-                  </div>
-                  <span className="text-sm font-semibold" style={{ color: "#1E293B" }}>
-                    {action.responsable ? `${action.responsable.prenom} ${action.responsable.nom}` : "—"}
-                  </span>
-                </div>
+                <span className="text-xs font-medium uppercase tracking-wide text-[#64748B]">Responsable</span>
+                <AvatarInitiales prenom={action.responsable?.prenom} nom={action.responsable?.nom} />
               </div>
               <div className="space-y-1">
-                <span className="text-xs font-semibold" style={{ color: C.onSurfaceVariant }}>Échéance</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-[#64748B]">Échéance</span>
                 <div className="flex items-center gap-2">
                   <Calendar size={16} color={C.secondary} />
-                  <span className="text-sm font-semibold" style={{ color: "#1E293B" }}>
+                  <span className="text-sm text-[#1E293B]">
                     {action.dateLimite ? new Date(action.dateLimite).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" }) : "Non renseignée"}
                   </span>
                 </div>
-                {estEnRetard(action) && <span className="text-xs font-bold" style={{ color: C.error }}>En retard</span>}
               </div>
               <div className="space-y-1">
-                <span className="text-xs font-semibold" style={{ color: C.onSurfaceVariant }}>Statut / Priorité</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-[#64748B]">Statut / Priorité</span>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <PastilleStatut statut={action.statut} />
-                  <PastillePriorite priorite={action.priorite} />
+                  <Badge variant={action.statut} />
+                  <Badge variant={action.priorite} />
+                  {estEnRetard(action) && <Badge variant="EN_RETARD" />}
                 </div>
               </div>
             </div>
 
             <div className="mt-8">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-semibold" style={{ color: "#1E293B" }}>Progression</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-[#64748B]">Progression</span>
                 <span className="text-xl font-bold" style={{ color: C.primary }}>{progression}%</span>
               </div>
               <div className="h-3 w-full rounded-full overflow-hidden" style={{ backgroundColor: "#e5eeff" }}>
@@ -572,7 +544,7 @@ function ActionDetailPage() {
               </div>
               {action.commentaireCloture && (
                 <div className="mt-4 p-3 rounded-lg" style={{ backgroundColor: "#dcf5e3" }}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wide mb-1" style={{ color: "#1b5e20" }}>Commentaire de clôture</p>
+                  <p className="text-xs font-medium uppercase tracking-wide mb-1" style={{ color: "#2E7D32" }}>Commentaire de clôture</p>
                   <p className="text-sm" style={{ color: "#1E293B" }}>{action.commentaireCloture}</p>
                 </div>
               )}
@@ -580,12 +552,12 @@ function ActionDetailPage() {
           </section>
 
           {/* Journal d'audit unifié (historique + notes) */}
-          <aside className="col-span-12 lg:col-span-4 lg:row-span-2 bg-white rounded-xl overflow-hidden flex flex-col"
+          <aside className="col-span-12 lg:col-span-4 lg:row-span-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg overflow-hidden flex flex-col"
             style={{ maxHeight: 720 }}>
             <div className="p-5 border-b" style={{ borderColor: C.outlineVariant }}>
-              <h3 className="text-base font-semibold text-[#1E293B] flex items-center gap-2">
-                <History size={18} color="#1E293B" /> Journal d'audit
-              </h3>
+              <h2 className="text-lg font-semibold text-navy flex items-center gap-2">
+                <History size={18} color="#0D2B4E" /> Journal d'audit
+              </h2>
             </div>
             <div className="flex-1 p-5 overflow-y-auto" style={{ backgroundColor: "rgba(248,249,255,0.3)" }}>
               {journal.length === 0 ? (
@@ -612,12 +584,12 @@ function ActionDetailPage() {
           </aside>
 
           {/* Checklist */}
-          <section className="col-span-12 lg:col-span-8 bg-white rounded-xl p-6">
+          <section className="col-span-12 lg:col-span-8 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-6">
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-base font-semibold text-[#1E293B] flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-navy flex items-center gap-2">
                 <ListChecks size={18} color="#0D2B4E" /> Workflow de résolution
-              </h3>
-              <span className="text-xs font-semibold" style={{ color: C.onSurfaceVariant }}>
+              </h2>
+              <span className="text-xs text-[#64748B]">
                 {etapesFaites}/{totalEtapes} étape(s)
               </span>
             </div>
@@ -637,7 +609,7 @@ function ActionDetailPage() {
                   onKeyDown={(e) => e.key === "Enter" && ajouterEtape()}
                   placeholder="Ajouter une étape…" className={inputCls} style={{ borderColor: C.outlineVariant }} />
                 <button type="button" onClick={ajouterEtape}
-                  className="shrink-0 flex items-center gap-1.5 font-bold text-sm hover:underline" style={{ color: C.primary }}>
+                  className="shrink-0 flex items-center gap-1.5 font-medium text-xs hover:underline" style={{ color: C.primary }}>
                   <Plus size={15} /> Ajouter
                 </button>
               </div>
@@ -645,24 +617,24 @@ function ActionDetailPage() {
           </section>
 
           {/* Localisation (site réel de l'origine, sans carte décorative) */}
-          <section className="col-span-12 lg:col-span-4 bg-white rounded-xl p-6 flex flex-col items-center justify-center text-center">
+          <section className="col-span-12 lg:col-span-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-6 flex flex-col items-center justify-center text-center">
             <MapPin size={32} color={C.secondaryContainer} className="mb-2" />
-            <h3 className="text-base font-semibold text-[#1E293B]">Localisation</h3>
+            <h2 className="text-lg font-semibold text-navy">Localisation</h2>
             <p className="text-sm mt-1" style={{ color: C.onSurfaceVariant }}>
               {site?.nom || "Site non renseigné"}
             </p>
             {origine && (
-              <Link to={origine.href} className="mt-3 text-xs font-bold hover:underline" style={{ color: C.secondary }}>
+              <Link to={origine.href} className="mt-3 text-xs font-medium hover:underline" style={{ color: C.secondary }}>
                 Voir l'origine : {origine.label}
               </Link>
             )}
           </section>
 
           {/* Documents joints */}
-          <section className="col-span-12 lg:col-span-4 bg-white rounded-xl p-6">
-            <h3 className="text-base font-semibold text-[#1E293B] mb-4 flex items-center gap-2">
+          <section className="col-span-12 lg:col-span-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-navy mb-4 flex items-center gap-2">
               <FileText size={18} color="#0D2B4E" /> Documents joints
-            </h3>
+            </h2>
 
             {uploads.filter((u) => u.statut === "envoi").length > 0 && (
               <div className="mb-3 space-y-2">
@@ -699,7 +671,7 @@ function ActionDetailPage() {
             <label className="w-full border-2 border-dashed rounded-lg p-4 flex flex-col items-center cursor-pointer transition-colors"
               style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>
               <UploadCloud size={22} />
-              <span className="text-xs font-bold mt-2">Déposer un nouveau fichier</span>
+              <span className="text-xs font-medium mt-2">Déposer un nouveau fichier</span>
               <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFichiers} className="sr-only" />
             </label>
           </section>

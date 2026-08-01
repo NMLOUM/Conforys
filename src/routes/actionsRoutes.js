@@ -17,8 +17,8 @@ const { getPiecesByAction, addPieceJointe } = require("../controllers/pieceJoint
 const { getHistoriqueAction } = require("../controllers/historiqueController");
 const { protect }   = require("../middlewares/authMiddleware");
 const { authorize } = require("../middlewares/roleMiddleware");
-const { validate }  = require("../middlewares/validate");
-const { updateActionSchema, cloturerActionSchema } = require("../validators/actionValidator");
+const { validate, validateQuery } = require("../middlewares/validate");
+const { updateActionSchema, cloturerActionSchema, listeActionsSchema } = require("../validators/actionValidator");
 const { ajouterEtapeSchema, modifierEtapeSchema } = require("../validators/etapeActionValidator");
 const { commentaireActionSchema } = require("../validators/commentaireActionValidator");
 const { pieceJointeActionSchema } = require("../validators/pieceJointeActionValidator");
@@ -28,7 +28,7 @@ const { pieceJointeActionSchema } = require("../validators/pieceJointeActionVali
 router.get("/mes-actions", protect, getMesActions);
 
 // GET /api/actions — vue globale (RESPONSABLE_QHSE uniquement, scopée par entreprise)
-router.get("/", protect, authorize("RESPONSABLE_QHSE"), getAllActions);
+router.get("/", protect, authorize("RESPONSABLE_QHSE"), validateQuery(listeActionsSchema), getAllActions);
 
 // GET /api/actions/:id — détail (page CAPA) — QHSE/ADMIN ou le responsable assigné, vérifié dans le service
 router.get("/:id", protect, getActionById);
