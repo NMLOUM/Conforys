@@ -22,6 +22,7 @@ import ActionsPage from "./pages/ActionsPage";
 import ActionDetailPage from "./pages/ActionDetailPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import JournalActivitePage from "./pages/JournalActivitePage";
+import EpiHistoriquePage from "./pages/EpiHistoriquePage";
 
 // Redirige vers le bon dashboard selon le rôle de l'utilisateur connecté
 function dashboardParRole(role) {
@@ -112,6 +113,7 @@ function App() {
         <Route path="/notifications" element={<ProtectedRoute element={<NotificationsPage />} rolesAutorises={["ADMIN", "RESPONSABLE_QHSE", "EMPLOYE"]} />} />
         {/* Journal d'activité global — QHSE et ADMIN uniquement */}
         <Route path="/journal-activite" element={<ProtectedRoute element={<JournalActivitePage />} rolesAutorises={["ADMIN", "RESPONSABLE_QHSE"]} />} />
+        <Route path="/epis/historique" element={<ProtectedRoute element={<EpiHistoriquePage />} rolesAutorises={["ADMIN", "RESPONSABLE_QHSE"]} />} />
 
         <Route path="*" element={<CatchAll />} />
       </Routes>

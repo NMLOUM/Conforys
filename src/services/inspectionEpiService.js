@@ -2,6 +2,7 @@
 // et immuable, contrairement à l'ancien champ dateDerniereInspection qui
 // était écrasé à chaque inspection et ne conservait aucun historique.
 const prisma = require("../config/prisma");
+const { enregistrer: enregistrerHistorique } = require("./historiqueEpiService");
 
 // Erreur métier avec code HTTP — cohérent avec les autres services
 class ErreurMetier extends Error {
@@ -22,7 +23,7 @@ const enregistrerInspection = async (epiId, { dateInspection, conforme, commenta
   const epi = await prisma.epi.findFirst({ where: { id: epiId, site: { entrepriseId } } });
   if (!epi) throw new ErreurMetier("EPI introuvable.", 404);
 
-  return await prisma.inspectionEpi.create({
+  const inspection = await prisma.inspectionEpi.create({
     data: {
       epiId,
       dateInspection: dateInspection ? new Date(dateInspection) : new Date(),
@@ -32,6 +33,17 @@ const enregistrerInspection = async (epiId, { dateInspection, conforme, commenta
     },
     include: INCLUDE_INSPECTION,
   });
+  // Pas d'auteur connu (inspecteurId absent) : pas d'entrée d'historique,
+  // enregistrer() exige un auteurId valide.
+  if (inspecteurId) {
+    await enregistrerHistorique(
+      epiId,
+      inspecteurId,
+      "Inspection enregistrée",
+      conforme === false ? `Non conforme${commentaire ? ` : ${commentaire}` : ""}` : "Conforme"
+    );
+  }
+  return inspection;
 };
 
 // Historique des inspections d'un EPI donné, du plus récent au plus ancien

@@ -1,5 +1,6 @@
 // Importation de l'instance Prisma partagée (connexion à la base)
 const prisma = require("../config/prisma");
+const { enregistrer: enregistrerHistorique } = require("./historiqueEpiService");
 
 class ErreurMetier extends Error {
   constructor(message, statusCode = 400) {
@@ -125,7 +126,7 @@ const verifierSite = async (siteId, entrepriseId) => {
 };
 
 // Crée un nouvel EPI
-const createEpi = async (data, entrepriseId) => {
+const createEpi = async (data, entrepriseId, auteurId) => {
   await verifierSite(data.siteId, entrepriseId);
 
   const epi = await prisma.epi.create({
@@ -143,11 +144,12 @@ const createEpi = async (data, entrepriseId) => {
     },
     include: { site: { select: { id: true, nom: true } }, ...INCLUDE_DERNIERE_INSPECTION },
   });
+  await enregistrerHistorique(epi.id, auteurId, "EPI créé", epi.designation);
   return avecNiveauAlerte(epi);
 };
 
 // Met à jour un EPI — vérifie d'abord qu'il appartient à l'entreprise du demandeur
-const updateEpi = async (id, data, entrepriseId) => {
+const updateEpi = async (id, data, entrepriseId, auteurId) => {
   const existant = await prisma.epi.findFirst({ where: { id, site: { entrepriseId } } });
   if (!existant) throw new ErreurMetier("EPI introuvable.", 404);
   if (data.siteId) await verifierSite(data.siteId, entrepriseId);
@@ -157,10 +159,14 @@ const updateEpi = async (id, data, entrepriseId) => {
     data: normaliserDates(data),
     include: { site: { select: { id: true, nom: true } }, ...INCLUDE_DERNIERE_INSPECTION },
   });
+  await enregistrerHistorique(id, auteurId, "EPI modifié");
   return avecNiveauAlerte(epi);
 };
 
-// Supprime un EPI — vérifie d'abord qu'il appartient à l'entreprise du demandeur
+// Supprime un EPI — vérifie d'abord qu'il appartient à l'entreprise du demandeur.
+// Pas d'entrée d'historique ici : HistoriqueEpi est en cascade sur l'EPI, elle
+// disparaîtrait avec lui (comme tout le reste de son journal) — logger un
+// événement qui s'efface au même instant n'aurait aucun intérêt.
 const deleteEpi = async (id, entrepriseId) => {
   const existant = await prisma.epi.findFirst({ where: { id, site: { entrepriseId } } });
   if (!existant) throw new ErreurMetier("EPI introuvable.", 404);

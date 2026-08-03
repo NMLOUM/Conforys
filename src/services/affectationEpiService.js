@@ -1,6 +1,7 @@
 // Affectation des EPI aux employés : un EPI affecté quitte le stock
 // disponible (quantite décrémentée) et y revient lorsqu'il est rendu.
 const prisma = require("../config/prisma");
+const { enregistrer: enregistrerHistorique } = require("./historiqueEpiService");
 
 // Erreur métier avec code HTTP — cohérent avec les autres services
 class ErreurMetier extends Error {
@@ -19,7 +20,7 @@ const INCLUDE_AFFECTATION = {
 // Affecte un EPI à un employé : crée l'affectation ACTIVE et décrémente le
 // stock disponible de l'EPI (l'unité affectée n'est plus disponible en stock).
 // Les deux opérations sont dans une même transaction pour rester cohérentes.
-const affecter = async (epiId, employeId, poste, entrepriseId) => {
+const affecter = async (epiId, employeId, poste, entrepriseId, auteurId) => {
   const epi = await prisma.epi.findFirst({ where: { id: epiId, site: { entrepriseId } } });
   if (!epi) throw new ErreurMetier("EPI introuvable.", 404);
   if (epi.quantite <= 0) {
@@ -32,7 +33,7 @@ const affecter = async (epiId, employeId, poste, entrepriseId) => {
   const employe = await prisma.user.findFirst({ where: { id: employeId, entrepriseId } });
   if (!employe) throw new ErreurMetier("Employé introuvable.", 404);
 
-  return await prisma.$transaction(async (tx) => {
+  const affectation = await prisma.$transaction(async (tx) => {
     const affectation = await tx.affectationEpi.create({
       data: { epiId, employeId, poste: poste || null },
       include: INCLUDE_AFFECTATION,
@@ -43,20 +44,28 @@ const affecter = async (epiId, employeId, poste, entrepriseId) => {
     });
     return affectation;
   });
+  await enregistrerHistorique(
+    epiId,
+    auteurId,
+    "EPI affecté",
+    `${employe.prenom} ${employe.nom}${poste ? ` (${poste})` : ""}`
+  );
+  return affectation;
 };
 
 // Rend un EPI affecté : passe l'affectation à RENDUE, remplit dateRetour et
 // réincrémente le stock disponible de l'EPI.
-const rendre = async (affectationId, entrepriseId) => {
+const rendre = async (affectationId, entrepriseId, auteurId) => {
   const affectation = await prisma.affectationEpi.findFirst({
     where: { id: affectationId, epi: { site: { entrepriseId } } },
+    include: INCLUDE_AFFECTATION,
   });
   if (!affectation) throw new ErreurMetier("Affectation introuvable.", 404);
   if (affectation.statut === "RENDUE") {
     throw new ErreurMetier("Cet EPI a déjà été rendu.");
   }
 
-  return await prisma.$transaction(async (tx) => {
+  const mise_a_jour = await prisma.$transaction(async (tx) => {
     const mise_a_jour = await tx.affectationEpi.update({
       where: { id: affectationId },
       data: { statut: "RENDUE", dateRetour: new Date() },
@@ -68,6 +77,13 @@ const rendre = async (affectationId, entrepriseId) => {
     });
     return mise_a_jour;
   });
+  await enregistrerHistorique(
+    affectation.epiId,
+    auteurId,
+    "EPI rendu",
+    `${affectation.employe.prenom} ${affectation.employe.nom}`
+  );
+  return mise_a_jour;
 };
 
 // Historique des affectations d'un EPI donné, du plus récent au plus ancien

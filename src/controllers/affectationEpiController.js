@@ -8,7 +8,8 @@ const affecter = async (req, res) => {
       req.params.id,
       req.body.employeId,
       req.body.poste,
-      req.user.entrepriseId
+      req.user.entrepriseId,
+      req.user.userId
     );
     res.status(201).json({ success: true, data: affectation });
   } catch (error) {
@@ -19,7 +20,7 @@ const affecter = async (req, res) => {
 // PUT /api/affectations/:id/rendre — restitue l'EPI (RESPONSABLE_QHSE)
 const rendre = async (req, res) => {
   try {
-    const affectation = await affectationEpiService.rendre(req.params.id, req.user.entrepriseId);
+    const affectation = await affectationEpiService.rendre(req.params.id, req.user.entrepriseId, req.user.userId);
     res.status(200).json({ success: true, data: affectation });
   } catch (error) {
     handleErreur(res, error);

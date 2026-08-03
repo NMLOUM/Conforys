@@ -33,7 +33,7 @@ const getEpiById = async (req, res) => {
 
 const createEpi = async (req, res) => {
   try {
-    const epi = await epiService.createEpi(req.body, req.user.entrepriseId);
+    const epi = await epiService.createEpi(req.body, req.user.entrepriseId, req.user.userId);
     res.status(201).json({ success: true, data: epi });
   } catch (error) {
     handleErreur(res, error);
@@ -42,7 +42,7 @@ const createEpi = async (req, res) => {
 
 const updateEpi = async (req, res) => {
   try {
-    const epi = await epiService.updateEpi(req.params.id, req.body, req.user.entrepriseId);
+    const epi = await epiService.updateEpi(req.params.id, req.body, req.user.entrepriseId, req.user.userId);
     res.status(200).json({ success: true, data: epi });
   } catch (error) {
     handleErreur(res, error);

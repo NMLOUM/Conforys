@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import {
   HardHat, Hand, Footprints, Shirt, ShieldCheck, Filter, Plus, Search, BarChart3,
+  History,
 } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
@@ -12,21 +14,20 @@ import { useRole } from "../hooks/useRole";
 import { useTable } from "../hooks/useTable";
 import { epiSchema } from "../validators/epiSchema";
 
-// ── Charte du mockup "EPI Inventory" ─────────────────────────────────────────
+// ── Charte de couleurs — alignée sur la charte standard de l'application ────
+// (navy #0D2B4E, rouge #DC2626 : mêmes valeurs que la page Incidents, prise
+// comme référence). Les teintes "secondary*" du mockup d'origine ne sont plus
+// utilisées : chaque couleur d'alerte est désormais choisie pour son sens
+// (vert = bon état, orange = avertissement, rouge = alerte réelle).
 const C = {
-  primary:           "#031635",
+  primary:           "#0D2B4E",
   primaryContainer:  "#1a2b4b",
-  secondary:         "#974900",
-  secondaryContainer: "#fc7d00",
-  secondaryFixed:    "#ffdbc7",
-  onSecondaryContainer: "#5b2900",
   outlineVariant:    "#c5c6cf",
   onSurfaceVariant:  "#64748B",
   surface:           "#f8f9ff",
   surfaceContainerLow: "#eff4ff",
-  surfaceContainerHighest: "#d3e4fe",
-  error:             "#ba1a1a",
-  errorContainer:    "#ffdad6",
+  error:             "#DC2626",
+  errorContainer:    "#FEF2F2",
   success:           "#2E7D32",
 };
 
@@ -91,13 +92,13 @@ function AnneauProgression({ taux, couleur }) {
     <div className="w-28 h-28 relative shrink-0">
       <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
         <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-          fill="transparent" stroke={C.surfaceContainerHighest} strokeWidth="3" />
+          fill="transparent" stroke="#E2E8F0" strokeWidth="3" />
         <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
           fill="transparent" stroke={couleur} strokeWidth="3" strokeLinecap="round"
           strokeDasharray={`${(taux / 100) * circonference}, ${circonference}`} />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-xl font-bold" style={{ color: C.primary }}>{taux}%</span>
+        <span className="text-xl font-bold" style={{ color: couleur }}>{taux}%</span>
       </div>
     </div>
   );
@@ -108,26 +109,29 @@ function AnneauProgression({ taux, couleur }) {
 function CarteEtatStock({ epis }) {
   const total = epis.length;
   const nbOk = epis.filter((e) => e.niveauAlerte === "OK").length;
-  const nbAlerte = epis.filter((e) => e.quantite <= e.seuilAlerte).length;
+  // Même critère que la colonne "Statut" du tableau détaillé (niveauAlerte
+  // calculé serveur, qui intègre péremption et retard d'inspection, pas
+  // seulement le stock) — évite un compteur incohérent avec le tableau.
+  const nbAlerte = epis.filter((e) => e.niveauAlerte === "ALERTE").length;
   const niveauOptimal = total === 0 ? 100 : Math.round((nbOk / total) * 100);
 
   return (
     <div className="lg:col-span-4 bg-white border border-[#E2E8F0] rounded-lg p-5 flex flex-col gap-4">
       <div className="flex justify-between items-start">
         <h2 className="text-lg font-semibold text-navy">État du stock</h2>
-        <BarChart3 size={18} color={C.secondary} />
+        <BarChart3 size={18} color={C.primary} />
       </div>
       <div className="space-y-2">
         <div className="flex justify-between items-center text-sm">
           <span style={{ color: C.onSurfaceVariant }}>Niveau optimal</span>
-          <span className="font-bold" style={{ color: C.primary }}>{niveauOptimal}%</span>
+          <span className="font-bold" style={{ color: "#2E7D32" }}>{niveauOptimal}%</span>
         </div>
-        <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: C.surfaceContainerHighest }}>
-          <div className="h-full rounded-full" style={{ width: `${niveauOptimal}%`, backgroundColor: C.primary }} />
+        <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#E2E8F0" }}>
+          <div className="h-full rounded-full" style={{ width: `${niveauOptimal}%`, backgroundColor: "#2E7D32" }} />
         </div>
         <div className="flex justify-between items-center text-sm pt-1">
-          <span style={{ color: C.onSurfaceVariant }}>Alerte de stock</span>
-          <span className="font-bold" style={{ color: nbAlerte > 0 ? C.secondary : C.onSurfaceVariant }}>
+          <span style={{ color: C.onSurfaceVariant }}>En alerte</span>
+          <span className="font-bold" style={{ color: nbAlerte > 0 ? "#DC2626" : C.onSurfaceVariant }}>
             {nbAlerte} article{nbAlerte !== 1 ? "s" : ""}
           </span>
         </div>
@@ -154,12 +158,12 @@ function CarteRepartitionGlobale({ epis, affectations }) {
             <p className="text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>Unités affectées</p>
           </div>
           <div className="border-l pl-8" style={{ borderColor: C.outlineVariant }}>
-            <p className="text-xl font-bold" style={{ color: nbAlerte > 0 ? C.secondary : C.onSurfaceVariant }}>{nbAlerte}</p>
+            <p className="text-xl font-bold" style={{ color: nbAlerte > 0 ? "#DC2626" : C.onSurfaceVariant }}>{nbAlerte}</p>
             <p className="text-xs font-medium uppercase tracking-wide" style={{ color: C.onSurfaceVariant }}>En alerte</p>
           </div>
         </div>
       </div>
-      <AnneauProgression taux={taux} couleur={C.secondary} />
+      <AnneauProgression taux={taux} couleur="#2E7D32" />
     </div>
   );
 }
@@ -183,36 +187,46 @@ function AvatarInitiales({ prenom, nom }) {
 
 function CarteEpi({ epi, affectationsActives }) {
   const perime = estPerime(epi.datePeremption);
-  const enAlerteStock = epi.quantite <= epi.seuilAlerte;
+  // Stock bas au sens strict — utilisé uniquement pour la couleur du chiffre
+  // "Stock" ci-dessous. Le badge et le contour, eux, reflètent l'état global
+  // de l'EPI (niveauAlerte serveur, qui intègre aussi péremption et retard
+  // d'inspection) pour rester cohérents avec le tableau détaillé en dessous.
+  const stockBas = epi.quantite <= epi.seuilAlerte;
   const derniereInspection = formatDateAffichage(epi.derniereInspection);
   const prochaineInspection = calculerProchaineInspection(epi);
   const MAX_AVATARS = 4;
 
-  const statutLabel = perime ? "Périmé" : enAlerteStock ? "Stock faible" : "En stock";
-  const statutBg = perime ? C.errorContainer : enAlerteStock ? C.secondaryFixed : "#dcf5e3";
-  const statutFg = perime ? C.error : enAlerteStock ? C.onSecondaryContainer : "#1b5e20";
+  // Badge partagé (même composant/forme/couleurs que la page Incidents) :
+  // rouge=Périmé/Alerte, orange="À surveiller" (variante BIENTOT), vert="En stock" (variante OK)
+  const badgeStatut = perime
+    ? { variant: "PERIME" }
+    : epi.niveauAlerte === "ALERTE"
+    ? { variant: "ALERTE" }
+    : epi.niveauAlerte === "BIENTOT"
+    ? { variant: "BIENTOT", label: "À surveiller" }
+    : { variant: "OK", label: "En stock" };
+  const contourCouleur = epi.niveauAlerte === "ALERTE" ? "#DC2626" : epi.niveauAlerte === "BIENTOT" ? "#EA580C" : null;
 
   return (
     <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden flex flex-col"
-      style={enAlerteStock ? { outline: `2px solid ${C.secondary}` } : undefined}>
+      style={contourCouleur ? { outline: `2px solid ${contourCouleur}` } : undefined}>
       <div className="h-32 relative">
         <BandeauEpi photoUrl={epi.photoUrl} type={epi.type} />
-        <span className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full text-xs font-semibold"
-          style={{ backgroundColor: statutBg, color: statutFg }}>
-          {statutLabel}
-        </span>
+        <div className="absolute top-2.5 right-2.5">
+          <Badge variant={badgeStatut.variant} label={badgeStatut.label} />
+        </div>
       </div>
       <div className="p-4 flex-1 flex flex-col">
         <div className="flex justify-between items-start gap-2">
           <div>
-            <h4 className="font-semibold text-sm text-[#1E293B]">{epi.designation}</h4>
+            <h4 className="font-semibold text-[15px] text-[#1E293B]">{epi.designation}</h4>
             <p className="text-xs" style={{ color: C.onSurfaceVariant }}>{epi.type}{epi.reference ? ` · ${epi.reference}` : ""}</p>
           </div>
         </div>
         <div className="flex justify-between items-end border-t pt-3 mt-3" style={{ borderColor: C.outlineVariant }}>
           <div>
             <p className="text-xs" style={{ color: C.onSurfaceVariant }}>Stock</p>
-            <p className="text-sm font-semibold" style={{ color: enAlerteStock ? C.secondary : C.primary }}>{epi.quantite} / {epi.seuilAlerte}</p>
+            <p className="text-sm font-semibold" style={{ color: stockBas ? "#EA580C" : C.primary }}>{epi.quantite} / {epi.seuilAlerte}</p>
           </div>
           <div className="text-right">
             <p className="text-xs" style={{ color: C.onSurfaceVariant }}>Dernière inspection</p>
@@ -252,12 +266,14 @@ const inputClsFull =
 // ── Page principale ───────────────────────────────────────────────────────────
 
 function EpisPage() {
+  const navigate = useNavigate();
   const { can } = useRole();
   const peutGerer = can("RESPONSABLE_QHSE");
 
   const [epis,       setEpis]       = useState([]);
   const [sites,      setSites]      = useState([]);
   const [chargement, setChargement] = useState(true);
+  const [erreurListe, setErreurListe] = useState("");
   const [showModal,  setShowModal]  = useState(false);
   const [erreurForm, setErreurForm] = useState("");
   const [epiEnEdition, setEpiEnEdition] = useState(null);
@@ -287,6 +303,12 @@ function EpisPage() {
   const [formInspection,       setFormInspection]       = useState(FORM_INSPECTION_DEFAUT);
   const [envoiInspection,      setEnvoiInspection]      = useState(false);
 
+  // ── Vue "Mes EPI affectés" ─────────────────────────────────────────────────
+  const [vueMesEpis,       setVueMesEpis]       = useState(false);
+  const [mesEpis,          setMesEpis]          = useState(null);
+  const [chargementMesEpis, setChargementMesEpis] = useState(false);
+  const [erreurMesEpis,    setErreurMesEpis]    = useState("");
+
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm({
     mode: "onBlur",
     resolver: zodResolver(epiSchema),
@@ -306,11 +328,13 @@ function EpisPage() {
   }, []);
 
   const charger = async () => {
+    setErreurListe("");
     try {
       const res = await api.get("/epis");
       setEpis(res.data.data || []);
     } catch (e) {
       console.error("Erreur chargement EPI:", e);
+      setErreurListe("Impossible de charger l'inventaire EPI. Vérifiez votre connexion et réessayez.");
     } finally {
       setChargement(false);
     }
@@ -323,6 +347,27 @@ function EpisPage() {
     } catch (e) {
       console.error("Erreur chargement affectations:", e);
     }
+  };
+
+  // Charge les EPI affectés au connecté (tous rôles), au premier affichage
+  // de l'onglet "Mes EPI affectés" seulement (lazy).
+  const chargerMesEpis = async () => {
+    setChargementMesEpis(true);
+    setErreurMesEpis("");
+    try {
+      const res = await api.get("/affectations/mes-epis");
+      setMesEpis(res.data.data || []);
+    } catch (e) {
+      console.error("Erreur chargement mes EPI:", e);
+      setErreurMesEpis("Impossible de charger vos EPI affectés. Vérifiez votre connexion et réessayez.");
+    } finally {
+      setChargementMesEpis(false);
+    }
+  };
+
+  const basculerVueMesEpis = (activer) => {
+    setVueMesEpis(activer);
+    if (activer && mesEpis === null) chargerMesEpis();
   };
 
   useEffect(() => {
@@ -483,7 +528,7 @@ function EpisPage() {
   };
 
   const inputCls = (name) =>
-    `${inputClsFull} ${errors[name] ? "border-[#ba1a1a]" : ""}`;
+    `${inputClsFull} ${errors[name] ? "border-[#DC2626]" : ""}`;
 
   const filtresActifs = filtreStatut || filtreSite;
 
@@ -506,6 +551,13 @@ function EpisPage() {
               <Filter size={15} /> Filtrer
             </button>
             {peutGerer && (
+              <button onClick={() => navigate("/epis/historique")}
+                className="px-4 py-2 text-sm font-semibold rounded-lg border flex items-center gap-2 transition-colors"
+                style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>
+                <History size={15} /> Historique
+              </button>
+            )}
+            {peutGerer && (
               <button onClick={ouvrirCreation}
                 className="px-4 py-2 text-sm font-semibold text-white rounded-lg flex items-center gap-2 shadow-sm transition-opacity hover:opacity-90"
                 style={{ backgroundColor: C.primary }}>
@@ -515,6 +567,60 @@ function EpisPage() {
           </div>
         </div>
 
+        {/* ── Bascule Tous les EPI / Mes EPI affectés ── */}
+        <div className="flex items-center gap-1 mb-6 p-1 bg-[#F1F5F9] rounded-lg w-fit">
+          <button onClick={() => basculerVueMesEpis(false)}
+            className="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+            style={!vueMesEpis ? { backgroundColor: "white", color: C.primary, boxShadow: "0 1px 2px rgba(15,23,42,0.08)" } : { color: C.onSurfaceVariant }}>
+            Tous les EPI
+          </button>
+          <button onClick={() => basculerVueMesEpis(true)}
+            className="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+            style={vueMesEpis ? { backgroundColor: "white", color: C.primary, boxShadow: "0 1px 2px rgba(15,23,42,0.08)" } : { color: C.onSurfaceVariant }}>
+            Mes EPI affectés
+          </button>
+        </div>
+
+        {vueMesEpis ? (
+          <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden mb-6">
+            {chargementMesEpis ? (
+              <div className="flex items-center gap-2 text-sm p-8" style={{ color: C.onSurfaceVariant }}><Spinner /> Chargement…</div>
+            ) : erreurMesEpis ? (
+              <div className="p-4 text-sm flex items-center justify-between" style={{ color: C.error }}>
+                <span>{erreurMesEpis}</span>
+                <button onClick={chargerMesEpis} className="ml-4 text-xs font-semibold underline shrink-0">Réessayer</button>
+              </div>
+            ) : !mesEpis || mesEpis.length === 0 ? (
+              <div className="p-12 text-center" style={{ color: C.onSurfaceVariant }}>
+                Aucun EPI ne vous est actuellement affecté.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[600px] text-sm">
+                  <thead style={{ backgroundColor: C.surfaceContainerLow, color: C.onSurfaceVariant }}>
+                    <tr>
+                      {["Désignation", "Type", "Poste", "Affecté le", "Statut"].map((h) => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y" style={{ borderColor: C.outlineVariant }}>
+                    {mesEpis.map((a) => (
+                      <tr key={a.id}>
+                        <td className="px-4 py-3 font-semibold" style={{ color: "#1E293B" }}>{a.epi?.designation}</td>
+                        <td className="px-4 py-3" style={{ color: C.onSurfaceVariant }}>{a.epi?.type || "Non renseigné"}</td>
+                        <td className="px-4 py-3" style={{ color: C.onSurfaceVariant }}>{a.poste || "—"}</td>
+                        <td className="px-4 py-3" style={{ color: C.onSurfaceVariant }}>{formatDateAffichage(a.dateAffectation) ?? "—"}</td>
+                        <td className="px-4 py-3"><Badge variant={a.statut} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : (
+        <>
         {/* ── Cartes de synthèse (bento) ── */}
         {!chargement && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-6">
@@ -561,6 +667,13 @@ function EpisPage() {
 
         {chargement ? (
           <div className="flex items-center gap-2 text-sm py-8" style={{ color: C.onSurfaceVariant }}><Spinner /> Chargement…</div>
+        ) : erreurListe ? (
+          <div className="p-4 text-sm rounded-lg border border-red-200 bg-red-50 flex items-center justify-between" style={{ color: C.error }}>
+            <span>{erreurListe}</span>
+            <button onClick={charger} className="ml-4 text-xs font-semibold underline shrink-0">
+              Réessayer
+            </button>
+          </div>
         ) : (
           <>
             {/* ── Grille de cartes ── */}
@@ -607,7 +720,7 @@ function EpisPage() {
                             <td className="px-4 py-3 font-semibold" style={{ color: "#1E293B" }}>{epi.designation}</td>
                             <td className="px-4 py-3" style={{ color: C.onSurfaceVariant }}>{epi.type || "Non renseigné"}</td>
                             <td className="px-4 py-3" style={{ color: C.onSurfaceVariant }}>{epi.site?.nom ?? "Non renseigné"}</td>
-                            <td className="px-4 py-3 font-semibold" style={{ color: enAlerteStock ? C.secondary : "#1E293B" }}>{epi.quantite}</td>
+                            <td className="px-4 py-3 font-semibold" style={{ color: enAlerteStock ? "#EA580C" : "#1E293B" }}>{epi.quantite}</td>
                             <td className="px-4 py-3" style={{ color: C.onSurfaceVariant }}>{epi.seuilAlerte}</td>
                             <td className="px-4 py-3"><Badge variant={epi.niveauAlerte} /></td>
                             <td className="px-4 py-3">
@@ -659,6 +772,8 @@ function EpisPage() {
             </div>
 
           </>
+        )}
+        </>
         )}
 
         {/* ── Modale de création / modification ── */}

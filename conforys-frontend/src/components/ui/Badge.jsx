@@ -55,6 +55,13 @@ const VARIANTS = {
   ACTION_CORRECTIVE: { bg: "bg-slate-100",text: "text-slate-600", dot: "bg-slate-400" },
   PIECE_JOINTE:      { bg: "bg-gray-100", text: "text-gray-600",  dot: "bg-gray-400"  },
   AUTRE:             { bg: "bg-gray-100", text: "text-gray-500",  dot: "bg-gray-400"  },
+  // Catégories du journal d'activité EPI (piste d'audit complète)
+  CREATION:      { bg: "bg-blue-50",   text: "text-blue-700",   dot: "bg-blue-500"   },
+  MODIFICATION:  { bg: "bg-amber-50",  text: "text-amber-700",  dot: "bg-amber-500"  },
+  SUPPRESSION:   { bg: "bg-red-50",    text: "text-red-700",    dot: "bg-red-500"    },
+  AFFECTATION:   { bg: "bg-indigo-50", text: "text-indigo-700", dot: "bg-indigo-500" },
+  RETOUR:        { bg: "bg-green-50",  text: "text-green-700",  dot: "bg-green-500"  },
+  INSPECTION:    { bg: "bg-purple-50", text: "text-purple-700", dot: "bg-purple-500" },
 };
 
 // Labels lisibles par défaut
@@ -107,6 +114,13 @@ const LABELS = {
   ACTION_CORRECTIVE: "Action corrective",
   PIECE_JOINTE:      "Pièce jointe",
   AUTRE:             "Autre",
+  // Journal d'activité EPI
+  CREATION:          "Création",
+  MODIFICATION:      "Modification",
+  SUPPRESSION:       "Suppression",
+  AFFECTATION:       "Affectation",
+  RETOUR:            "Retour",
+  INSPECTION:        "Inspection",
 };
 
 function Badge({ variant = "EMPLOYE", label, className = "" }) {
