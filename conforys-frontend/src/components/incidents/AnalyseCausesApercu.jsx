@@ -1,10 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, ArrowRight } from "lucide-react";
+import { Search, ArrowRight, AlertTriangle } from "lucide-react";
 import api from "../../api/axios";
 
-// Carte aperçu affichée sur la page détail de l'incident — renvoie vers la
-// page pleine page /incidents/:id/analyse pour le détail de l'analyse.
+// Mêmes gravités que le garde-fou backend (actionService.createAction) : au
+// delà, une analyse doit au moins être initialisée avant l'action corrective.
+const GRAVITES_ANALYSE_REQUISE = ["GRAVE", "CRITIQUE"];
+
+// Aperçu affiché sur la page détail de l'incident — renvoie vers la page
+// pleine page /incidents/:id/analyse. Volontairement sans cadre englobant :
+// seul l'état "analyse requise" (incident grave/critique sans analyse) a un
+// encart rouge, pour que ce cas précis saute aux yeux.
 function AnalyseCausesApercu({ incident, peutGerer }) {
   const navigate = useNavigate();
   const [analyse, setAnalyse] = useState(null);
@@ -19,63 +25,63 @@ function AnalyseCausesApercu({ incident, peutGerer }) {
 
   const ouvrir = () => navigate(`/incidents/${incident.id}/analyse`);
 
-  // Couleur du panneau selon l'état réel de l'analyse — neutre tant qu'aucune
-  // analyse n'existe, orange pendant qu'elle est en cours, vert seulement une
-  // fois validée (au lieu d'un vert fixe qui ne reflétait pas l'état).
-  const etat = !analyse ? "absente" : analyse.valideLe ? "validee" : "encours";
-  const STYLES = {
-    absente:  { bg: "#F8FAFC", border: "#E2E8F0", accent: "#64748B", accentBg: "#F1F5F9" },
-    encours:  { bg: "#FFF7ED", border: "#EA580C", accent: "#9A3412", accentBg: "#FED7AA" },
-    validee:  { bg: "#EAF3EC", border: "#2E7D32", accent: "#166534", accentBg: "#BBF7D0" },
-  }[etat];
+  const analyseRequise   = GRAVITES_ANALYSE_REQUISE.includes(incident.gravite);
+  const analyseManquante = analyseRequise && !analyse;
+  const couleurEtat      = analyse?.valideLe ? "#2E7D32" : "#EA580C";
 
   return (
-    <div className="rounded-lg overflow-hidden h-full flex flex-col"
-      style={{ backgroundColor: STYLES.bg, border: `1px solid ${STYLES.border}` }}>
-      <div className="flex items-center gap-2.5 px-5 pt-4">
-        <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${STYLES.accent}1A` }}>
-          <Search size={15} color={STYLES.accent} strokeWidth={2} />
-        </span>
-        <h2 className="text-lg font-semibold text-navy">Analyse des causes</h2>
-      </div>
+    <div>
+      <h2 className="flex items-center gap-2 text-[15px] font-semibold text-navy mb-3">
+        <Search size={15} color="#0D2B4E" strokeWidth={2} />
+        Analyse des causes
+      </h2>
 
-      <div className="p-5 flex-1 flex flex-col">
-        {chargement ? (
-          <p className="text-xs text-[#64748B]">Chargement…</p>
-        ) : !analyse ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 py-2">
-            <p className="text-xs text-[#64748B]">
-              Aucune analyse des causes racines n'a encore été réalisée pour cet incident.
+      {chargement ? (
+        <p className="text-xs text-[#64748B]">Chargement…</p>
+      ) : analyseManquante ? (
+        <div className="flex items-start gap-2.5 p-3 rounded-md bg-red-50 border border-red-200">
+          <AlertTriangle size={15} color="#DC2626" className="shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-xs text-[#991B1B] mb-2">
+              Incident {incident.gravite === "CRITIQUE" ? "critique" : "grave"} : une analyse des causes est requise
+              avant de créer une action corrective.
             </p>
             {peutGerer && (
               <button type="button" onClick={ouvrir}
-                className="px-4 py-2 text-sm font-semibold text-white rounded-md transition-colors"
-                style={{ backgroundColor: "#0D2B4E" }}>
+                className="px-3 py-1.5 text-xs font-semibold text-white rounded-md transition-colors"
+                style={{ backgroundColor: "#DC2626" }}>
                 Lancer l'analyse des causes
               </button>
             )}
           </div>
-        ) : (
-          <div className="flex-1 flex flex-col">
-            <p className="text-[10px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: STYLES.accent }}>
-              Cause racine
-            </p>
-            <p className="text-sm text-[#1E293B] flex-1">
-              {analyse.causeRacine || "Cause racine non encore renseignée."}
-            </p>
-            <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: `1px solid ${STYLES.accentBg}` }}>
-              <span className="text-xs font-medium" style={{ color: STYLES.accent }}>
-                {analyse.valideLe ? "Analyse validée" : "Analyse en cours"}
-              </span>
-              <button type="button" onClick={ouvrir}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white rounded-md transition-colors"
-                style={{ backgroundColor: "#0D2B4E" }}>
-                Ouvrir l'analyse des causes <ArrowRight size={13} strokeWidth={2.2} />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      ) : !analyse ? (
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <p className="text-xs text-[#64748B]">
+            Aucune analyse des causes racines n'a encore été réalisée pour cet incident.
+          </p>
+          {peutGerer && (
+            <button type="button" onClick={ouvrir}
+              className="shrink-0 px-3 py-1.5 text-xs font-semibold text-white rounded-md transition-colors"
+              style={{ backgroundColor: "#0D2B4E" }}>
+              Lancer l'analyse des causes
+            </button>
+          )}
+        </div>
+      ) : (
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wide mb-1" style={{ color: couleurEtat }}>
+            {analyse.valideLe ? "Analyse validée" : "Analyse en cours"} : cause racine
+          </p>
+          <p className="text-sm text-[#1E293B] mb-2 break-words">
+            {analyse.causeRacine || "Cause racine non encore renseignée."}
+          </p>
+          <button type="button" onClick={ouvrir}
+            className="flex items-center gap-1.5 text-xs font-semibold text-[#0D2B4E] hover:underline transition-colors">
+            Ouvrir l'analyse des causes <ArrowRight size={13} strokeWidth={2.2} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

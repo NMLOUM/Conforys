@@ -13,6 +13,11 @@ class ErreurMetier extends Error {
 // Poids de chaque niveau de criticité converti en priorité d'action corrective
 const PRIORITE_PAR_CRITICITE = { CRITIQUE: "CRITIQUE", MAJEUR: "ELEVE", MINEUR: "MOYEN" };
 
+// Gravités d'incident pour lesquelles l'analyse des causes racines est
+// obligatoire avant toute action corrective — un incident faible ou moyen a
+// généralement une cause évidente, l'analyse formelle n'est pas exigée.
+const GRAVITES_ANALYSE_REQUISE = ["GRAVE", "CRITIQUE"];
+
 // Include partagé : responsable + incident + audit + risque (une action n'a
 // jamais plus d'une seule de ces trois relations à la fois)
 const INCLUDE_ACTION = {
@@ -43,6 +48,20 @@ const verifierResponsable = async (responsableId, entrepriseId) => {
 const createAction = async (incidentId, data, auteurId, entrepriseId) => {
   const incident = await prisma.incident.findFirst({ where: { id: incidentId, declarePar: { entrepriseId } } });
   if (!incident) throw new ErreurMetier("Incident introuvable.", 404);
+
+  // Incident grave/critique : la cause doit d'abord être investiguée. On
+  // exige que l'analyse des causes ait au moins été initialisée (pas
+  // nécessairement validée) — ce garde-fou ne s'applique pas aux incidents
+  // faible/moyen, où la cause est en général évidente sans analyse formelle.
+  if (GRAVITES_ANALYSE_REQUISE.includes(incident.gravite)) {
+    const analyse = await prisma.analyseCauses.findUnique({ where: { incidentId } });
+    if (!analyse) {
+      throw new ErreurMetier(
+        "Une analyse des causes est requise pour un incident grave ou critique avant de créer une action corrective."
+      );
+    }
+  }
+
   await verifierResponsable(data.responsableId, entrepriseId);
 
   const action = await prisma.actionCorrective.create({

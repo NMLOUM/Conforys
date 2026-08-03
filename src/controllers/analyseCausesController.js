@@ -4,7 +4,8 @@ const { handleErreur } = require("../utils/handleErreur");
 // GET /api/incidents/:id/analyse — lecture seule, tous les rôles ayant accès à l'incident
 const getAnalyse = async (req, res) => {
   try {
-    const analyse = await analyseCausesService.getAnalyse(req.params.id, req.user.entrepriseId);
+    const demandeur = { userId: req.user.userId, role: req.user.role };
+    const analyse = await analyseCausesService.getAnalyse(req.params.id, req.user.entrepriseId, demandeur);
     res.status(200).json({ success: true, data: analyse });
   } catch (error) {
     handleErreur(res, error);

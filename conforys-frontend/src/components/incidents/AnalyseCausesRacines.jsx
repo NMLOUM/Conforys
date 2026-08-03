@@ -378,17 +378,17 @@ function AnalyseCausesRacines({ incident, peutGerer, onActionCreee }) {
 
         {peutGerer && (
           <div className="mt-4 pt-4 flex items-center gap-2" style={{ borderTop: "1px solid #BBF7D0" }}>
-            <button type="button" onClick={genererAction} disabled={genererEnCours || !causeRacine.trim() || Boolean(analyse.actionGenereeLe)}
-              title={!causeRacine.trim() ? "Renseignez la cause racine avant de créer une action" : ""}
-              className="px-4 py-2 text-sm font-semibold text-white rounded-md disabled:opacity-50 transition-colors"
-              style={{ backgroundColor: "#0D2B4E" }}>
-              {analyse.actionGenereeLe ? "Action déjà créée" : genererEnCours ? "…" : "Créer une action corrective"}
-            </button>
             <button type="button" onClick={validerAnalyse} disabled={validationEnCours || Boolean(analyse.valideLe)}
               className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-md border disabled:opacity-50 transition-colors"
               style={{ borderColor: "#2E7D32", color: "#2E7D32" }}>
               <CheckCircle2 size={15} strokeWidth={2} />
               {analyse.valideLe ? "Analyse validée" : validationEnCours ? "…" : "Valider l'analyse"}
+            </button>
+            <button type="button" onClick={genererAction} disabled={genererEnCours || !causeRacine.trim() || !analyse.valideLe || Boolean(analyse.actionGenereeLe)}
+              title={!analyse.valideLe ? "Validez l'analyse avant de créer une action" : !causeRacine.trim() ? "Renseignez la cause racine avant de créer une action" : ""}
+              className="px-4 py-2 text-sm font-semibold text-white rounded-md disabled:opacity-50 transition-colors"
+              style={{ backgroundColor: "#0D2B4E" }}>
+              {analyse.actionGenereeLe ? "Action déjà créée" : genererEnCours ? "…" : "Créer une action corrective"}
             </button>
           </div>
         )}

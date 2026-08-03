@@ -14,7 +14,7 @@ import { useAuthStore } from "../store/authStore";
 
 // ── Charte du mockup CAPA (appliquée au contenu de cette page uniquement) ────
 const C = {
-  primary:          "#031635",
+  primary:          "#0D2B4E",
   primaryContainer: "rgba(3, 22, 53, 0.06)",
   secondary:        "#974900",
   secondaryContainer: "#fc7d00",
@@ -23,7 +23,7 @@ const C = {
   outlineVariant:   "#c5c6cf",
   surface:          "#f8f9ff",
   onSurfaceVariant: "#64748B",
-  error:            "#ba1a1a",
+  error:            "#DC2626",
   success:          "#2E7D32",
 };
 
@@ -464,7 +464,7 @@ function ActionDetailPage() {
       <div>
 
         {/* ── En-tête ── */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
           <div>
             <button onClick={() => navigate("/actions")} className="flex items-center gap-1.5 mb-1" style={{ color: C.onSurfaceVariant }}>
               <ArrowLeft size={16} />
@@ -551,8 +551,10 @@ function ActionDetailPage() {
             </div>
           </section>
 
-          {/* Journal d'audit unifié (historique + notes) */}
-          <aside className="col-span-12 lg:col-span-4 lg:row-span-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg overflow-hidden flex flex-col"
+          {/* Journal d'audit unifié (historique + notes) — self-start pour ne
+              pas s'étirer à la hauteur du Summary+Checklist quand le journal
+              a peu d'entrées (sinon grand vide avant le champ de note). */}
+          <aside className="col-span-12 lg:col-span-4 lg:row-span-2 lg:self-start bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg overflow-hidden flex flex-col"
             style={{ maxHeight: 720 }}>
             <div className="p-5 border-b" style={{ borderColor: C.outlineVariant }}>
               <h2 className="text-lg font-semibold text-navy flex items-center gap-2">
@@ -617,7 +619,7 @@ function ActionDetailPage() {
           </section>
 
           {/* Localisation (site réel de l'origine, sans carte décorative) */}
-          <section className="col-span-12 lg:col-span-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-6 flex flex-col items-center justify-center text-center">
+          <section className="col-span-12 lg:col-span-6 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-6 flex flex-col items-center justify-center text-center">
             <MapPin size={32} color={C.secondaryContainer} className="mb-2" />
             <h2 className="text-lg font-semibold text-navy">Localisation</h2>
             <p className="text-sm mt-1" style={{ color: C.onSurfaceVariant }}>
@@ -631,7 +633,7 @@ function ActionDetailPage() {
           </section>
 
           {/* Documents joints */}
-          <section className="col-span-12 lg:col-span-4 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-6">
+          <section className="col-span-12 lg:col-span-6 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-6">
             <h2 className="text-lg font-semibold text-navy mb-4 flex items-center gap-2">
               <FileText size={18} color="#0D2B4E" /> Documents joints
             </h2>

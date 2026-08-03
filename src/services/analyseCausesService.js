@@ -4,6 +4,7 @@
 const prisma = require("../config/prisma");
 const { enregistrer, enregistrerAction } = require("./historiqueService");
 const { creer: creerNotification } = require("./notificationService");
+const { peutAccederIncident } = require("./incidentService");
 
 class ErreurMetier extends Error {
   constructor(message, statusCode = 400) {
@@ -22,17 +23,20 @@ const INCLUDE_ANALYSE = {
   etapesPourquoi: { orderBy: { ordre: "asc" } },
 };
 
-// Vérifie que l'incident visé appartient bien à l'entreprise du demandeur —
-// même garde-fou que le reste du module Incidents.
-const verifierIncident = async (incidentId, entrepriseId) => {
+// Vérifie que l'incident visé appartient bien à l'entreprise du demandeur, et
+// que ce dernier a le droit d'y accéder (déclarant/assigné pour un EMPLOYE) —
+// même garde-fou que le reste du module Incidents. `demandeur` est optionnel :
+// les écritures (initialiser/mettre à jour/générer l'action) restent
+// restreintes à RESPONSABLE_QHSE au niveau de la route, sans changement ici.
+const verifierIncident = async (incidentId, entrepriseId, demandeur = null) => {
   const incident = await prisma.incident.findFirst({ where: { id: incidentId, declarePar: { entrepriseId } } });
-  if (!incident) throw new ErreurMetier("Incident introuvable.", 404);
+  if (!incident || !peutAccederIncident(incident, demandeur)) throw new ErreurMetier("Incident introuvable.", 404);
   return incident;
 };
 
 // Récupère l'analyse d'un incident (ou null si elle n'a pas encore été initialisée)
-const getAnalyse = async (incidentId, entrepriseId) => {
-  await verifierIncident(incidentId, entrepriseId);
+const getAnalyse = async (incidentId, entrepriseId, demandeur) => {
+  await verifierIncident(incidentId, entrepriseId, demandeur);
   return await prisma.analyseCauses.findUnique({
     where: { incidentId },
     include: INCLUDE_ANALYSE,
@@ -62,7 +66,7 @@ const updateAnalyse = async (incidentId, data, entrepriseId) => {
   await verifierIncident(incidentId, entrepriseId);
 
   const analyse = await prisma.analyseCauses.findUnique({ where: { incidentId } });
-  if (!analyse) throw new ErreurMetier("Analyse introuvable — initialisez-la d'abord.", 404);
+  if (!analyse) throw new ErreurMetier("Analyse introuvable, initialisez-la d'abord.", 404);
 
   await prisma.$transaction(async (tx) => {
     const dataToUpdate = {};
@@ -117,9 +121,12 @@ const genererActionDepuisAnalyse = async (incidentId, entrepriseId) => {
   const incident = await verifierIncident(incidentId, entrepriseId);
 
   const analyse = await prisma.analyseCauses.findUnique({ where: { incidentId } });
-  if (!analyse) throw new ErreurMetier("Analyse introuvable — initialisez-la d'abord.", 404);
+  if (!analyse) throw new ErreurMetier("Analyse introuvable, initialisez-la d'abord.", 404);
   if (!analyse.causeRacine || !analyse.causeRacine.trim()) {
     throw new ErreurMetier("Renseignez la cause racine avant de générer une action corrective.");
+  }
+  if (!analyse.valideLe) {
+    throw new ErreurMetier("Validez l'analyse des causes avant de générer une action corrective.");
   }
   if (analyse.actionGenereeLe) {
     throw new ErreurMetier("Une action corrective a déjà été générée pour cette analyse.");
@@ -127,7 +134,7 @@ const genererActionDepuisAnalyse = async (incidentId, entrepriseId) => {
 
   const action = await prisma.actionCorrective.create({
     data: {
-      description:   `Action corrective — cause racine : ${analyse.causeRacine}`,
+      description:   `Action corrective suite à la cause racine : ${analyse.causeRacine}`,
       priorite:      PRIORITE_PAR_GRAVITE[incident.gravite] ?? "MOYEN",
       statut:        "A_FAIRE",
       incidentId,
