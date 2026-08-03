@@ -146,15 +146,15 @@ const getIncidentStats = async (entrepriseId) => {
       if (perime) {
         alerte = {
           categorie: "EPI_PERIME",
-          message: `${e.designation} — périmé depuis le ${new Date(e.datePeremption).toLocaleDateString("fr-FR")}`,
+          message: `${e.designation} · périmé depuis le ${new Date(e.datePeremption).toLocaleDateString("fr-FR")}`,
         };
       } else if (enRupture) {
         alerte = {
           categorie: "EPI_STOCK",
-          message: `${e.designation} — ${e.quantite} restant(s) (seuil : ${e.seuilAlerte})`,
+          message: `${e.designation} · ${e.quantite} restant(s) (seuil : ${e.seuilAlerte})`,
         };
       } else {
-        alerte = { categorie: "EPI_INSPECTION", message: `${e.designation} — inspection en retard` };
+        alerte = { categorie: "EPI_INSPECTION", message: `${e.designation} · inspection en retard` };
       }
       alertes.push({ niveau: "CRITIQUE", ...alerte, detail: e.site?.nom });
     });
@@ -166,7 +166,7 @@ const getIncidentStats = async (entrepriseId) => {
     .forEach((e) => alertes.push({
       niveau: "AVERTISSEMENT",
       categorie: "EPI_PERIME",
-      message: `${e.designation} — périme le ${new Date(e.datePeremption).toLocaleDateString("fr-FR")}`,
+      message: `${e.designation} · périme le ${new Date(e.datePeremption).toLocaleDateString("fr-FR")}`,
       detail: e.site?.nom,
     }));
 
@@ -174,7 +174,7 @@ const getIncidentStats = async (entrepriseId) => {
   habExpirantes7j.forEach((h) => alertes.push({
     niveau: "CRITIQUE",
     categorie: "HABILITATION",
-    message: `${h.intitule} — ${h.titulaire?.prenom} ${h.titulaire?.nom}`,
+    message: `${h.intitule} · ${h.titulaire?.prenom} ${h.titulaire?.nom}`,
     detail: `Expire le ${new Date(h.dateExpiration).toLocaleDateString("fr-FR")}`,
   }));
 
@@ -186,14 +186,14 @@ const getIncidentStats = async (entrepriseId) => {
       alertes.push({
         niveau: "CRITIQUE",
         categorie: "ATTESTATION_EXPIREE",
-        message: `${a.titreFormation} — ${a.beneficiaire.prenom} ${a.beneficiaire.nom}`,
+        message: `${a.titreFormation} · ${a.beneficiaire.prenom} ${a.beneficiaire.nom}`,
         detail: `Expirée depuis le ${dateExp.toLocaleDateString("fr-FR")}`,
       });
     } else if (dateExp <= dans30Jours) {
       alertes.push({
         niveau: "AVERTISSEMENT",
         categorie: "ATTESTATION_RECYCLAGE",
-        message: `${a.titreFormation} — ${a.beneficiaire.prenom} ${a.beneficiaire.nom}`,
+        message: `${a.titreFormation} · ${a.beneficiaire.prenom} ${a.beneficiaire.nom}`,
         detail: `À recycler avant le ${dateExp.toLocaleDateString("fr-FR")}`,
       });
     }
@@ -203,7 +203,7 @@ const getIncidentStats = async (entrepriseId) => {
   auditsEnRetard.forEach((a) => alertes.push({
     niveau: "AVERTISSEMENT",
     categorie: "AUDIT_RETARD",
-    message: `Audit non réalisé — ${a.titre}`,
+    message: `Audit non réalisé : ${a.titre}`,
     detail: `Prévu le ${new Date(a.datePrevue).toLocaleDateString("fr-FR")} · ${a.site?.nom}`,
   }));
 
@@ -211,7 +211,7 @@ const getIncidentStats = async (entrepriseId) => {
   incidentsGravesOuverts.forEach((i) => alertes.push({
     niveau: "CRITIQUE",
     categorie: "INCIDENT_GRAVE",
-    message: `${i.numeroReference} — ${i.gravite} non clôturé`,
+    message: `${i.numeroReference} · ${i.gravite} non clôturé`,
     detail: `${i.site?.nom} · ${new Date(i.dateIncident).toLocaleDateString("fr-FR")}`,
   }));
 
@@ -219,7 +219,7 @@ const getIncidentStats = async (entrepriseId) => {
   risquesSansAction.forEach((r) => alertes.push({
     niveau: "CRITIQUE",
     categorie: "RISQUE_SANS_ACTION",
-    message: `${r.danger} — aucune action de prévention`,
+    message: `${r.danger} · aucune action de prévention`,
     detail: r.site?.nom,
   }));
 

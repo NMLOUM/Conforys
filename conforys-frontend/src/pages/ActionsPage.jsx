@@ -14,7 +14,7 @@ import { useTable } from "../hooks/useTable";
 
 // ── Charte du mockup CAPA (partagée avec ActionDetailPage) ──────────────────
 const C = {
-  primary:          "#031635",
+  primary:          "#0D2B4E",
   primaryContainer: "#1a2b4b",
   secondary:        "#974900",
   secondaryContainer: "#fc7d00",
@@ -27,7 +27,7 @@ const C = {
   surfaceContainerLow: "#eff4ff",
   surfaceContainerHighest: "#d3e4fe",
   onSurfaceVariant: "#64748B",
-  error:            "#ba1a1a",
+  error:            "#DC2626",
   errorContainer:   "#ffdad6",
   success:          "#2E7D32",
 };

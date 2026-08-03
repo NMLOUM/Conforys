@@ -104,7 +104,7 @@ const genererRapportIncident = async (incidentId, entrepriseId) => {
     historique.map((h) => [
       formatDateHeure(h.dateAction),
       h.auteur ? `${h.auteur.prenom} ${h.auteur.nom}` : "—",
-      h.details ? `${h.action} — ${h.details}` : h.action,
+      h.details ? `${h.action} : ${h.details}` : h.action,
     ])
   );
 

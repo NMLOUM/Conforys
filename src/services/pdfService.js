@@ -176,7 +176,7 @@ const dessinerPiedDePage = (doc) => {
 
     const bas = doc.page.height - margeBasOriginale + 15;
     doc.font("Helvetica").fontSize(7).fillColor(COULEURS.slateClair)
-      .text(`Document généré le ${dateGeneration} — CONFORYS`, MARGE_X, bas, { width: 350, lineBreak: false });
+      .text(`Document généré le ${dateGeneration} par CONFORYS`, MARGE_X, bas, { width: 350, lineBreak: false });
     doc.text(`Page ${i - plage.start + 1} / ${plage.count}`, MARGE_X + 345, bas, { width: 150, align: "right", lineBreak: false });
 
     doc.page.margins.bottom = margeBasOriginale;

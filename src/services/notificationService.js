@@ -144,19 +144,19 @@ const getAlertesMetier = async (entrepriseId) => {
         alerte = {
           type: "EPI_PERIME",
           niveau: "URGENT",
-          libelle: `${e.designation} — périmé depuis le ${new Date(e.datePeremption).toLocaleDateString("fr-FR")}`,
+          libelle: `${e.designation} · périmé depuis le ${new Date(e.datePeremption).toLocaleDateString("fr-FR")}`,
         };
       } else if (enRupture) {
         alerte = {
           type: "EPI_STOCK_BAS",
           niveau: "ATTENTION",
-          libelle: `${e.designation} — ${e.quantite} restant(s) (seuil ${e.seuilAlerte})`,
+          libelle: `${e.designation} · ${e.quantite} restant(s) (seuil ${e.seuilAlerte})`,
         };
       } else {
         alerte = {
           type: "EPI_INSPECTION",
           niveau: "URGENT",
-          libelle: `${e.designation} — inspection en retard`,
+          libelle: `${e.designation} · inspection en retard`,
         };
       }
       alertes.push({ ...alerte, detail: e.site?.nom ?? null, lien: "/epis" });
@@ -166,14 +166,14 @@ const getAlertesMetier = async (entrepriseId) => {
     type: "ACTION_EN_RETARD",
     niveau: "URGENT",
     libelle: a.description,
-    detail: `En retard depuis le ${new Date(a.dateLimite).toLocaleDateString("fr-FR")} — ${a.responsable?.prenom} ${a.responsable?.nom}`,
+    detail: `En retard depuis le ${new Date(a.dateLimite).toLocaleDateString("fr-FR")} · ${a.responsable?.prenom} ${a.responsable?.nom}`,
     lien: "/actions",
   }));
 
   incidentsCritiques.forEach((i) => alertes.push({
     type: "INCIDENT_CRITIQUE",
     niveau: "URGENT",
-    libelle: `${i.numeroReference} — incident critique non traité`,
+    libelle: `${i.numeroReference} · incident critique non traité`,
     detail: i.site?.nom ?? null,
     lien: `/incidents/${i.id}`,
   }));
@@ -181,7 +181,7 @@ const getAlertesMetier = async (entrepriseId) => {
   auditsSemaine.forEach((a) => alertes.push({
     type: "AUDIT_PLANIFIE",
     niveau: "INFO",
-    libelle: `Audit prévu — ${a.titre}`,
+    libelle: `Audit prévu : ${a.titre}`,
     detail: `${new Date(a.datePrevue).toLocaleDateString("fr-FR")} · ${a.site?.nom ?? "—"}`,
     lien: `/audits/${a.id}`,
   }));
@@ -193,7 +193,7 @@ const getAlertesMetier = async (entrepriseId) => {
       alertes.push({
         type: "ATTESTATION_EXPIREE",
         niveau: "URGENT",
-        libelle: `${a.titreFormation} — ${a.beneficiaire.prenom} ${a.beneficiaire.nom}`,
+        libelle: `${a.titreFormation} · ${a.beneficiaire.prenom} ${a.beneficiaire.nom}`,
         detail: `Expirée depuis le ${dateExp.toLocaleDateString("fr-FR")}`,
         lien: "/attestations",
       });
@@ -201,7 +201,7 @@ const getAlertesMetier = async (entrepriseId) => {
       alertes.push({
         type: "ATTESTATION_RECYCLAGE",
         niveau: "ATTENTION",
-        libelle: `${a.titreFormation} — ${a.beneficiaire.prenom} ${a.beneficiaire.nom}`,
+        libelle: `${a.titreFormation} · ${a.beneficiaire.prenom} ${a.beneficiaire.nom}`,
         detail: `À recycler avant le ${dateExp.toLocaleDateString("fr-FR")}`,
         lien: "/attestations",
       });
@@ -212,7 +212,7 @@ const getAlertesMetier = async (entrepriseId) => {
   risquesSansAction.forEach((r) => alertes.push({
     type: "RISQUE_SANS_ACTION",
     niveau: "URGENT",
-    libelle: `${r.danger} — aucune action de prévention`,
+    libelle: `${r.danger} · aucune action de prévention`,
     detail: r.site?.nom ?? null,
     lien: "/duerp",
   }));

@@ -220,7 +220,7 @@ const genererActionDepuisRisque = async (risqueId, auteurId, entrepriseId) => {
 
   const action = await prisma.actionCorrective.create({
     data: {
-      description:   `Mesure de prévention — ${risque.danger}${risque.zone ? ` (${risque.zone})` : ""}`,
+      description:   `Mesure de prévention pour le risque : ${risque.danger}${risque.zone ? ` (${risque.zone})` : ""}`,
       priorite:      niveauQualitatif, // "ELEVE" ou "CRITIQUE" — mêmes libellés que PrioriteAction
       statut:        "A_FAIRE",
       risqueId,

@@ -66,7 +66,7 @@ const genererRapportRegistre = async (entrepriseId, { siteId } = {}) => {
     risques.map((r) => [
       r.danger,
       CATEGORIES[r.categorie] ?? r.categorie,
-      [r.site?.nom, r.zone].filter(Boolean).join(" — "),
+      [r.site?.nom, r.zone].filter(Boolean).join(" · "),
       LABELS_PROBABILITE[r.probabilite],
       LABELS_GRAVITE[r.gravite],
       LABELS_NIVEAU[r.niveauQualitatif] ?? "—",

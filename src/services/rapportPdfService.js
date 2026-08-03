@@ -110,7 +110,7 @@ const genererSynthese = async ({ dateDebut, dateFin, siteId, entrepriseId }) => 
   const nomSite = siteId ? (site?.nom ?? "Site") : "Tous les sites";
   const doc = pdf.creerDocument();
 
-  pdf.dessinerEnTete(doc, "Bilan de sécurité", `Du ${formatDate(debut)} au ${formatDate(fin)} — ${nomSite}`);
+  pdf.dessinerEnTete(doc, "Bilan de sécurité", `Du ${formatDate(debut)} au ${formatDate(fin)} · ${nomSite}`);
 
   pdf.dessinerTitreSection(doc, "Indicateurs clés");
   pdf.dessinerLigneInfo(doc, "Total incidents", String(incidents.length));

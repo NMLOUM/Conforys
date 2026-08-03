@@ -43,7 +43,7 @@ const dessinerQuestion = (doc, numero, question) => {
 
   doc.font("Helvetica-Bold").fontSize(8).fillColor(COULEUR_CRITICITE[question.criticite])
     .text(`Criticité : ${LABELS_CRITICITE[question.criticite]}`, { continued: true });
-  doc.font("Helvetica").fillColor(pdf.COULEURS.slateClair).text("   —   ", { continued: true });
+  doc.font("Helvetica").fillColor(pdf.COULEURS.slateClair).text("   ·   ", { continued: true });
   doc.font("Helvetica-Bold").fillColor(COULEUR_REPONSE[question.reponse])
     .text(`Réponse : ${LABELS_REPONSE[question.reponse] ?? question.reponse}`);
 
