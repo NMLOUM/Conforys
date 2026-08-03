@@ -60,6 +60,8 @@ model User {
   incidentsDeclares            Incident[]               @relation("IncidentsDeclares")
   // Relation : incidents validés par cet utilisateur (responsable QHSE)
   incidentsValides             Incident[]               @relation("IncidentsValides")
+  // Relation : incidents assignés à cet utilisateur pour traitement
+  incidentsAssignes            Incident[]               @relation("IncidentsAssignes")
   audits                       Audit[]
   // Relation : participations aux formations (présence, validation)
   participationsFormation      ParticipationFormation[] @relation("ParticipantsFormation")
@@ -75,6 +77,8 @@ model User {
   episAffectes                 AffectationEpi[]         @relation("EpisAffectes")
   // Relation : inspections d'EPI réalisées par cet utilisateur
   inspectionsEffectuees        InspectionEpi[]          @relation("InspectionsEffectuees")
+  // Relation : entrées du journal EPI dont cet utilisateur est l'auteur
+  historiqueEpis               HistoriqueEpi[]          @relation("HistoriqueEpiAuteur")
   // Relation : attestations de formation obtenues
   attestations                 Attestation[]
   // Relation : risques professionnels identifiés par cet utilisateur (DUERP)
@@ -167,6 +171,11 @@ model Incident {
 
   validePar   User?   @relation("IncidentsValides", fields: [valideParId], references: [id])
   valideParId String? @map("valide_par_id")
+
+  // Employé assigné pour le traitement de l'incident — renseigné en même
+  // temps que la validation (OUVERT → EN_COURS), jamais avant
+  assigneA   User?   @relation("IncidentsAssignes", fields: [assigneAId], references: [id])
+  assigneAId String? @map("assigne_a_id")
 
   site   Site   @relation(fields: [siteId], references: [id])
   siteId String @map("site_id")
@@ -494,6 +503,9 @@ model Epi {
   // Relation : historique des inspections de cet EPI
   inspections InspectionEpi[]
 
+  // Relation : journal complet des actions effectuées sur cet EPI
+  historique HistoriqueEpi[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -554,6 +566,32 @@ model AffectationEpi {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("affectations_epi")
+}
+
+// ─────────────────────────────────────────────
+//  MODULE 3d : HISTORIQUE DES EPI (JOURNAL COMPLET)
+// ─────────────────────────────────────────────
+
+// Journal unique regroupant TOUTES les actions liées à un EPI (création,
+// modification, suppression, affectation, retour, inspection) — même principe
+// que HistoriqueIncident/HistoriqueAction : une entrée immuable par
+// événement métier, texte libre, pas de table polymorphique.
+model HistoriqueEpi {
+  id      String  @id @default(uuid())
+  action  String // Ex: "EPI créé", "EPI affecté", "Inspection enregistrée"
+  details String? // Précision optionnelle (employé concerné, commentaire d'inspection, etc.)
+
+  // Suppression en cascade : si l'EPI est supprimé, son historique disparaît aussi
+  epi   Epi    @relation(fields: [epiId], references: [id], onDelete: Cascade)
+  epiId String @map("epi_id")
+
+  // Auteur de l'action (lecture seule, jamais supprimé côté historique)
+  auteur   User   @relation("HistoriqueEpiAuteur", fields: [auteurId], references: [id])
+  auteurId String @map("auteur_id")
+
+  dateAction DateTime @default(now()) @map("date_action")
+
+  @@map("historique_epis")
 }
 
 // ─────────────────────────────────────────────
@@ -780,6 +818,7 @@ model Habilitation {
 enum TypeNotification {
   INCIDENT_DECLARE // Incident déclaré, notifié aux QHSE de l'entreprise
   INCIDENT_CRITIQUE // Idem, mais gravité CRITIQUE (titre plus urgent)
+  INCIDENT_ASSIGNE // Incident assigné à un employé pour traitement (validation QHSE)
   EPI_STOCK_BAS // EPI sous le seuil d'alerte
   HABILITATION_EXPIRE // Habilitation expirant bientôt
   ACTION_EN_RETARD // Action corrective en retard
