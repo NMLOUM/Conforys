@@ -1,7 +1,7 @@
 // Importation de l'instance Prisma partagée (connexion à la base)
 const prisma = require("../config/prisma");
 const { enregistrer } = require("./historiqueService");
-const { creerPourPlusieurs } = require("./notificationService");
+const { creer: creerNotification, creerPourPlusieurs } = require("./notificationService");
 
 // Labels lisibles pour les statuts (utilisés dans les messages d'historique)
 const LABEL_STATUT = {
@@ -32,7 +32,7 @@ const notifierDeclaration = async (incident, entrepriseId) => {
   const critique = incident.gravite === "CRITIQUE";
   const type    = critique ? "INCIDENT_CRITIQUE" : "INCIDENT_DECLARE";
   const titre   = critique ? "Incident critique déclaré" : "Nouvel incident déclaré";
-  const message = `${incident.numeroReference} — ${LABEL_TYPE_INCIDENT[incident.type] ?? incident.type} de gravité ${LABEL_GRAVITE[incident.gravite] ?? incident.gravite}`;
+  const message = `${incident.numeroReference} · ${LABEL_TYPE_INCIDENT[incident.type] ?? incident.type} de gravité ${LABEL_GRAVITE[incident.gravite] ?? incident.gravite}`;
 
   await creerPourPlusieurs(destinataires.map((u) => u.id), type, titre, message, `/incidents/${incident.id}`);
 };
@@ -61,9 +61,11 @@ const genererReference = async (tx) => {
 
 // Récupère les incidents avec filtrage par rôle, filtres optionnels et pagination
 const getAllIncidents = async (userId, role, entrepriseId, { statut, type, gravite, page = 1, limit = 20 } = {}) => {
+  // Un EMPLOYE voit les incidents qu'il a déclarés ET ceux qui lui ont été
+  // assignés pour traitement (même s'il n'en est pas le déclarant).
   const scopeWhere =
     role === "EMPLOYE"
-      ? { declareParId: userId }
+      ? { declarePar: { entrepriseId }, OR: [{ declareParId: userId }, { assigneAId: userId }] }
       : { declarePar: { entrepriseId } };
 
   const where = {
@@ -92,17 +94,32 @@ const getAllIncidents = async (userId, role, entrepriseId, { statut, type, gravi
   return { data: incidents, total, page, totalPages: Math.ceil(total / limit) || 1 };
 };
 
+// Un EMPLOYE ne peut accéder qu'aux incidents qu'il a déclarés ou qui lui
+// sont assignés pour traitement — même règle que le scope de getAllIncidents.
+// QHSE/ADMIN accèdent à tout incident de leur entreprise (déjà garanti par le
+// filtre entrepriseId). `demandeur` est optionnel : les appels internes du
+// workflow (soumettre/valider/rejeter/cloturer/PDF), déjà protégés par leurs
+// propres vérifications ou par le rôle exigé sur la route, restent inchangés.
+const peutAccederIncident = (incident, demandeur) => {
+  if (!demandeur || demandeur.role !== "EMPLOYE") return true;
+  return incident.declareParId === demandeur.userId || incident.assigneAId === demandeur.userId;
+};
+
 // Récupère un incident par son id — scopé à l'entreprise du demandeur (renvoie
-// null si l'incident n'existe pas ou appartient à une autre entreprise).
-const getIncidentById = async (id, entrepriseId) => {
-  return await prisma.incident.findFirst({
+// null si l'incident n'existe pas, appartient à une autre entreprise, ou si le
+// demandeur (EMPLOYE) n'en est ni le déclarant ni l'assigné).
+const getIncidentById = async (id, entrepriseId, demandeur = null) => {
+  const incident = await prisma.incident.findFirst({
     where: { id, declarePar: { entrepriseId } },
     include: {
       declarePar: { select: { id: true, nom: true, prenom: true, email: true } },
       validePar: { select: { id: true, nom: true, prenom: true, email: true } },
+      assigneA: { select: { id: true, nom: true, prenom: true, email: true } },
       site: true,
     },
   });
+  if (!incident || !peutAccederIncident(incident, demandeur)) return null;
+  return incident;
 };
 
 // Crée un nouvel incident dans une transaction atomique avec retry anti-collision.
@@ -163,7 +180,12 @@ const updateIncident = async (id, data, entrepriseId, userId) => {
 
   const mis_a_jour = await prisma.incident.update({
     where: { id },
-    data,
+    data: {
+      ...data,
+      // Prisma 7 exige un DateTime ISO complet — le champ "datetime-local" du
+      // formulaire ne fournit qu'une chaîne tronquée ("AAAA-MM-JJTHH:mm").
+      ...(data.dateIncident !== undefined && { dateIncident: new Date(data.dateIncident) }),
+    },
   });
   await enregistrer(id, userId, "Incident modifié");
   return mis_a_jour;
@@ -199,21 +221,36 @@ const soumettre = async (id, userId, entrepriseId) => {
   return mis_a_jour;
 };
 
-// OUVERT → EN_COURS : un responsable QHSE/ADMIN valide (pas le déclarant)
-const valider = async (id, userId, entrepriseId) => {
+// OUVERT → EN_COURS : un responsable QHSE/ADMIN valide et assigne dans le
+// même geste un employé qui va traiter l'incident — un incident validé sans
+// personne pour le prendre en charge n'a pas de sens métier.
+const valider = async (id, employeId, userId, entrepriseId) => {
   const incident = await getIncidentById(id, entrepriseId);
   if (!incident) throw new ErreurMetier("Incident introuvable.", 404);
   if (incident.statut !== "OUVERT")
     throw new ErreurMetier(`Impossible de valider un incident en statut "${incident.statut}". Statut attendu : OUVERT.`);
-  if (incident.declareParId === userId)
-    throw new ErreurMetier("Un responsable ne peut pas valider son propre incident.", 403);
+
+  const employe = await prisma.user.findFirst({ where: { id: employeId, entrepriseId } });
+  if (!employe) throw new ErreurMetier("Employé introuvable dans votre entreprise.", 404);
 
   const mis_a_jour = await prisma.incident.update({
     where: { id },
-    data: { statut: "EN_COURS", valideParId: userId },
-    include: { declarePar: { select: { id: true, nom: true, prenom: true, email: true } }, site: true },
+    data: { statut: "EN_COURS", valideParId: userId, assigneAId: employeId },
+    include: {
+      declarePar: { select: { id: true, nom: true, prenom: true, email: true } },
+      assigneA:   { select: { id: true, nom: true, prenom: true, email: true } },
+      site: true,
+    },
   });
-  await enregistrer(id, userId, `Statut changé : ${LABEL_STATUT.OUVERT} → ${LABEL_STATUT.EN_COURS}`);
+  await enregistrer(
+    id, userId,
+    `Statut changé : ${LABEL_STATUT.OUVERT} → ${LABEL_STATUT.EN_COURS}`,
+    `Assigné à ${employe.prenom} ${employe.nom} pour traitement`
+  );
+  await creerNotification(
+    employeId, "INCIDENT_ASSIGNE", "Incident assigné",
+    `${incident.numeroReference} vous a été assigné pour traitement.`, `/incidents/${id}`
+  );
   return mis_a_jour;
 };
 
@@ -256,6 +293,7 @@ const cloturer = async (id, userId, entrepriseId) => {
 module.exports = {
   getAllIncidents,
   getIncidentById,
+  peutAccederIncident,
   createIncident,
   updateIncident,
   deleteIncident,

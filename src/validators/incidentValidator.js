@@ -79,4 +79,18 @@ const rejeterIncidentSchema = z.object({
     .min(5, "Le motif de rejet est obligatoire (min. 5 caractères)."),
 });
 
-module.exports = { incidentSchema, updateIncidentSchema, listeIncidentsSchema, rejeterIncidentSchema };
+// Validation d'un incident — l'assignation à un employé qui va le traiter est
+// obligatoire et se fait dans le même geste que la validation (OUVERT → EN_COURS)
+const validerIncidentSchema = z.object({
+  employeId: z
+    .string({ required_error: "Sélectionnez un employé responsable du traitement." })
+    .uuid("Identifiant employé invalide."),
+});
+
+module.exports = {
+  incidentSchema,
+  updateIncidentSchema,
+  listeIncidentsSchema,
+  rejeterIncidentSchema,
+  validerIncidentSchema,
+};

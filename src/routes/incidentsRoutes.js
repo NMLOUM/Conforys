@@ -9,7 +9,7 @@ const {
 const { protect }   = require("../middlewares/authMiddleware");
 const { authorize } = require("../middlewares/roleMiddleware");
 const { validate, validateQuery } = require("../middlewares/validate");
-const { incidentSchema, updateIncidentSchema, listeIncidentsSchema, rejeterIncidentSchema } = require("../validators/incidentValidator");
+const { incidentSchema, updateIncidentSchema, listeIncidentsSchema, rejeterIncidentSchema, validerIncidentSchema } = require("../validators/incidentValidator");
 const { getActionsByIncident, createAction } = require("../controllers/actionController");
 const { actionSchema } = require("../validators/actionValidator");
 const { getPiecesByIncident, addPieceJointe } = require("../controllers/pieceJointeController");
@@ -42,8 +42,9 @@ router.delete("/:id", protect, authorize("ADMIN"), deleteIncident);
 // BROUILLON → OUVERT : le déclarant soumet son incident
 router.put("/:id/soumettre", protect, soumettre);
 
-// OUVERT → EN_COURS : RESPONSABLE_QHSE valide (territoire métier QHSE exclusif)
-router.put("/:id/valider",  protect, authorize("RESPONSABLE_QHSE"), valider);
+// OUVERT → EN_COURS : RESPONSABLE_QHSE valide et assigne un employé pour le
+// traitement dans le même geste (territoire métier QHSE exclusif)
+router.put("/:id/valider",  protect, authorize("RESPONSABLE_QHSE"), validate(validerIncidentSchema), valider);
 
 // OUVERT → REJETE : RESPONSABLE_QHSE rejette
 router.put("/:id/rejeter",  protect, authorize("RESPONSABLE_QHSE"), validate(rejeterIncidentSchema), rejeter);

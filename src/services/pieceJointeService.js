@@ -1,5 +1,6 @@
 const prisma = require("../config/prisma");
 const { enregistrer } = require("./historiqueService");
+const { peutAccederIncident } = require("./incidentService");
 
 // Erreur métier avec code HTTP (400/404) — évite de renvoyer 500 sur des cas attendus
 class ErreurMetier extends Error {
@@ -15,19 +16,29 @@ const INCLUDE_PIECE = {
   ajoutePar: { select: { id: true, nom: true, prenom: true } },
 };
 
+// Vérifie que l'incident existe, appartient à l'entreprise du demandeur, et
+// que ce dernier a le droit d'y accéder (déclarant/assigné pour un EMPLOYE).
+const verifierAcces = async (incidentId, entrepriseId, demandeur) => {
+  const incident = await prisma.incident.findFirst({ where: { id: incidentId, declarePar: { entrepriseId } } });
+  if (!incident || !peutAccederIncident(incident, demandeur)) {
+    throw new ErreurMetier("Incident introuvable.", 404);
+  }
+  return incident;
+};
+
 // Récupère toutes les pièces jointes d'un incident, triées par date d'ajout
-const getPiecesByIncident = async (incidentId, entrepriseId) => {
+const getPiecesByIncident = async (incidentId, entrepriseId, demandeur) => {
+  await verifierAcces(incidentId, entrepriseId, demandeur);
   return await prisma.pieceJointe.findMany({
-    where: { incidentId, incident: { declarePar: { entrepriseId } } },
+    where: { incidentId },
     include: INCLUDE_PIECE,
     orderBy: { dateAjout: "desc" },
   });
 };
 
 // Enregistre une pièce jointe (l'URL ImgBB est fournie déjà uploadée depuis le frontend)
-const addPieceJointe = async (incidentId, data, auteurId, entrepriseId) => {
-  const incident = await prisma.incident.findFirst({ where: { id: incidentId, declarePar: { entrepriseId } } });
-  if (!incident) throw new ErreurMetier("Incident introuvable.", 404);
+const addPieceJointe = async (incidentId, data, auteurId, entrepriseId, demandeur) => {
+  await verifierAcces(incidentId, entrepriseId, demandeur);
 
   const piece = await prisma.pieceJointe.create({
     data: {

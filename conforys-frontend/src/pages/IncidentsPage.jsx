@@ -13,6 +13,8 @@ import { useAuthStore } from "../store/authStore";
 import { useRole } from "../hooks/useRole";
 import Badge from "../components/ui/Badge";
 import AvatarInitiales from "../components/ui/AvatarInitiales";
+import ModalRejeterIncident from "../components/incidents/ModalRejeterIncident";
+import ModalValiderIncident from "../components/incidents/ModalValiderIncident";
 import { incidentSchema } from "../validators/incidentSchema";
 
 // ── Données statiques ────────────────────────────────────────────────────────
@@ -720,77 +722,9 @@ function IncidentWizard({ sites, onSuccess, onClose }) {
   );
 }
 
-// ── Modale de rejet (motif obligatoire) ──────────────────────────────────────
-
-function ModalRejeter({ incident, onConfirm, onClose }) {
-  const [motif, setMotif] = useState("");
-  const [erreur, setErreur] = useState("");
-  const [envoi, setEnvoi] = useState(false);
-
-  const confirmer = async () => {
-    if (!motif.trim() || motif.trim().length < 5) {
-      setErreur("Le motif doit faire au moins 5 caractères.");
-      return;
-    }
-    setErreur("");
-    setEnvoi(true);
-    try {
-      await onConfirm(motif.trim());
-    } finally {
-      setEnvoi(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-      onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-md bg-white rounded-lg border border-[#E2E8F0] mx-4">
-        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-[#F1F5F9]">
-          <h3 className="text-[15px] font-semibold text-[#1E293B]">Rejeter l'incident</h3>
-          <button type="button" onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition">
-            &#x2715;
-          </button>
-        </div>
-        <div className="px-6 py-5 space-y-4">
-          <div className="p-3 rounded-md bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#475569]">
-            {incident.numeroReference} : {incident.description?.slice(0, 80)}…
-          </div>
-          {erreur && (
-            <p className="text-xs text-[#DC2626] p-3 bg-red-50 border border-red-200 rounded-md">{erreur}</p>
-          )}
-          <div>
-            <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
-              Motif de rejet *
-            </label>
-            <textarea
-              value={motif}
-              onChange={(e) => setMotif(e.target.value)}
-              rows={4}
-              placeholder="Expliquez pourquoi cet incident est rejeté…"
-              className="w-full px-3 py-2.5 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#DC2626]/30 focus:border-[#DC2626] transition resize-none"
-            />
-          </div>
-        </div>
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#F1F5F9]">
-          <button type="button" onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
-            Annuler
-          </button>
-          <button type="button" onClick={confirmer} disabled={envoi}
-            className="px-4 py-2 text-sm font-semibold text-white rounded-md disabled:opacity-50 transition-colors"
-            style={{ backgroundColor: "#DC2626" }}>
-            {envoi ? "Rejet en cours…" : "Confirmer le rejet"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Boutons d'action workflow ─────────────────────────────────────────────────
 
-function BoutonsAction({ incident, user, isQhse, enCours, onAction, onRejeter }) {
+function BoutonsAction({ incident, user, isQhse, enCours, onAction, onRejeter, onValider }) {
   const estDeclarant = user?.id === incident.declarePar?.id;
 
   if (incident.statut === "BROUILLON" && estDeclarant) {
@@ -810,7 +744,7 @@ function BoutonsAction({ incident, user, isQhse, enCours, onAction, onRejeter })
     return (
       <div className="flex items-center gap-1.5">
         <button
-          onClick={() => onAction(incident.id, "valider")}
+          onClick={() => onValider(incident)}
           disabled={enCours}
           className="px-2.5 py-1 text-xs font-semibold rounded-md text-white transition-colors disabled:opacity-50"
           style={{ backgroundColor: "#2E7D32" }}
@@ -878,6 +812,8 @@ function IncidentsPage() {
   const [erreurAction,   setErreurAction]   = useState("");
   const [actionEnCours,  setActionEnCours]  = useState(null);
   const [incidentRejet,  setIncidentRejet]  = useState(null);
+  const [incidentValider, setIncidentValider] = useState(null);
+  const [users,          setUsers]          = useState([]);
 
   // Filtres
   const [filtreStatut,  setFiltreStatut]  = useState("");
@@ -957,6 +893,7 @@ function IncidentsPage() {
     charger();
     chargerKpi();
     api.get("/sites").then((r) => setSites(r.data.data || [])).catch(() => {});
+    if (isQhse) api.get("/users").then((r) => setUsers(r.data.data || [])).catch(() => {});
   }, []);
 
   // ── Gestionnaires de filtres ───────────────────────────────────────────────
@@ -1012,6 +949,12 @@ function IncidentsPage() {
     if (!incidentRejet) return;
     await effectuerAction(incidentRejet.id, "rejeter", { motifRejet });
     setIncidentRejet(null);
+  };
+
+  const confirmerValider = async (employeId) => {
+    if (!incidentValider) return;
+    await effectuerAction(incidentValider.id, "valider", { employeId });
+    setIncidentValider(null);
   };
 
   // Export CSV — reprend les filtres actifs, récupère l'ensemble des
@@ -1237,6 +1180,7 @@ function IncidentsPage() {
                           enCours={!!boutonEnCours}
                           onAction={effectuerAction}
                           onRejeter={setIncidentRejet}
+                          onValider={setIncidentValider}
                         />
                       </td>
                     </tr>
@@ -1299,10 +1243,20 @@ function IncidentsPage() {
 
       {/* Modale de rejet */}
       {incidentRejet && (
-        <ModalRejeter
+        <ModalRejeterIncident
           incident={incidentRejet}
           onConfirm={confirmerRejet}
           onClose={() => setIncidentRejet(null)}
+        />
+      )}
+
+      {/* Modale de validation */}
+      {incidentValider && (
+        <ModalValiderIncident
+          incident={incidentValider}
+          users={users}
+          onConfirm={confirmerValider}
+          onClose={() => setIncidentValider(null)}
         />
       )}
 

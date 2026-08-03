@@ -22,7 +22,9 @@ const getAllIncidents = async (req, res) => {
 // Récupère un incident par son id
 const getIncidentById = async (req, res) => {
   try {
-    const incident = await incidentService.getIncidentById(req.params.id, req.user.entrepriseId);
+    const incident = await incidentService.getIncidentById(
+      req.params.id, req.user.entrepriseId, { userId: req.user.userId, role: req.user.role }
+    );
     if (!incident) {
       return res.status(404).json({ success: false, message: "Incident introuvable." });
     }
@@ -74,10 +76,11 @@ const soumettre = async (req, res) => {
   }
 };
 
-// OUVERT → EN_COURS (QHSE/ADMIN valide, pas le déclarant)
+// OUVERT → EN_COURS (QHSE/ADMIN valide, pas le déclarant) — assigne en même
+// temps un employé qui traitera l'incident (employeId obligatoire)
 const valider = async (req, res) => {
   try {
-    const incident = await incidentService.valider(req.params.id, req.user.userId, req.user.entrepriseId);
+    const incident = await incidentService.valider(req.params.id, req.body.employeId, req.user.userId, req.user.entrepriseId);
     res.status(200).json({ success: true, data: incident });
   } catch (error) {
     handleErreur(res, error);

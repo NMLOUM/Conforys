@@ -8,7 +8,9 @@ const { handleErreur }  = require("../utils/handleErreur");
 // lire son historique, comme le fait déjà getHistoriqueAction).
 const getHistorique = async (req, res) => {
   try {
-    const incident = await incidentService.getIncidentById(req.params.id, req.user.entrepriseId);
+    const incident = await incidentService.getIncidentById(
+      req.params.id, req.user.entrepriseId, { userId: req.user.userId, role: req.user.role }
+    );
     if (!incident) {
       return res.status(404).json({ success: false, message: "Incident introuvable." });
     }
