@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import { AlertTriangle, Users, Wrench, ClipboardList, Building2, Package, Plus, X, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, Plus, X, CheckCircle2, ArrowRight } from "lucide-react";
 import api from "../../api/axios";
 
 const LABELS_TYPE = {
@@ -12,12 +12,20 @@ const LABELS_TYPE = {
 
 // Référentiel des 5 branches du diagramme d'Ishikawa
 const CATEGORIES_5M = {
-  MAIN_OEUVRE: { label: "Main-d'œuvre", icon: Users },
-  MATERIEL:    { label: "Matériel",     icon: Wrench },
-  METHODE:     { label: "Méthode",      icon: ClipboardList },
-  MILIEU:      { label: "Milieu",       icon: Building2 },
-  MATIERE:     { label: "Matière",      icon: Package },
+  MAIN_OEUVRE: { label: "Main-d'œuvre" },
+  MATERIEL:    { label: "Matériel" },
+  METHODE:     { label: "Méthode" },
+  MILIEU:      { label: "Milieu" },
+  MATIERE:     { label: "Matière" },
 };
+
+// Disposition en arête de poisson : 3 branches au-dessus de l'arête centrale,
+// 2 en-dessous — avec une légère rotation qui les fait converger vers l'arête,
+// comme sur un vrai diagramme d'Ishikawa.
+const CATEGORIES_HAUT   = ["MAIN_OEUVRE", "MATERIEL", "METHODE"];
+const CATEGORIES_BAS    = ["MILIEU", "MATIERE"];
+const ROTATIONS_HAUT    = [18, 0, -18];
+const ROTATIONS_BAS     = [18, -18];
 
 const QUESTIONS_DEFAUT = [
   "Pourquoi ce problème est-il survenu ?",
@@ -31,7 +39,6 @@ const QUESTIONS_DEFAUT = [
 function CarteIshikawa({ categorie, causes, peutGerer, onToggle, onAjouter, onSupprimer }) {
   const [nouveau, setNouveau] = useState("");
   const config = CATEGORIES_5M[categorie];
-  const Icon = config.icon;
 
   const ajouter = () => {
     if (!nouveau.trim()) return;
@@ -40,12 +47,15 @@ function CarteIshikawa({ categorie, causes, peutGerer, onToggle, onAjouter, onSu
   };
 
   return (
-    <div className="p-4 bg-white border border-[#E2E8F0] rounded-lg">
-      <div className="flex items-center gap-2 mb-3">
-        <Icon size={16} color="#0D2B4E" strokeWidth={2} className="shrink-0" />
+    // h-full + flex-col : la carte occupe toute la hauteur disponible dans sa
+    // cellule de grille (qui s'étire déjà à la hauteur de la plus grande de la
+    // rangée) — la liste de causes prend l'espace restant (flex-1) pour que le
+    // champ d'ajout reste toujours collé en bas, quelle que soit la longueur du texte.
+    <div className="h-full flex flex-col p-4 bg-white border border-[#E2E8F0] rounded-lg">
+      <div className="mb-3 shrink-0">
         <p className="text-sm font-semibold text-[#0D2B4E]">{config.label}</p>
       </div>
-      <div className="space-y-1.5 mb-3 min-h-[32px]">
+      <div className="flex-1 space-y-1.5 mb-3 min-h-[32px]">
         {causes.length === 0 ? (
           <p className="text-xs text-[#94A3B8] italic">Aucune cause identifiée.</p>
         ) : (
@@ -67,7 +77,7 @@ function CarteIshikawa({ categorie, causes, peutGerer, onToggle, onAjouter, onSu
         )}
       </div>
       {peutGerer && (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <input value={nouveau} onChange={(e) => setNouveau(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && ajouter()}
             placeholder="Ajouter une cause…"
@@ -257,141 +267,206 @@ function AnalyseCausesRacines({ incident, peutGerer, onActionCreee }) {
   const derniereEtapeIndex = etapesLocal.length - 1;
 
   return (
-    <div>
-      {/* ── Bandeau effet ── */}
-      <div className="flex items-start gap-3 p-4 mb-6 rounded-lg bg-red-50 border border-red-200"
-        style={{ borderLeft: "4px solid #DC2626" }}>
-        <AlertTriangle size={18} color="#DC2626" strokeWidth={2} className="shrink-0 mt-0.5" />
+    // Colonne principale (travail d'analyse) + colonne latérale sticky
+    // (contexte de l'incident + conclusion) — la conclusion et le rappel de
+    // l'incident restent visibles pendant qu'on remplit Ishikawa/5 Pourquoi,
+    // au lieu d'être relégués tout en bas d'une longue page à une colonne.
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {/* ── Colonne principale : méthodes d'analyse ── */}
+      <div className="lg:col-span-8 space-y-7">
+        {/* ── Diagramme d'Ishikawa (5M) ── */}
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "#DC2626" }}>L'effet / problème</p>
-          <p className="text-sm font-medium text-[#1E293B] mt-0.5">
-            {LABELS_TYPE[incident.type] ?? incident.type} : {incident.description}
-          </p>
-          <p className="text-xs text-[#64748B] mt-1">
-            {dateIncident}{incident.site?.nom ? ` · ${incident.site.nom}` : ""}{incident.adresseLisible ? ` · ${incident.adresseLisible}` : ""}
-          </p>
-        </div>
-      </div>
+          <p className="text-sm font-semibold text-[#1E293B] mb-3">Diagramme d'Ishikawa (5M)</p>
 
-      {/* ── Diagramme d'Ishikawa (5M) ── */}
-      <p className="text-sm font-semibold text-[#1E293B] mb-3">Diagramme d'Ishikawa (5M)</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-7">
-        {Object.keys(CATEGORIES_5M).map((cle) => (
-          <CarteIshikawa
-            key={cle}
-            categorie={cle}
-            causes={causes.filter((c) => c.categorie === cle)}
-            peutGerer={peutGerer}
-            onToggle={toggleCause}
-            onAjouter={ajouterCause}
-            onSupprimer={supprimerCause}
-          />
-        ))}
-      </div>
-
-      {/* ── 5 Pourquoi ── */}
-      <p className="text-sm font-semibold text-[#1E293B] mb-3">Analyse des 5 Pourquoi</p>
-      <div className="space-y-0 mb-7 max-w-2xl">
-        {etapesLocal.length === 0 && (
-          <p className="text-xs text-[#94A3B8] italic mb-3">Aucune étape renseignée pour le moment.</p>
-        )}
-        {etapesLocal.map((etape, i) => {
-          const estDerniere = i === derniereEtapeIndex && etape.reponse.trim() !== "";
-          return (
-            <div key={i} className="flex gap-3">
-              <div className="flex flex-col items-center shrink-0">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
-                  style={{ backgroundColor: estDerniere ? "#2E7D32" : "#0D2B4E" }}>
-                  {i + 1}
+          {/* Vrai schéma en arête de poisson — écrans moyens et grands */}
+          <div className="hidden md:block">
+            <div className="grid grid-cols-3 gap-4 items-stretch">
+              {CATEGORIES_HAUT.map((cle, i) => (
+                <div key={cle} className="relative pb-8 h-full">
+                  <CarteIshikawa
+                    categorie={cle}
+                    causes={causes.filter((c) => c.categorie === cle)}
+                    peutGerer={peutGerer}
+                    onToggle={toggleCause}
+                    onAjouter={ajouterCause}
+                    onSupprimer={supprimerCause}
+                  />
+                  <div className="absolute left-1/2 bottom-0 w-px h-6 bg-[#CBD5E1]"
+                    style={{ transform: `translateX(-50%) rotate(${ROTATIONS_HAUT[i]}deg)`, transformOrigin: "top" }} />
                 </div>
-                {i < etapesLocal.length - 1 && <div className="w-px flex-1 bg-[#E2E8F0] my-1" style={{ minHeight: 16 }} />}
-              </div>
-              <div className={`flex-1 p-3.5 mb-3 rounded-lg border ${estDerniere ? "bg-[#F0FDF4] border-[#BBF7D0]" : "bg-white border-[#E2E8F0]"}`}>
-                {peutGerer ? (
-                  <input value={etape.question} onChange={(e) => modifierEtape(i, "question", e.target.value)}
-                    onBlur={() => sauvegarderEtapes(etapesLocal)}
-                    className="w-full text-sm font-semibold text-[#1E293B] bg-transparent border-none p-0 mb-1.5 focus:outline-none focus:ring-0" />
-                ) : (
-                  <p className="text-sm font-semibold text-[#1E293B] mb-1.5">{etape.question}</p>
-                )}
-                {peutGerer ? (
-                  <textarea value={etape.reponse} onChange={(e) => modifierEtape(i, "reponse", e.target.value)}
-                    onBlur={() => sauvegarderEtapes(etapesLocal)}
-                    rows={2} placeholder="Réponse…"
-                    className="w-full text-sm text-[#475569] bg-transparent border-none p-0 resize-none focus:outline-none focus:ring-0" />
-                ) : (
-                  <p className="text-sm text-[#475569]">{etape.reponse || "—"}</p>
-                )}
-                {estDerniere && (
-                  <p className="text-[10px] font-semibold uppercase tracking-wide mt-1.5" style={{ color: "#2E7D32" }}>
-                    Cause profonde
-                  </p>
-                )}
+              ))}
+            </div>
+
+            {/* Arête centrale menant à l'effet observé */}
+            <div className="flex items-center gap-2 my-1">
+              <div className="flex-1 h-0.5 bg-[#0D2B4E]" />
+              <ArrowRight size={18} color="#0D2B4E" strokeWidth={2.5} className="shrink-0" />
+              <div className="shrink-0 max-w-[220px] px-3 py-1.5 rounded-md bg-red-50 border border-red-300 text-xs font-semibold text-[#991B1B] truncate"
+                title={incident.description}>
+                {LABELS_TYPE[incident.type] ?? incident.type}
               </div>
             </div>
-          );
-        })}
-      </div>
-      {peutGerer && (
-        <div className="flex items-center gap-3 mb-8 -mt-4">
-          {etapesLocal.length < 5 && (
-            <button type="button" onClick={ajouterEtape}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors"
-              style={{ borderColor: "#0D2B4E", color: "#0D2B4E" }}>
-              <Plus size={13} strokeWidth={2.2} /> Ajouter une étape
-            </button>
-          )}
-          {etapesLocal.length > 0 && (
-            <button type="button" onClick={supprimerDerniereEtape}
-              className="text-xs text-[#94A3B8] hover:text-[#DC2626] transition-colors">
-              Retirer la dernière étape
-            </button>
-          )}
-        </div>
-      )}
 
-      {/* ── Conclusion ── */}
-      <p className="text-sm font-semibold text-[#1E293B] mb-3">Conclusion de l'analyse</p>
-      <div className="p-5 rounded-lg max-w-2xl" style={{ backgroundColor: "#F0FDF4", border: "1px solid #BBF7D0" }}>
-        <label className="block mb-1.5 text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#166534" }}>
-          Cause racine retenue
-        </label>
-        {peutGerer ? (
-          <textarea value={causeRacine} onChange={(e) => setCauseRacine(e.target.value)}
-            onBlur={sauvegarderCauseRacine} rows={3}
-            placeholder="Formulez la cause racine identifiée à l'issue de l'analyse…"
-            className="w-full px-3 py-2 text-sm border rounded-md bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 transition resize-none"
-            style={{ borderColor: "#BBF7D0" }} />
-        ) : (
-          <p className="text-sm text-[#1E293B]">{causeRacine || "Non renseignée."}</p>
-        )}
-        <div className="mt-3 pt-3 flex items-center justify-between text-xs" style={{ borderTop: "1px solid #BBF7D0" }}>
-          <span style={{ color: "#166534" }}>
-            Analyste : <span className="font-medium">{analyse.auteur ? `${analyse.auteur.prenom} ${analyse.auteur.nom}` : "—"}</span>
-          </span>
-          <span style={{ color: "#166534" }}>
-            {analyse.valideLe
-              ? `Validée le ${new Date(analyse.valideLe).toLocaleDateString("fr-FR")}`
-              : "Non validée"}
-          </span>
-        </div>
-
-        {peutGerer && (
-          <div className="mt-4 pt-4 flex items-center gap-2" style={{ borderTop: "1px solid #BBF7D0" }}>
-            <button type="button" onClick={validerAnalyse} disabled={validationEnCours || Boolean(analyse.valideLe)}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-md border disabled:opacity-50 transition-colors"
-              style={{ borderColor: "#2E7D32", color: "#2E7D32" }}>
-              <CheckCircle2 size={15} strokeWidth={2} />
-              {analyse.valideLe ? "Analyse validée" : validationEnCours ? "…" : "Valider l'analyse"}
-            </button>
-            <button type="button" onClick={genererAction} disabled={genererEnCours || !causeRacine.trim() || !analyse.valideLe || Boolean(analyse.actionGenereeLe)}
-              title={!analyse.valideLe ? "Validez l'analyse avant de créer une action" : !causeRacine.trim() ? "Renseignez la cause racine avant de créer une action" : ""}
-              className="px-4 py-2 text-sm font-semibold text-white rounded-md disabled:opacity-50 transition-colors"
-              style={{ backgroundColor: "#0D2B4E" }}>
-              {analyse.actionGenereeLe ? "Action déjà créée" : genererEnCours ? "…" : "Créer une action corrective"}
-            </button>
+            <div className="grid grid-cols-2 gap-4 max-w-[70%] mx-auto items-stretch">
+              {CATEGORIES_BAS.map((cle, i) => (
+                <div key={cle} className="relative pt-8 h-full">
+                  <div className="absolute left-1/2 top-0 w-px h-6 bg-[#CBD5E1]"
+                    style={{ transform: `translateX(-50%) rotate(${ROTATIONS_BAS[i]}deg)`, transformOrigin: "bottom" }} />
+                  <CarteIshikawa
+                    categorie={cle}
+                    causes={causes.filter((c) => c.categorie === cle)}
+                    peutGerer={peutGerer}
+                    onToggle={toggleCause}
+                    onAjouter={ajouterCause}
+                    onSupprimer={supprimerCause}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
-        )}
+
+          {/* Liste simple, sans le schéma — mobile (pas assez de largeur pour l'arête) */}
+          <div className="md:hidden grid grid-cols-1 gap-3">
+            {Object.keys(CATEGORIES_5M).map((cle) => (
+              <CarteIshikawa
+                key={cle}
+                categorie={cle}
+                causes={causes.filter((c) => c.categorie === cle)}
+                peutGerer={peutGerer}
+                onToggle={toggleCause}
+                onAjouter={ajouterCause}
+                onSupprimer={supprimerCause}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* ── 5 Pourquoi ── */}
+        <div>
+          <p className="text-sm font-semibold text-[#1E293B] mb-3">Analyse des 5 Pourquoi</p>
+          <div className="space-y-0">
+            {etapesLocal.length === 0 && (
+              <p className="text-xs text-[#94A3B8] italic mb-3">Aucune étape renseignée pour le moment.</p>
+            )}
+            {etapesLocal.map((etape, i) => {
+              const estDerniere = i === derniereEtapeIndex && etape.reponse.trim() !== "";
+              return (
+                <div key={i} className="flex gap-3">
+                  <div className="flex flex-col items-center shrink-0">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
+                      style={{ backgroundColor: estDerniere ? "#2E7D32" : "#0D2B4E" }}>
+                      {i + 1}
+                    </div>
+                    {i < etapesLocal.length - 1 && <div className="w-px flex-1 bg-[#E2E8F0] my-1" style={{ minHeight: 16 }} />}
+                  </div>
+                  <div className={`flex-1 p-3.5 mb-3 rounded-lg border ${estDerniere ? "bg-[#F0FDF4] border-[#BBF7D0]" : "bg-white border-[#E2E8F0]"}`}>
+                    {peutGerer ? (
+                      <input value={etape.question} onChange={(e) => modifierEtape(i, "question", e.target.value)}
+                        onBlur={() => sauvegarderEtapes(etapesLocal)}
+                        className="w-full text-sm font-semibold text-[#1E293B] bg-transparent border-none p-0 mb-1.5 focus:outline-none focus:ring-0" />
+                    ) : (
+                      <p className="text-sm font-semibold text-[#1E293B] mb-1.5">{etape.question}</p>
+                    )}
+                    {peutGerer ? (
+                      <textarea value={etape.reponse} onChange={(e) => modifierEtape(i, "reponse", e.target.value)}
+                        onBlur={() => sauvegarderEtapes(etapesLocal)}
+                        rows={2} placeholder="Réponse…"
+                        className="w-full text-sm text-[#475569] bg-transparent border-none p-0 resize-none focus:outline-none focus:ring-0" />
+                    ) : (
+                      <p className="text-sm text-[#475569]">{etape.reponse || "—"}</p>
+                    )}
+                    {estDerniere && (
+                      <p className="text-[10px] font-semibold uppercase tracking-wide mt-1.5" style={{ color: "#2E7D32" }}>
+                        Cause profonde
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {peutGerer && (
+            <div className="flex items-center gap-3 -mt-1">
+              {etapesLocal.length < 5 && (
+                <button type="button" onClick={ajouterEtape}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors"
+                  style={{ borderColor: "#0D2B4E", color: "#0D2B4E" }}>
+                  <Plus size={13} strokeWidth={2.2} /> Ajouter une étape
+                </button>
+              )}
+              {etapesLocal.length > 0 && (
+                <button type="button" onClick={supprimerDerniereEtape}
+                  className="text-xs text-[#94A3B8] hover:text-[#DC2626] transition-colors">
+                  Retirer la dernière étape
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Colonne latérale : contexte de l'incident + conclusion, toujours visibles ── */}
+      <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-6 self-start">
+        {/* ── Bandeau effet ── */}
+        <div className="flex items-start gap-3 p-4 rounded-lg bg-red-50 border border-red-200"
+          style={{ borderLeft: "4px solid #DC2626" }}>
+          <AlertTriangle size={18} color="#DC2626" strokeWidth={2} className="shrink-0 mt-0.5" />
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "#DC2626" }}>L'effet / problème</p>
+            <p className="text-sm font-medium text-[#1E293B] mt-0.5">
+              {LABELS_TYPE[incident.type] ?? incident.type} : {incident.description}
+            </p>
+            <p className="text-xs text-[#64748B] mt-1">
+              {dateIncident}{incident.site?.nom ? ` · ${incident.site.nom}` : ""}{incident.adresseLisible ? ` · ${incident.adresseLisible}` : ""}
+            </p>
+          </div>
+        </div>
+
+        {/* ── Conclusion ── */}
+        <div>
+          <p className="text-sm font-semibold text-[#1E293B] mb-3">Conclusion de l'analyse</p>
+          <div className="p-5 rounded-lg" style={{ backgroundColor: "#F0FDF4", border: "1px solid #BBF7D0" }}>
+            <label className="block mb-1.5 text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#166534" }}>
+              Cause racine retenue
+            </label>
+            {peutGerer ? (
+              <textarea value={causeRacine} onChange={(e) => setCauseRacine(e.target.value)}
+                onBlur={sauvegarderCauseRacine} rows={5}
+                placeholder="Formulez la cause racine identifiée à l'issue de l'analyse…"
+                className="w-full px-3 py-2 text-sm border rounded-md bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 transition resize-y max-h-60 overflow-y-auto"
+                style={{ borderColor: "#BBF7D0" }} />
+            ) : (
+              <p className="text-sm text-[#1E293B]">{causeRacine || "Non renseignée."}</p>
+            )}
+            <div className="mt-3 pt-3 flex flex-col gap-1 text-xs" style={{ borderTop: "1px solid #BBF7D0" }}>
+              <span style={{ color: "#166534" }}>
+                Analyste : <span className="font-medium">{analyse.auteur ? `${analyse.auteur.prenom} ${analyse.auteur.nom}` : "—"}</span>
+              </span>
+              <span style={{ color: "#166534" }}>
+                {analyse.valideLe
+                  ? `Validée le ${new Date(analyse.valideLe).toLocaleDateString("fr-FR")}`
+                  : "Non validée"}
+              </span>
+            </div>
+
+            {peutGerer && (
+              <div className="mt-4 pt-4 flex flex-col gap-2" style={{ borderTop: "1px solid #BBF7D0" }}>
+                <button type="button" onClick={validerAnalyse} disabled={validationEnCours || Boolean(analyse.valideLe)}
+                  className="flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-md border disabled:opacity-50 transition-colors"
+                  style={{ borderColor: "#2E7D32", color: "#2E7D32" }}>
+                  <CheckCircle2 size={15} strokeWidth={2} />
+                  {analyse.valideLe ? "Analyse validée" : validationEnCours ? "…" : "Valider l'analyse"}
+                </button>
+                <button type="button" onClick={genererAction} disabled={genererEnCours || !causeRacine.trim() || !analyse.valideLe || Boolean(analyse.actionGenereeLe)}
+                  title={!analyse.valideLe ? "Validez l'analyse avant de créer une action" : !causeRacine.trim() ? "Renseignez la cause racine avant de créer une action" : ""}
+                  className="px-4 py-2 text-sm font-semibold text-white rounded-md disabled:opacity-50 transition-colors"
+                  style={{ backgroundColor: "#0D2B4E" }}>
+                  {analyse.actionGenereeLe ? "Action déjà créée" : genererEnCours ? "…" : "Créer une action corrective"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

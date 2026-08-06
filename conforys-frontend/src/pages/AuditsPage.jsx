@@ -6,7 +6,6 @@ import toast from "react-hot-toast";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import { useAuthStore } from "../store/authStore";
-import Badge from "../components/ui/Badge";
 import { useRole } from "../hooks/useRole";
 import { useTable } from "../hooks/useTable";
 import { auditSchema } from "../validators/auditSchema";
@@ -18,7 +17,33 @@ const LABELS_TYPE = {
   HYGIENE:       "Hygiène",
 };
 
-// ── Icônes des templates — traits simples, une seule couleur (navy) ──────────
+// ── Couleurs par catégorie — pilote le badge de type (table + templates) ────
+const CONFIG_TYPE = {
+  SECURITE:      { text: "#DC2626", bg: "#FDECEA" },
+  ENVIRONNEMENT: { text: "#2E7D32", bg: "#EAF3EC" },
+  HYGIENE:       { text: "#2563EB", bg: "#E7F0FB" },
+  QUALITE:       { text: "#EA580C", bg: "#FEF3E2" },
+};
+
+// EPI et Électrique partagent le type SECURITE (donnée inchangée), mais
+// méritent leur propre teinte d'icône pour se distinguer visuellement des
+// autres templates "Sécurité" sur la bibliothèque — navy, comme demandé.
+const ACCENT_NAVY = { text: "#0D2B4E", bg: "#E7EDF5" };
+const IDS_ACCENT_NAVY = ["epi", "electrique"];
+const accentTemplate = (template) =>
+  IDS_ACCENT_NAVY.includes(template.id) ? ACCENT_NAVY : (CONFIG_TYPE[template.type] ?? ACCENT_NAVY);
+
+function BadgeType({ type }) {
+  const c = CONFIG_TYPE[type] ?? { text: "#64748B", bg: "#F1F5F9" };
+  return (
+    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide"
+      style={{ color: c.text, backgroundColor: c.bg }}>
+      {LABELS_TYPE[type] ?? type}
+    </span>
+  );
+}
+
+// ── Icônes des templates — traits simples, teintés selon la catégorie ───────
 
 const TRACES_ICONES = {
   "securite-chantier": "M12 2 4 5v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V5l-8-3Z M9 12l2 2 4-4",
@@ -29,41 +54,73 @@ const TRACES_ICONES = {
   "electrique":        "M13 2 4 14h6l-1 8 9-12h-6l1-8Z",
 };
 
-function IconeTemplate({ id }) {
+function IconeTemplate({ id, couleur }) {
   const trace = TRACES_ICONES[id];
   return (
     <div
-      className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-      style={{ backgroundColor: "rgba(13, 43, 78, 0.06)" }}
+      className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+      style={{ backgroundColor: couleur.bg }}
     >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0D2B4E" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={couleur.text} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <path d={trace} />
       </svg>
     </div>
   );
 }
 
-// ── Carte de la bibliothèque de templates ────────────────────────────────────
+// ── Carte de la bibliothèque de templates — coins arrondis, couleurs par catégorie ──
 
 function CarteBibliotheque({ template, onDemarrer }) {
+  const couleur = accentTemplate(template);
   return (
-    <div className="p-4 rounded-lg border border-[#E2E8F0] bg-white hover:border-navy/40 transition-colors">
+    <div className="h-full flex flex-col p-4 rounded-2xl border border-[#E2E8F0] bg-white hover:border-navy/40 transition-colors">
       <div className="flex items-start justify-between mb-3">
-        <IconeTemplate id={template.id} />
-        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-slate-100 text-[#64748B]">
-          {LABELS_TYPE[template.type] ?? template.type}
-        </span>
+        <IconeTemplate id={template.id} couleur={couleur} />
+        <BadgeType type={template.type} />
       </div>
       <p className="text-sm font-semibold text-[#1E293B] mb-1">{template.nom}</p>
-      <p className="text-xs text-[#64748B] leading-relaxed mb-3">{template.description}</p>
+      <p className="flex-1 text-xs text-[#64748B] leading-relaxed mb-3">{template.description}</p>
       <button
         type="button"
         onClick={() => onDemarrer(template)}
-        className="text-xs font-semibold text-navy hover:underline"
+        className="shrink-0 text-xs font-semibold text-navy hover:underline text-left"
       >
         Démarrer l'audit →
       </button>
     </div>
+  );
+}
+
+// ── Pastille de statut d'audit — couleurs exactes de la charte (propre à
+// cette page, sans toucher au composant Badge partagé par les autres écrans) ──
+const CONFIG_STATUT = {
+  PLANIFIE: { label: "Planifié", text: "#2563EB", bg: "#E7F0FB" },
+  EN_COURS: { label: "En cours", text: "#EA580C", bg: "#FEF3E2" },
+  TERMINE:  { label: "Terminé",  text: "#2E7D32", bg: "#EAF3EC" },
+  ANNULE:   { label: "Annulé",   text: "#64748B", bg: "#F1F5F9" },
+};
+
+function PastilleStatut({ statut }) {
+  const c = CONFIG_STATUT[statut] ?? { label: statut, text: "#64748B", bg: "#F1F5F9" };
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+      style={{ color: c.text, backgroundColor: c.bg }}>
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: c.text }} />
+      {c.label}
+    </span>
+  );
+}
+
+// ── Pastille de score — colorée selon le niveau de conformité ───────────────
+function PastilleScore({ score }) {
+  if (score == null) return <span className="text-[#CBD5E1]">—</span>;
+  const c = score >= 80 ? { text: "#2E7D32", bg: "#EAF3EC" }
+    : score >= 50        ? { text: "#EA580C", bg: "#FEF3E2" }
+    :                       { text: "#DC2626", bg: "#FDECEA" };
+  return (
+    <span className="px-2.5 py-1 rounded-full text-xs font-semibold" style={{ color: c.text, backgroundColor: c.bg }}>
+      {score}%
+    </span>
   );
 }
 
@@ -147,9 +204,9 @@ function AuditsPage() {
       {can("RESPONSABLE_QHSE") && (
         <div className="mb-6">
           <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-3">
-            Bibliothèque de templates
+            Démarrer un nouvel audit
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-stretch">
             {templates.map((t) => (
               <CarteBibliotheque key={t.id} template={t} onDemarrer={demarrerAudit} />
             ))}
@@ -158,6 +215,9 @@ function AuditsPage() {
       )}
 
       {/* ── Liste des audits ── */}
+      <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-3">
+        Vos audits
+      </p>
       <div className="flex items-center gap-3 mb-4">
         <div className="relative flex-1 max-w-xs">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -194,13 +254,13 @@ function AuditsPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-3 font-medium text-[#1E293B]">{audit.titre}</td>
-                    <td className="px-4 py-3 text-[#64748B]">{LABELS_TYPE[audit.type] ?? audit.type}</td>
+                    <td className="px-4 py-3"><BadgeType type={audit.type} /></td>
                     <td className="px-4 py-3 text-[#64748B]">
                       {audit.datePrevue ? new Date(audit.datePrevue).toLocaleDateString("fr-FR") : "—"}
                     </td>
-                    <td className="px-4 py-3"><Badge variant={audit.statut} /></td>
-                    <td className="px-4 py-3 text-[#475569] font-semibold">
-                      {audit.scoreConformite != null ? `${audit.scoreConformite}%` : "—"}
+                    <td className="px-4 py-3"><PastilleStatut statut={audit.statut} /></td>
+                    <td className="px-4 py-3 font-semibold">
+                      <PastilleScore score={audit.scoreConformite} />
                     </td>
                   </tr>
                 ))
@@ -253,7 +313,7 @@ function AuditsPage() {
                     <div>
                       <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Template</label>
                       <div className="flex items-center gap-2 px-3 py-2.5 rounded-md border border-[#E2E8F0] bg-[#F8FAFC]">
-                        {templateChoisi && <IconeTemplate id={templateChoisi.id} />}
+                        {templateChoisi && <IconeTemplate id={templateChoisi.id} couleur={accentTemplate(templateChoisi)} />}
                         <span className="text-sm font-medium text-[#1E293B]">{templateChoisi?.nom ?? "—"}</span>
                       </div>
                     </div>

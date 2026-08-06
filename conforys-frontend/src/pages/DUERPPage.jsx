@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
-import { Plus, Search, X, AlertTriangle, FileDown, Trash2, CalendarCheck } from "lucide-react";
+import { Plus, Search, X, FileDown, Trash2 } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import { useRole } from "../hooks/useRole";
@@ -62,111 +62,6 @@ function BadgeNiveau({ niveau }) {
   );
 }
 
-// ── Barre de répartition par niveau ──────────────────────────────────────────
-function BarreRepartition({ risques }) {
-  const total = risques.length;
-  const traites = risques.filter((r) => r.mesuresPrevention && r.mesuresPrevention.trim() !== "").length;
-
-  const comptes = { FAIBLE: 0, MODERE: 0, ELEVE: 0, CRITIQUE: 0 };
-  risques.forEach((r) => { if (r.niveauQualitatif) comptes[r.niveauQualitatif]++; });
-
-  return (
-    <div className="p-5 bg-white border border-[#E2E8F0] rounded-xl">
-      <p className="text-[15px] font-semibold text-[#1E293B] mb-1">Répartition par niveau</p>
-      <p className="text-xs text-[#94A3B8] mb-4">
-        {total} risque{total !== 1 ? "s" : ""} · {traites} traité{traites !== 1 ? "s" : ""}
-      </p>
-
-      {total === 0 ? (
-        <p className="text-sm text-[#94A3B8]">Aucun risque enregistré.</p>
-      ) : (
-        <>
-          <div className="flex w-full h-3 rounded-full overflow-hidden bg-[#F1F5F9]">
-            {Object.entries(comptes).map(([niveau, n]) => n > 0 && (
-              <div key={niveau} style={{ width: `${(n / total) * 100}%`, backgroundColor: CONFIG_NIVEAU[niveau].texte }}
-                title={`${CONFIG_NIVEAU[niveau].label} : ${n}`} />
-            ))}
-          </div>
-          <div className="flex flex-col gap-1.5 mt-3">
-            {Object.entries(comptes).map(([niveau, n]) => (
-              <div key={niveau} className="flex items-center justify-between text-xs text-[#475569]">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: CONFIG_NIVEAU[niveau].texte }} />
-                  {CONFIG_NIVEAU[niveau].label}
-                </span>
-                <span className="font-semibold text-[#1E293B]">{n}</span>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── Suivi de révision annuelle du DUERP ──────────────────────────────────────
-function StatutRevision({ statut, onMarquerRevise, enCours, peutGerer }) {
-  if (!statut) return null;
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }) : "—";
-
-  return (
-    <div className="p-5 bg-white border border-[#E2E8F0] rounded-xl">
-      <div className="flex items-center gap-2 mb-3">
-        <CalendarCheck size={16} color={statut.enRetard ? "#DC2626" : "#2E7D32"} strokeWidth={2} className="shrink-0" />
-        <p className="text-[15px] font-semibold text-[#1E293B]">Révision annuelle</p>
-      </div>
-      <div className="space-y-1.5 text-xs text-[#475569]">
-        <p>Dernière révision : <span className="font-medium text-[#1E293B]">{formatDate(statut.dateDerniereRevision)}</span></p>
-        <p>Prochaine échéance : <span className="font-medium text-[#1E293B]">{formatDate(statut.dateProchaineRevision)}</span></p>
-      </div>
-      <div className={`mt-3 px-2.5 py-1.5 rounded-md text-xs font-semibold ${statut.enRetard ? "bg-red-50 text-[#DC2626]" : "bg-green-50 text-[#2E7D32]"}`}>
-        {statut.enRetard ? "Révision en retard" : "À jour"}
-      </div>
-      {peutGerer && (
-        <button onClick={onMarquerRevise} disabled={enCours}
-          className="mt-3 w-full px-3 py-2 text-xs font-semibold rounded-md text-white bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
-          {enCours ? "…" : "Marquer comme révisé aujourd'hui"}
-        </button>
-      )}
-    </div>
-  );
-}
-
-// ── Risques prioritaires — élevés/critiques sans action encore générée ──────
-function RisquesPrioritaires({ risques, onGenerer, genererEnCoursId }) {
-  const prioritaires = risques
-    .filter((r) => (r.niveauQualitatif === "CRITIQUE" || r.niveauQualitatif === "ELEVE") && r.nombreActions === 0)
-    .sort((a, b) => b.niveauRisque - a.niveauRisque)
-    .slice(0, 5);
-
-  return (
-    <div className="p-5 bg-white border border-[#E2E8F0] rounded-xl">
-      <div className="flex items-center gap-2 mb-3">
-        <AlertTriangle size={16} color="#DC2626" strokeWidth={2} className="shrink-0" />
-        <p className="text-[15px] font-semibold text-[#1E293B]">Risques prioritaires</p>
-      </div>
-      {prioritaires.length === 0 ? (
-        <p className="text-xs text-[#94A3B8]">Aucun risque élevé/critique en attente d'action.</p>
-      ) : (
-        <div className="space-y-2">
-          {prioritaires.map((r) => (
-            <div key={r.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-[#F8FAFC]">
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-[#1E293B] truncate">{r.danger}</p>
-                <div className="mt-1"><BadgeNiveau niveau={r.niveauQualitatif} /></div>
-              </div>
-              <button onClick={() => onGenerer(r)} disabled={genererEnCoursId === r.id}
-                className="shrink-0 px-2.5 py-1.5 text-[11px] font-semibold rounded-md text-white bg-[#EA580C] hover:bg-[#EA580C]/90 disabled:opacity-50 transition-colors">
-                {genererEnCoursId === r.id ? "…" : "Générer"}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Matrice de risques 4×4 ────────────────────────────────────────────────────
 function MatriceRisques({ cellules, filtreCase, onFiltrer }) {
   if (!cellules.length) return null;
@@ -174,7 +69,7 @@ function MatriceRisques({ cellules, filtreCase, onFiltrer }) {
   return (
     <div className="p-5 bg-white border border-[#E2E8F0] rounded-xl">
       <p className="text-[15px] font-semibold text-[#1E293B] mb-1">Matrice des risques</p>
-      <p className="text-xs text-[#94A3B8] mb-4">Probabilité × Gravité : cliquez une case pour filtrer le tableau</p>
+      <p className="text-xs text-[#94A3B8] mb-4">Probabilité × Gravité : cliquez une case pour affiner le registre ci-dessus</p>
 
       <div className="flex gap-1.5 max-w-[340px]">
         {/* Libellés de l'axe probabilité (vertical) */}
@@ -245,8 +140,6 @@ function DUERPPage() {
   const [filtreCategorie, setFiltreCategorie] = useState("");
   const [filtreNiveau,    setFiltreNiveau]    = useState("");
   const [genererEnCoursId, setGenererEnCoursId] = useState(null);
-  const [statutRevision,  setStatutRevision]  = useState(null);
-  const [marquerReviseEnCours, setMarquerReviseEnCours] = useState(false);
   const [telechargementPdf, setTelechargementPdf] = useState(false);
   const [risqueASupprimer, setRisqueASupprimer] = useState(null);
   const [suppressionEnCours, setSuppressionEnCours] = useState(false);
@@ -309,34 +202,11 @@ function DUERPPage() {
     }
   };
 
-  const chargerStatutRevision = async () => {
-    try {
-      const res = await api.get("/risques/statut-revision");
-      setStatutRevision(res.data.data);
-    } catch (e) {
-      console.error("Erreur chargement statut de révision:", e);
-    }
-  };
-
   useEffect(() => {
     charger();
     chargerMatrice();
-    chargerStatutRevision();
     api.get("/sites").then((r) => setSites(r.data.data || [])).catch(() => {});
   }, []);
-
-  const marquerRevise = async () => {
-    setMarquerReviseEnCours(true);
-    try {
-      const res = await api.post("/risques/marquer-revise");
-      setStatutRevision(res.data.data);
-      toast.success("DUERP marqué comme révisé");
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Erreur lors de la mise à jour de la révision.");
-    } finally {
-      setMarquerReviseEnCours(false);
-    }
-  };
 
   const telechargerPdf = async () => {
     setTelechargementPdf(true);
@@ -451,11 +321,20 @@ function DUERPPage() {
           <h1 className="text-2xl font-bold text-navy">Évaluation des risques</h1>
           <p className="text-xs text-[#94A3B8] mt-0.5">Tableau de bord <span className="mx-1">›</span> DUERP</p>
         </div>
-        <button onClick={telechargerPdf} disabled={telechargementPdf}
-          className="shrink-0 flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
-          <FileDown size={14} strokeWidth={2.2} />
-          {telechargementPdf ? "Génération…" : "Exporter le registre PDF"}
-        </button>
+        <div className="shrink-0 flex items-center gap-2">
+          <button onClick={telechargerPdf} disabled={telechargementPdf}
+            className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
+            <FileDown size={14} strokeWidth={2.2} />
+            {telechargementPdf ? "Génération…" : "Exporter le registre PDF"}
+          </button>
+          {peutGerer && (
+            <button onClick={ouvrirCreation}
+              className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white rounded-md bg-navy hover:bg-navy/90 transition-colors">
+              <Plus size={14} strokeWidth={2.2} />
+              Identifier un risque
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Barre de filtres persistante ── */}
@@ -497,113 +376,96 @@ function DUERPPage() {
         <span className="text-xs text-[#94A3B8] pb-2 ml-auto shrink-0">{filtres.length} résultat{filtres.length !== 1 ? "s" : ""}</span>
       </div>
 
-      {/* ── Disposition 2 colonnes ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Colonne principale */}
-        <div className="lg:col-span-8 space-y-5">
-          <MatriceRisques cellules={matrice} filtreCase={filtreCase} onFiltrer={setFiltreCase} />
+      {/* ── Matrice en haut, Registre pleine largeur en dessous ── */}
+      <div className="space-y-5">
+        <MatriceRisques cellules={matrice} filtreCase={filtreCase} onFiltrer={setFiltreCase} />
 
-          {chargement ? (
-            <p className="text-sm text-[#64748B]">Chargement...</p>
-          ) : (
-            <div className="border border-[#E2E8F0] rounded-xl overflow-hidden bg-white">
-              <div className="px-5 py-4 border-b border-[#E2E8F0]">
-                <p className="text-[15px] font-semibold text-[#1E293B]">Registre des risques</p>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[980px] text-sm">
-                  <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
-                    <tr>
-                      {["Danger", "Catégorie", "Zone", "Probabilité", "Gravité", "Initial", "Résiduel", "Mesures", peutGerer ? "Action" : null].filter(Boolean).map((h) => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#F1F5F9]">
-                    {affiches.length === 0 ? (
-                      <tr><td colSpan={peutGerer ? 9 : 8} className="px-4 py-12 text-center text-[#94A3B8]">
-                        {recherche || filtresActifs ? "Aucun risque ne correspond aux critères." : "Aucun risque enregistré"}
-                      </td></tr>
-                    ) : (
-                      affiches.map((r) => {
-                        const peutGenererAction = peutGerer && (r.niveauQualitatif === "ELEVE" || r.niveauQualitatif === "CRITIQUE");
-                        return (
-                          <tr key={r.id} onClick={() => peutGerer && ouvrirModification(r)}
-                            className={`hover:bg-[#F8FAFC] transition-colors ${peutGerer ? "cursor-pointer" : ""}`}>
-                            <td className="px-4 py-3 font-medium">
-                              <Link to={`/duerp/${r.id}`} onClick={(e) => e.stopPropagation()}
-                                className="text-navy hover:underline">
-                                {r.danger}
-                              </Link>
-                            </td>
-                            <td className="px-4 py-3 text-[#64748B]">{CATEGORIES[r.categorie] ?? r.categorie}</td>
-                            <td className="px-4 py-3 text-[#64748B]">{r.zone || "—"}</td>
-                            <td className="px-4 py-3 text-[#64748B]">{LABELS_PROBABILITE[r.probabilite]}</td>
-                            <td className="px-4 py-3 text-[#64748B]">{LABELS_GRAVITE[r.gravite]}</td>
-                            <td className="px-4 py-3"><BadgeNiveau niveau={r.niveauQualitatif} /></td>
-                            <td className="px-4 py-3"><BadgeNiveau niveau={r.niveauQualitatifResiduel} /></td>
-                            <td className="px-4 py-3 text-[#64748B] max-w-[200px] truncate">{r.mesuresPrevention || "—"}</td>
-                            {peutGerer && (
-                              <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                                <div className="flex items-center gap-2">
-                                  {peutGenererAction ? (
-                                    r.nombreActions > 0 ? (
-                                      <Link to="/actions" className="text-xs text-navy hover:underline italic">
-                                        Action {LABELS_STATUT_ACTION[r.actions?.[0]?.statut] ?? "générée"}
-                                      </Link>
-                                    ) : (
-                                      <button onClick={() => genererAction(r)} disabled={genererEnCoursId === r.id}
-                                        className="px-2.5 py-1 text-xs font-semibold rounded-md text-white bg-[#EA580C] hover:bg-[#EA580C]/90 disabled:opacity-50 transition-colors">
-                                        {genererEnCoursId === r.id ? "…" : "Générer une action"}
-                                      </button>
-                                    )
-                                  ) : (
-                                    <span className="text-[#94A3B8]">—</span>
-                                  )}
-                                  <button onClick={() => setRisqueASupprimer(r)} title="Supprimer ce risque"
-                                    className="shrink-0 p-1.5 rounded-md text-[#94A3B8] hover:text-[#DC2626] hover:bg-red-50 transition-colors">
-                                    <Trash2 size={14} strokeWidth={2} />
-                                  </button>
-                                </div>
-                              </td>
-                            )}
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-[#E2E8F0] bg-[#F8FAFC]">
-                  <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                    className="px-3 py-1.5 text-xs font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
-                    ← Précédent
-                  </button>
-                  <span className="text-xs text-[#64748B]">Page {page} / {totalPages}</span>
-                  <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                    className="px-3 py-1.5 text-xs font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
-                    Suivant →
-                  </button>
-                </div>
-              )}
+        {chargement ? (
+          <p className="text-sm text-[#64748B]">Chargement...</p>
+        ) : (
+          <div className="border border-[#E2E8F0] rounded-xl overflow-hidden bg-white">
+            <div className="px-5 py-4 border-b border-[#E2E8F0]">
+              <p className="text-[15px] font-semibold text-[#1E293B]">Registre des risques</p>
             </div>
-          )}
-        </div>
-
-        {/* Colonne latérale */}
-        <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-6 self-start">
-          {peutGerer && (
-            <button onClick={ouvrirCreation}
-              className="w-full flex items-center justify-center gap-2 py-4 px-5 text-sm font-semibold text-white rounded-xl bg-navy hover:bg-navy/90 transition-colors shadow-sm">
-              <Plus size={18} strokeWidth={2.2} />
-              Identifier un risque
-            </button>
-          )}
-          <BarreRepartition risques={risques} />
-          <StatutRevision statut={statutRevision} onMarquerRevise={marquerRevise} enCours={marquerReviseEnCours} peutGerer={peutGerer} />
-          <RisquesPrioritaires risques={risques} onGenerer={genererAction} genererEnCoursId={genererEnCoursId} />
-        </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[980px] text-sm">
+                <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
+                  <tr>
+                    {["Danger", "Catégorie", "Zone", "Probabilité", "Gravité", "Initial", "Résiduel", "Mesures", peutGerer ? "Action" : null].filter(Boolean).map((h) => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F1F5F9]">
+                  {affiches.length === 0 ? (
+                    <tr><td colSpan={peutGerer ? 9 : 8} className="px-4 py-12 text-center text-[#94A3B8]">
+                      {recherche || filtresActifs ? "Aucun risque ne correspond aux critères." : "Aucun risque enregistré"}
+                    </td></tr>
+                  ) : (
+                    affiches.map((r) => {
+                      const peutGenererAction = peutGerer && (r.niveauQualitatif === "ELEVE" || r.niveauQualitatif === "CRITIQUE");
+                      return (
+                        <tr key={r.id} onClick={() => peutGerer && ouvrirModification(r)}
+                          className={`hover:bg-[#F8FAFC] transition-colors ${peutGerer ? "cursor-pointer" : ""}`}>
+                          <td className="px-4 py-3 font-medium">
+                            <Link to={`/duerp/${r.id}`} onClick={(e) => e.stopPropagation()}
+                              className="text-navy hover:underline">
+                              {r.danger}
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3 text-[#64748B]">{CATEGORIES[r.categorie] ?? r.categorie}</td>
+                          <td className="px-4 py-3 text-[#64748B]">{r.zone || "—"}</td>
+                          <td className="px-4 py-3 text-[#64748B]">{LABELS_PROBABILITE[r.probabilite]}</td>
+                          <td className="px-4 py-3 text-[#64748B]">{LABELS_GRAVITE[r.gravite]}</td>
+                          <td className="px-4 py-3"><BadgeNiveau niveau={r.niveauQualitatif} /></td>
+                          <td className="px-4 py-3"><BadgeNiveau niveau={r.niveauQualitatifResiduel} /></td>
+                          <td className="px-4 py-3 text-[#64748B] max-w-[200px] truncate">{r.mesuresPrevention || "—"}</td>
+                          {peutGerer && (
+                            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center gap-2">
+                                {peutGenererAction ? (
+                                  r.nombreActions > 0 ? (
+                                    <Link to="/actions" className="text-xs text-navy hover:underline italic">
+                                      Action {LABELS_STATUT_ACTION[r.actions?.[0]?.statut] ?? "générée"}
+                                    </Link>
+                                  ) : (
+                                    <button onClick={() => genererAction(r)} disabled={genererEnCoursId === r.id}
+                                      className="px-2.5 py-1 text-xs font-semibold rounded-md text-white bg-[#EA580C] hover:bg-[#EA580C]/90 disabled:opacity-50 transition-colors">
+                                      {genererEnCoursId === r.id ? "…" : "Générer une action"}
+                                    </button>
+                                  )
+                                ) : (
+                                  <span className="text-[#94A3B8]">—</span>
+                                )}
+                                <button onClick={() => setRisqueASupprimer(r)} title="Supprimer ce risque"
+                                  className="shrink-0 p-1.5 rounded-md text-[#94A3B8] hover:text-[#DC2626] hover:bg-red-50 transition-colors">
+                                  <Trash2 size={14} strokeWidth={2} />
+                                </button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-[#E2E8F0] bg-[#F8FAFC]">
+                <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                  className="px-3 py-1.5 text-xs font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
+                  ← Précédent
+                </button>
+                <span className="text-xs text-[#64748B]">Page {page} / {totalPages}</span>
+                <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                  className="px-3 py-1.5 text-xs font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition">
+                  Suivant →
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Modale de création / modification ── */}
