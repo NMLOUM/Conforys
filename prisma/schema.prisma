@@ -698,6 +698,7 @@ enum ThemeFormation {
   DECHETS
   PREMIERS_SECOURS
   TRAVAIL_HAUTEUR
+  ACCUEIL_SECURITE // Induction sécurité des nouveaux arrivants (employés, sous-traitants, visiteurs)
 }
 
 model Formation {

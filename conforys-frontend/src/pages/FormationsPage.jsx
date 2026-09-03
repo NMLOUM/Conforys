@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
-import { Flame, ShieldCheck, Zap, Trash2, HeartPulse, Mountain } from "lucide-react";
+import { Flame, ShieldCheck, Zap, Trash2, HeartPulse, Mountain, UserCheck } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import { useRole } from "../hooks/useRole";
@@ -20,7 +20,23 @@ const THEMES = {
   DECHETS:             { label: "Déchets",               Icone: Trash2 },
   PREMIERS_SECOURS:    { label: "Premiers secours",     Icone: HeartPulse },
   TRAVAIL_HAUTEUR:     { label: "Travail en hauteur",   Icone: Mountain },
+  ACCUEIL_SECURITE:    { label: "Accueil sécurité",     Icone: UserCheck },
 };
+
+// ── Pastille de thème — affichée sous le titre de chaque session pour
+// distinguer clairement les inductions "Accueil sécurité" des autres modules ──
+function BadgeTheme({ theme }) {
+  const t = THEMES[theme];
+  if (!t) return null;
+  const Icone = t.Icone;
+  return (
+    <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-medium"
+      style={{ backgroundColor: "rgba(13,43,78,0.06)", color: "#0D2B4E" }}>
+      <Icone size={10} strokeWidth={2} />
+      {t.label}
+    </span>
+  );
+}
 
 // ── Statut de session — palette dédiée (navy/orange/vert/gris) ──────────────
 const CONFIG_STATUT = {
@@ -296,6 +312,7 @@ function FormationsPage() {
                         <td className="px-4 py-3">
                           <p className="font-medium text-[#1E293B]">{f.titre}</p>
                           <p className="text-xs text-[#94A3B8] mt-0.5">{f.formateur}</p>
+                          <BadgeTheme theme={f.theme} />
                         </td>
                         <td className="px-4 py-3 text-[#64748B] whitespace-nowrap">
                           {f.dateDebut ? new Date(f.dateDebut).toLocaleDateString("fr-FR") : "—"}

@@ -74,8 +74,20 @@ function Spinner({ size = 4 }) {
 // ── Bandeau visuel EPI — photo si disponible, sinon fond coloré + icône ──────
 
 function BandeauEpi({ photoUrl, type }) {
-  if (photoUrl) {
-    return <img src={photoUrl} alt={type || "EPI"} className="w-full h-full object-cover" />;
+  // Si l'image hébergée (ImgBB) échoue à charger — réseau, hébergement
+  // temporairement indisponible, etc. — on retombe sur l'icône par défaut
+  // au lieu de laisser un cadre vide/cassé.
+  const [erreurChargement, setErreurChargement] = useState(false);
+
+  if (photoUrl && !erreurChargement) {
+    // object-contain : la photo entière reste visible (quitte à laisser un
+    // léger bandeau vide sur les côtés) au lieu d'être rognée par object-cover.
+    return (
+      <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: C.surfaceContainerLow }}>
+        <img src={photoUrl} alt={type || "EPI"} className="w-full h-full object-contain"
+          onError={() => setErreurChargement(true)} />
+      </div>
+    );
   }
   return (
     <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: C.surfaceContainerLow }}>
@@ -502,6 +514,13 @@ function EpisPage() {
   };
 
   const onSubmit = async (data) => {
+    // Filet de sécurité : si la photo est encore en cours d'envoi vers ImgBB,
+    // `photoUrl` n'a pas encore sa valeur définitive — enregistrer maintenant
+    // sauvegarderait l'EPI sans photo, silencieusement.
+    if (uploadPhoto) {
+      setErreurForm("Patientez la fin de l'envoi de la photo avant d'enregistrer.");
+      return;
+    }
     setErreurForm("");
     const payload = {
       ...data,
@@ -818,7 +837,7 @@ function EpisPage() {
                   <div className="flex items-center gap-3">
                     <div className="w-16 h-16 rounded-lg flex items-center justify-center overflow-hidden shrink-0" style={{ backgroundColor: C.surface }}>
                       {apercuPhoto ? (
-                        <img src={apercuPhoto} alt="Aperçu" className="w-full h-full object-cover" />
+                        <img src={apercuPhoto} alt="Aperçu" className="w-full h-full object-contain" />
                       ) : (
                         <ShieldCheck size={22} color={C.primary} strokeWidth={1.6} />
                       )}
@@ -878,10 +897,10 @@ function EpisPage() {
                     className="px-4 py-2 text-sm font-semibold rounded-lg border" style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>
                     Annuler
                   </button>
-                  <button type="submit" disabled={isSubmitting}
+                  <button type="submit" disabled={isSubmitting || uploadPhoto}
                     className="px-4 py-2 text-sm font-semibold text-white rounded-lg disabled:opacity-50 transition-opacity hover:opacity-90"
                     style={{ backgroundColor: C.primary }}>
-                    {isSubmitting ? "Enregistrement…" : "Enregistrer"}
+                    {uploadPhoto ? "Envoi de la photo…" : isSubmitting ? "Enregistrement…" : "Enregistrer"}
                   </button>
                 </div>
               </form>

@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "ThemeFormation" ADD VALUE 'ACCUEIL_SECURITE';

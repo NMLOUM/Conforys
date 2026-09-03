@@ -25,14 +25,6 @@ const CONFIG_TYPE = {
   QUALITE:       { text: "#EA580C", bg: "#FEF3E2" },
 };
 
-// EPI et Électrique partagent le type SECURITE (donnée inchangée), mais
-// méritent leur propre teinte d'icône pour se distinguer visuellement des
-// autres templates "Sécurité" sur la bibliothèque — navy, comme demandé.
-const ACCENT_NAVY = { text: "#0D2B4E", bg: "#E7EDF5" };
-const IDS_ACCENT_NAVY = ["epi", "electrique"];
-const accentTemplate = (template) =>
-  IDS_ACCENT_NAVY.includes(template.id) ? ACCENT_NAVY : (CONFIG_TYPE[template.type] ?? ACCENT_NAVY);
-
 function BadgeType({ type }) {
   const c = CONFIG_TYPE[type] ?? { text: "#64748B", bg: "#F1F5F9" };
   return (
@@ -43,39 +35,12 @@ function BadgeType({ type }) {
   );
 }
 
-// ── Icônes des templates — traits simples, teintés selon la catégorie ───────
-
-const TRACES_ICONES = {
-  "securite-chantier": "M12 2 4 5v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V5l-8-3Z M9 12l2 2 4-4",
-  "incendie":          "M12 2c1 3-2 4-2 7a4 4 0 0 0 8 0c0-2-1-3-1-3 1 4-1 5-2 5-2 0-3-2-1-4 1-1 1-3-2-5Z",
-  "epi":               "M12 2 4 5v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V5l-8-3Z",
-  "environnement":     "M5 20c8 0 14-6 14-14V4h-2C9 4 5 10 5 18v2Z M5 20c2-4 5-7 9-9",
-  "hygiene":           "M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11Z",
-  "electrique":        "M13 2 4 14h6l-1 8 9-12h-6l1-8Z",
-};
-
-function IconeTemplate({ id, couleur }) {
-  const trace = TRACES_ICONES[id];
-  return (
-    <div
-      className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-      style={{ backgroundColor: couleur.bg }}
-    >
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={couleur.text} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d={trace} />
-      </svg>
-    </div>
-  );
-}
-
 // ── Carte de la bibliothèque de templates — coins arrondis, couleurs par catégorie ──
 
 function CarteBibliotheque({ template, onDemarrer }) {
-  const couleur = accentTemplate(template);
   return (
     <div className="h-full flex flex-col p-4 rounded-2xl border border-[#E2E8F0] bg-white hover:border-navy/40 transition-colors">
-      <div className="flex items-start justify-between mb-3">
-        <IconeTemplate id={template.id} couleur={couleur} />
+      <div className="flex items-start justify-end mb-3">
         <BadgeType type={template.type} />
       </div>
       <p className="text-sm font-semibold text-[#1E293B] mb-1">{template.nom}</p>
@@ -313,7 +278,6 @@ function AuditsPage() {
                     <div>
                       <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Template</label>
                       <div className="flex items-center gap-2 px-3 py-2.5 rounded-md border border-[#E2E8F0] bg-[#F8FAFC]">
-                        {templateChoisi && <IconeTemplate id={templateChoisi.id} couleur={accentTemplate(templateChoisi)} />}
                         <span className="text-sm font-medium text-[#1E293B]">{templateChoisi?.nom ?? "—"}</span>
                       </div>
                     </div>

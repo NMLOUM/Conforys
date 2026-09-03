@@ -15,7 +15,7 @@ const formationSchema = z.object({
     { errorMap: () => ({ message: "Statut invalide." }) }
   ).optional(),
   theme: z.enum(
-    ["INCENDIE", "EPI", "RISQUES_ELECTRIQUES", "DECHETS", "PREMIERS_SECOURS", "TRAVAIL_HAUTEUR"],
+    ["INCENDIE", "EPI", "RISQUES_ELECTRIQUES", "DECHETS", "PREMIERS_SECOURS", "TRAVAIL_HAUTEUR", "ACCUEIL_SECURITE"],
     { errorMap: () => ({ message: "Thème invalide." }) }
   ).optional().or(z.null()),
   siteId: z

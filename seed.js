@@ -56,15 +56,16 @@ async function main() {
   // ── UTILISATEURS ──────────────────────────────────────────────────────────
   const h = (pwd) => bcrypt.hash(pwd, 10);
 
-  const [admin, resp1, resp2, emp1, emp2, emp3] = await Promise.all([
+  const [admin, resp1, resp2, resp3, emp1, emp2, emp3] = await Promise.all([
     prisma.user.create({ data: { nom: "DIALLO", prenom: "Mamadou",  email: "m.diallo@petromer.sn", password: await h("Admin123!"),   role: "ADMIN",            entrepriseId: entreprise.id } }),
     prisma.user.create({ data: { nom: "NDIAYE", prenom: "Fatou",    email: "f.ndiaye@petromer.sn",  password: await h("Qhse2026!"),   role: "RESPONSABLE_QHSE", entrepriseId: entreprise.id } }),
     prisma.user.create({ data: { nom: "SOW",    prenom: "Ibrahima", email: "i.sow@petromer.sn",     password: await h("Qhse2026!"),   role: "RESPONSABLE_QHSE", entrepriseId: entreprise.id } }),
+    prisma.user.create({ data: { nom: "Loum",   prenom: "Mamadou",  email: "m.loum@dangote.sn",     password: await h("Qhse2026"),    role: "RESPONSABLE_QHSE", entrepriseId: entreprise.id } }),
     prisma.user.create({ data: { nom: "FALL",   prenom: "Cheikh",   email: "c.fall@petromer.sn",    password: await h("Employe123!"), role: "EMPLOYE",          entrepriseId: entreprise.id } }),
     prisma.user.create({ data: { nom: "SARR",   prenom: "Aminata",  email: "a.sarr@petromer.sn",    password: await h("Employe123!"), role: "EMPLOYE",          entrepriseId: entreprise.id } }),
     prisma.user.create({ data: { nom: "MBAYE",  prenom: "Moussa",   email: "m.mbaye@petromer.sn",   password: await h("Employe123!"), role: "EMPLOYE",          entrepriseId: entreprise.id } }),
   ]);
-  console.log("Utilisateurs créés : 6");
+  console.log("Utilisateurs créés : 7");
 
   // ── INCIDENTS ─────────────────────────────────────────────────────────────
   // Un par statut (BROUILLON/OUVERT/EN_COURS/CLOS/REJETE) et par gravité, pour
@@ -355,7 +356,7 @@ async function main() {
   const aud1 = await prisma.audit.create({
     data: {
       reference: r("AUD", 1),
-      titre: "Audit sécurité incendie — Raffinerie Q1",
+      titre: "Audit sécurité incendie de la Raffinerie Q1",
       type: "SECURITE",
       statut: "TERMINE",
       datePrevue: ilYaNJours(212),
@@ -404,7 +405,7 @@ async function main() {
   const aud3 = await prisma.audit.create({
     data: {
       reference: r("AUD", 3),
-      titre: "Audit environnemental — gestion des déchets",
+      titre: "Audit environnemental de la gestion des déchets",
       type: "ENVIRONNEMENT",
       statut: "EN_COURS",
       datePrevue: ilYaNJours(15),
@@ -424,7 +425,7 @@ async function main() {
   const aud4 = await prisma.audit.create({
     data: {
       reference: r("AUD", 4),
-      titre: "Audit hygiène — cafétéria et vestiaires",
+      titre: "Audit hygiène de la cafétéria et des vestiaires",
       type: "HYGIENE",
       statut: "PLANIFIE",
       datePrevue: dansNJours(30),
@@ -443,7 +444,7 @@ async function main() {
   const aud5 = await prisma.audit.create({
     data: {
       reference: r("AUD", 5),
-      titre: "Audit sécurité — terminal maritime",
+      titre: "Audit sécurité du terminal maritime",
       type: "SECURITE",
       statut: "PLANIFIE",
       datePrevue: dansNJours(75),
@@ -745,11 +746,28 @@ async function main() {
     data: {
       titre: "Accueil sécurité des nouveaux arrivants",
       formateur: "Service QHSE interne",
+      theme: "ACCUEIL_SECURITE",
       dateDebut: ilYaNJours(30), dateFin: ilYaNJours(30),
       dureeHeures: 3,
       statut: "TERMINEE",
       siteId: siteThies.id,
       participations: { create: [{ participantId: emp3.id, present: true, valide: true, dateValidation: ilYaNJours(30) }] },
+    },
+  });
+
+  // Induction sécurité d'un intervenant externe avant le début de sa mission
+  // — même module que l'accueil des nouveaux employés, mais pas encore
+  // réalisée (PLANIFIEE, aucun participant encore marqué présent/validé).
+  await prisma.formation.create({
+    data: {
+      titre: "Induction sécurité pour intervenant sous-traitant",
+      formateur: "Service QHSE interne",
+      theme: "ACCUEIL_SECURITE",
+      dateDebut: dansNJours(5),
+      dureeHeures: 2,
+      statut: "PLANIFIEE",
+      siteId: siteDakar.id,
+      participations: { create: [{ participantId: emp2.id }] },
     },
   });
 
@@ -768,7 +786,7 @@ async function main() {
 
   await prisma.formation.create({
     data: {
-      titre: "Gestes et postures — prévention des troubles musculo-squelettiques",
+      titre: "Gestes et postures : prévention des troubles musculo-squelettiques",
       formateur: "Cabinet ERGONOVA Dakar",
       dateDebut: dansNJours(45),
       dureeHeures: 4,
@@ -777,7 +795,7 @@ async function main() {
       participations: { create: [{ participantId: emp1.id }, { participantId: emp3.id }] },
     },
   });
-  console.log("Formations créées : 7 (5 terminées, 2 planifiées)");
+  console.log("Formations créées : 8 (5 terminées, 3 planifiées)");
 
   // ── HABILITATIONS ─────────────────────────────────────────────────────────
   await prisma.habilitation.createMany({
@@ -814,6 +832,7 @@ async function main() {
   console.log("  ADMIN            → m.diallo@petromer.sn  / Admin123!");
   console.log("  RESPONSABLE_QHSE → f.ndiaye@petromer.sn  / Qhse2026!");
   console.log("  RESPONSABLE_QHSE → i.sow@petromer.sn     / Qhse2026!");
+  console.log("  RESPONSABLE_QHSE → m.loum@dangote.sn     / Qhse2026");
   console.log("  EMPLOYE          → c.fall@petromer.sn    / Employe123!");
   console.log("  EMPLOYE          → a.sarr@petromer.sn    / Employe123!");
   console.log("  EMPLOYE          → m.mbaye@petromer.sn   / Employe123!");

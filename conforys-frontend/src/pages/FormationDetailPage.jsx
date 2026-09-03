@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { Flame, ShieldCheck, Zap, Trash2, HeartPulse, Mountain } from "lucide-react";
+import { Flame, ShieldCheck, Zap, Trash2, HeartPulse, Mountain, UserCheck } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import { useRole } from "../hooks/useRole";
@@ -13,6 +13,7 @@ const THEMES = {
   DECHETS:             { label: "Déchets",               Icone: Trash2 },
   PREMIERS_SECOURS:    { label: "Premiers secours",     Icone: HeartPulse },
   TRAVAIL_HAUTEUR:     { label: "Travail en hauteur",   Icone: Mountain },
+  ACCUEIL_SECURITE:    { label: "Accueil sécurité",     Icone: UserCheck },
 };
 
 const CONFIG_STATUT = {
