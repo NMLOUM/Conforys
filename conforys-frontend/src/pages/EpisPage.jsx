@@ -10,6 +10,7 @@ import {
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import Badge from "../components/ui/Badge";
+import ActionButton from "../components/ui/ActionButton";
 import { useRole } from "../hooks/useRole";
 import { useTable } from "../hooks/useTable";
 import { epiSchema } from "../validators/epiSchema";
@@ -616,20 +617,20 @@ function EpisPage() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[600px] text-sm">
-                  <thead style={{ backgroundColor: C.surfaceContainerLow, color: C.onSurfaceVariant }}>
+                  <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                     <tr>
                       {["Désignation", "Type", "Poste", "Affecté le", "Statut"].map((h) => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide">{h}</th>
+                        <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">{h}</th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y" style={{ borderColor: C.outlineVariant }}>
+                  <tbody className="divide-y divide-[#F1F5F9]">
                     {mesEpis.map((a) => (
                       <tr key={a.id}>
-                        <td className="px-4 py-3 font-semibold" style={{ color: "#1E293B" }}>{a.epi?.designation}</td>
-                        <td className="px-4 py-3" style={{ color: C.onSurfaceVariant }}>{a.epi?.type || "Non renseigné"}</td>
-                        <td className="px-4 py-3" style={{ color: C.onSurfaceVariant }}>{a.poste || "—"}</td>
-                        <td className="px-4 py-3" style={{ color: C.onSurfaceVariant }}>{formatDateAffichage(a.dateAffectation) ?? "—"}</td>
+                        <td className="px-4 py-3 font-semibold text-[#1E293B]">{a.epi?.designation}</td>
+                        <td className="px-4 py-3 text-[#475569]">{a.epi?.type || "Non renseigné"}</td>
+                        <td className="px-4 py-3 text-[#64748B]">{a.poste || "—"}</td>
+                        <td className="px-4 py-3 text-[#64748B]">{formatDateAffichage(a.dateAffectation) ?? "—"}</td>
                         <td className="px-4 py-3"><Badge variant={a.statut} /></td>
                       </tr>
                     ))}
@@ -713,56 +714,50 @@ function EpisPage() {
             )}
 
             {/* ── Tableau détaillé ── */}
-            <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden mb-6">
-              <div className="p-5" style={{ backgroundColor: C.surface }}>
+            <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white mb-6">
+              <div className="px-5 py-4 border-b border-[#E2E8F0]">
                 <h3 className="text-[15px] font-semibold text-[#1E293B]">Inventaire détaillé</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[720px] text-sm">
-                  <thead style={{ backgroundColor: C.surfaceContainerLow, color: C.onSurfaceVariant }}>
+                  <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                     <tr>
                       {["Désignation", "Type", "Site", "Stock", "Seuil", "Statut", "Péremption", "Actions"].map((h) => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide">{h}</th>
+                        <th key={h} className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">{h}</th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y" style={{ borderColor: C.outlineVariant }}>
+                  <tbody className="divide-y divide-[#F1F5F9]">
                     {affiches.length === 0 ? (
-                      <tr><td colSpan={8} className="px-4 py-12 text-center" style={{ color: C.onSurfaceVariant }}>Aucun EPI à afficher.</td></tr>
+                      <tr><td colSpan={8} className="px-4 py-12 text-center text-[#94A3B8]">Aucun EPI à afficher.</td></tr>
                     ) : (
                       affiches.map((epi) => {
                         const enAlerteStock = epi.quantite <= epi.seuilAlerte;
                         const perime = estPerime(epi.datePeremption);
                         const peremption = formatDateAffichage(epi.datePeremption);
                         return (
-                          <tr key={epi.id} className="hover:bg-[#eff4ff] transition-colors">
-                            <td className="px-4 py-3 font-semibold" style={{ color: "#1E293B" }}>{epi.designation}</td>
-                            <td className="px-4 py-3" style={{ color: C.onSurfaceVariant }}>{epi.type || "Non renseigné"}</td>
-                            <td className="px-4 py-3" style={{ color: C.onSurfaceVariant }}>{epi.site?.nom ?? "Non renseigné"}</td>
+                          <tr key={epi.id} className="hover:bg-[#F8FAFC] transition-colors">
+                            <td className="px-4 py-3 font-semibold text-[#1E293B]">{epi.designation}</td>
+                            <td className="px-4 py-3 text-[#475569]">{epi.type || "Non renseigné"}</td>
+                            <td className="px-4 py-3 text-[#64748B]">{epi.site?.nom ?? "Non renseigné"}</td>
                             <td className="px-4 py-3 font-semibold" style={{ color: enAlerteStock ? "#EA580C" : "#1E293B" }}>{epi.quantite}</td>
-                            <td className="px-4 py-3" style={{ color: C.onSurfaceVariant }}>{epi.seuilAlerte}</td>
+                            <td className="px-4 py-3 text-[#64748B]">{epi.seuilAlerte}</td>
                             <td className="px-4 py-3"><Badge variant={epi.niveauAlerte} /></td>
                             <td className="px-4 py-3">
-                              {perime ? <Badge variant="PERIME" /> : <span style={{ color: C.onSurfaceVariant }}>{peremption ?? "Non renseignée"}</span>}
+                              {perime ? <Badge variant="PERIME" /> : <span className="text-[#64748B]">{peremption ?? "Non renseignée"}</span>}
                             </td>
                             <td className="px-4 py-3">
                               {peutGerer && (
                                 <div className="flex items-center gap-2">
-                                  <button onClick={() => ouvrirModification(epi)}
-                                    className="px-2.5 py-1 text-xs font-semibold border rounded-lg transition-colors"
-                                    style={{ borderColor: C.outlineVariant, color: C.primary }}>
+                                  <ActionButton variant="outline" onClick={() => ouvrirModification(epi)}>
                                     Modifier
-                                  </button>
-                                  <button onClick={() => ouvrirModalInspection(epi)}
-                                    className="px-2.5 py-1 text-xs font-semibold border rounded-lg transition-colors"
-                                    style={{ borderColor: C.outlineVariant, color: C.primary }}>
+                                  </ActionButton>
+                                  <ActionButton variant="outline" onClick={() => ouvrirModalInspection(epi)}>
                                     Inspecter
-                                  </button>
-                                  <button onClick={() => ouvrirModalAffecter(epi)} disabled={epi.quantite <= 0}
-                                    className="px-2.5 py-1 text-xs font-semibold text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-opacity hover:opacity-90"
-                                    style={{ backgroundColor: C.primary }}>
+                                  </ActionButton>
+                                  <ActionButton variant="primary" disabled={epi.quantite <= 0} onClick={() => ouvrirModalAffecter(epi)}>
                                     Affecter
-                                  </button>
+                                  </ActionButton>
                                 </div>
                               )}
                             </td>
@@ -774,16 +769,14 @@ function EpisPage() {
                 </table>
               </div>
               {totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3" style={{ backgroundColor: C.surface }}>
+                <div className="flex items-center justify-between px-4 py-3 border-t border-[#E2E8F0] bg-[#F8FAFC]">
                   <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                    className="px-3 py-1.5 text-xs font-semibold border rounded-lg hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition"
-                    style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>
+                    className="px-3 py-1.5 text-xs font-medium border border-[#E2E8F0] rounded-md text-[#475569] hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     ← Précédent
                   </button>
-                  <span className="text-xs" style={{ color: C.onSurfaceVariant }}>Page {page} / {totalPages}</span>
+                  <span className="text-xs text-[#64748B]">Page {page} / {totalPages}</span>
                   <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                    className="px-3 py-1.5 text-xs font-semibold border rounded-lg hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition"
-                    style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>
+                    className="px-3 py-1.5 text-xs font-medium border border-[#E2E8F0] rounded-md text-[#475569] hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     Suivant →
                   </button>
                 </div>

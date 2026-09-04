@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  AlertTriangle, ClipboardCheck, ShieldCheck, BadgeCheck, FileWarning, Eye, Download,
-} from "lucide-react";
+import { Eye, Download } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import GraviteChart from "../components/dashboard/GraviteChart";
@@ -19,16 +17,11 @@ const TYPE_LABEL = {
   INCIDENT_ENVIRONNEMENTAL: "Environnemental",
 };
 
-// ── Carte KPI (icône + libellé + valeur + sous-info ou barre de progression) ──
-function KpiCard({ icon: Icon, iconColor = "#0D2B4E", label, value, valueColor, sub, subColor, progress }) {
+// ── Carte KPI (libellé + valeur + sous-info ou barre de progression) ──
+function KpiCard({ iconColor = "#0D2B4E", label, value, valueColor, sub, subColor, progress }) {
   return (
     <div className="bg-white rounded-lg p-4 border border-[#E2E8F0] shadow-sm flex flex-col gap-3">
-      <div className="flex items-start justify-between gap-2">
-        <span className="p-2 rounded-lg shrink-0" style={{ backgroundColor: `${iconColor}1A` }}>
-          <Icon size={18} color={iconColor} />
-        </span>
-        <span className="text-[11px] font-medium uppercase tracking-wide text-[#94A3B8] text-right">{label}</span>
-      </div>
+      <span className="text-[11px] font-medium uppercase tracking-wide text-[#94A3B8]">{label}</span>
       <div>
         <p className="text-xl font-bold leading-none" style={{ color: valueColor || "#0D2B4E" }}>{value}</p>
         {progress != null ? (
@@ -232,7 +225,6 @@ function Dashboard() {
           {/* ── LIGNE KPI ───────────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
             <KpiCard
-              icon={AlertTriangle}
               iconColor={evo > 0 ? "#DC2626" : evo < 0 ? "#2E7D32" : "#64748B"}
               label="Ce mois"
               value={stats?.incidentsMoisCourant ?? 0}
@@ -241,7 +233,6 @@ function Dashboard() {
               subColor={tendanceIncidents?.couleur}
             />
             <KpiCard
-              icon={ClipboardCheck}
               iconColor="#0D2B4E"
               label="Audits réalisés"
               value={stats?.auditsMoisCourant ?? 0}
@@ -249,7 +240,6 @@ function Dashboard() {
               sub={`${stats?.tauxConformite ?? 0}% de conformité`}
             />
             <KpiCard
-              icon={ShieldCheck}
               iconColor={
                 (stats?.conformiteEpi ?? 0) >= 80 ? "#2E7D32" :
                 (stats?.conformiteEpi ?? 0) >= 50 ? "#EA580C" : "#DC2626"
@@ -264,7 +254,6 @@ function Dashboard() {
               sub={stats?.episEnAlerte > 0 ? `${stats.episEnAlerte} EPI sous le seuil` : "Stocks conformes"}
             />
             <KpiCard
-              icon={BadgeCheck}
               iconColor={stats?.habilitationsExpirantes > 0 ? "#EA580C" : "#0D2B4E"}
               label="Habilitations"
               value={stats?.habilitationsExpirantes ?? 0}
@@ -273,7 +262,6 @@ function Dashboard() {
               subColor={stats?.habilitationsExpirantes > 0 ? "text-[#EA580C] font-medium" : "text-[#94A3B8]"}
             />
             <KpiCard
-              icon={FileWarning}
               iconColor={stats?.risquesCritiques > 0 ? "#DC2626" : "#0D2B4E"}
               label="Risques DUERP"
               value={stats?.risquesCritiques ?? 0}

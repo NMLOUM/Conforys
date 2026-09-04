@@ -4,6 +4,8 @@ const VARIANTS = {
   FAIBLE:   { bg: "bg-green-50",   text: "text-green-700",   dot: "bg-green-500"   },
   MOYEN:    { bg: "bg-yellow-50",  text: "text-yellow-700",  dot: "bg-yellow-500"  },
   MODEREE:  { bg: "bg-yellow-50",  text: "text-yellow-700",  dot: "bg-yellow-500"  },
+  // Niveau de risque DUERP (distinct de MODEREE : orthographe utilisée côté risques)
+  MODERE:   { bg: "bg-yellow-50",  text: "text-yellow-700",  dot: "bg-yellow-500"  },
   GRAVE:    { bg: "bg-orange-50",  text: "text-orange-700",  dot: "bg-orange-500"  },
   CRITIQUE: { bg: "bg-red-50",     text: "text-red-700",     dot: "bg-red-500"     },
   // Statut incidents
@@ -62,6 +64,8 @@ const VARIANTS = {
   AFFECTATION:   { bg: "bg-indigo-50", text: "text-indigo-700", dot: "bg-indigo-500" },
   RETOUR:        { bg: "bg-green-50",  text: "text-green-700",  dot: "bg-green-500"  },
   INSPECTION:    { bg: "bg-purple-50", text: "text-purple-700", dot: "bg-purple-500" },
+  // Catégorie du journal CAPA : étape d'une action corrective ajoutée/complétée/rouverte
+  ETAPE:         { bg: "bg-purple-50", text: "text-purple-700", dot: "bg-purple-500" },
 };
 
 // Labels lisibles par défaut
@@ -86,6 +90,7 @@ const LABELS = {
   FAIBLE:           "Faible",
   MOYEN:            "Moyen",
   MODEREE:          "Modérée",
+  MODERE:           "Modéré",
   GRAVE:            "Grave",
   CRITIQUE:         "Critique",
   // EPI
@@ -121,6 +126,7 @@ const LABELS = {
   AFFECTATION:       "Affectation",
   RETOUR:            "Retour",
   INSPECTION:        "Inspection",
+  ETAPE:             "Étape",
 };
 
 function Badge({ variant = "EMPLOYE", label, className = "" }) {

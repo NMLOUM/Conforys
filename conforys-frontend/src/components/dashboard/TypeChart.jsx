@@ -7,6 +7,15 @@ const LABELS = {
   INCIDENT_ENVIRONNEMENTAL: "Environnemental",
 };
 
+// Même palette que CONFIGS_TYPE dans IncidentsPage.jsx — une couleur distincte
+// par type d'incident, cohérente dans toute l'app.
+const COULEURS = {
+  ACCIDENT:                 "#DC2626",
+  PRESQU_ACCIDENT:          "#EA580C",
+  SITUATION_DANGEREUSE:     "#CA8A04",
+  INCIDENT_ENVIRONNEMENTAL: "#2E7D32",
+};
+
 function TypeChart({ data }) {
   if (!data?.length) {
     return (
@@ -17,15 +26,11 @@ function TypeChart({ data }) {
   }
 
   const categories = data.map((d) => LABELS[d.name] ?? d.name);
-  const values     = data.map((d) => d.value);
-
-  // Dégradé navy : barre la plus longue → navy plein, les autres plus clairs
-  const maxVal  = Math.max(...values, 1);
-  const colors  = values.map((v) => {
-    const ratio   = 0.45 + 0.55 * (v / maxVal);
-    const channel = Math.round(13 * ratio);   // composante R du navy #0D2B4E
-    return `rgba(${channel}, ${Math.round(43 * ratio)}, ${Math.round(78 * ratio)}, 1)`;
-  });
+  const values      = data.map((d) => d.value);
+  const colors      = data.map((d) => COULEURS[d.name] ?? "#94A3B8");
+  // Marge au-dessus de la barre la plus haute pour que son étiquette de valeur
+  // (positionnée au-dessus, dataLabels.position: "top") ne soit jamais coupée.
+  const yMax = Math.max(1, Math.ceil(Math.max(...values, 1) * 1.3));
 
   const options = {
     chart: {
@@ -35,35 +40,34 @@ function TypeChart({ data }) {
     },
     plotOptions: {
       bar: {
-        horizontal:   true,
+        horizontal:   false,
         borderRadius: 4,
         distributed:  true,
-        barHeight:    "55%",
+        columnWidth:  "45%",
+        dataLabels:   { position: "top" },
       },
     },
     colors,
-    dataLabels: { enabled: false },
-    legend:     { show: false },
+    dataLabels: {
+      enabled: true,
+      offsetY: -18,
+      style: { fontSize: "12px", fontWeight: 600, colors: ["#1E293B"] },
+      formatter: (v) => (v > 0 ? v : ""),
+    },
+    legend: { show: false },
     xaxis: {
       categories,
       axisBorder: { show: false },
       axisTicks:  { show: false },
-      labels: {
-        style:  { colors: "#9ca3af", fontSize: "11px" },
-        formatter: (v) => (Number.isInteger(v) ? v : ""),
-      },
+      labels: { style: { colors: "#6b7280", fontSize: "11px" } },
     },
     yaxis: {
-      labels: {
-        style: { colors: "#6b7280", fontSize: "11px" },
-        maxWidth: 120,
-      },
+      labels: { show: false },
+      max: yMax,
     },
     grid: {
-      borderColor:    "#f1f5f9",
-      xaxis:          { lines: { show: true } },
-      yaxis:          { lines: { show: false } },
-      padding:        { left: 0, right: 8 },
+      show: false,
+      padding: { top: 20, left: 8, right: 8 },
     },
     tooltip: {
       custom: ({ dataPointIndex, series }) => {

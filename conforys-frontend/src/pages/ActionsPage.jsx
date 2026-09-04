@@ -2,8 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
-  Search, ArrowRight,
-  Filter, MoreVertical, ChevronLeft, ChevronRight, PartyPopper,
+  Search, Filter, MoreVertical, History,
 } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
@@ -34,7 +33,6 @@ const C = {
 
 const LABELS_STATUT = { A_FAIRE: "À planifier", EN_COURS: "En cours", TERMINE: "Clôturé", ANNULE: "Annulé" };
 const LABELS_PRIORITE = { FAIBLE: "Faible", MOYEN: "Moyen", ELEVE: "Élevé", CRITIQUE: "Critique" };
-const PRIORITE_POIDS = { CRITIQUE: 4, ELEVE: 3, MOYEN: 2, FAIBLE: 1 };
 
 const ACCENT_PRIORITE = {
   CRITIQUE: C.error,
@@ -366,28 +364,31 @@ function ActionsPage() {
     }
   };
 
-  const kpis = useMemo(() => ({
-    total:    actions.length,
-    aFaire:   actions.filter((a) => a.statut === "A_FAIRE").length,
-    enCours:  actions.filter((a) => a.statut === "EN_COURS").length,
-    enRetard: actions.filter(estEnRetard).length,
-    termine:  actions.filter((a) => a.statut === "TERMINE").length,
-  }), [actions]);
-
-  // Action prioritaire mise en avant : en retard d'abord, puis la plus critique, puis la plus proche de l'échéance
-  const actionPrioritaire = useMemo(() => {
-    const actives = actions.filter((a) => a.statut !== "TERMINE" && a.statut !== "ANNULE");
-    if (actives.length === 0) return null;
-    return [...actives].sort((a, b) => {
-      const retardA = estEnRetard(a), retardB = estEnRetard(b);
-      if (retardA !== retardB) return retardA ? -1 : 1;
-      const poidsA = PRIORITE_POIDS[a.priorite] ?? 0, poidsB = PRIORITE_POIDS[b.priorite] ?? 0;
-      if (poidsA !== poidsB) return poidsB - poidsA;
-      if (!a.dateLimite) return 1;
-      if (!b.dateLimite) return -1;
-      return new Date(a.dateLimite) - new Date(b.dateLimite);
-    })[0];
+  // Répartition mutuellement exclusive (contrairement à un simple comptage par
+  // statut, "en retard" prime sur "à planifier"/"en cours" pour qu'une action
+  // ne soit jamais comptée deux fois — indispensable pour que les segments de
+  // la barre de répartition somment bien à 100 %.
+  const repartition = useMemo(() => {
+    let aFaire = 0, enCours = 0, enRetard = 0, termine = 0, annule = 0;
+    for (const a of actions) {
+      if (estEnRetard(a))            enRetard++;
+      else if (a.statut === "A_FAIRE")  aFaire++;
+      else if (a.statut === "EN_COURS") enCours++;
+      else if (a.statut === "TERMINE")  termine++;
+      else if (a.statut === "ANNULE")   annule++;
+    }
+    return { aFaire, enCours, enRetard, termine, annule, total: actions.length };
   }, [actions]);
+
+  const SEGMENTS_REPARTITION = [
+    { cle: "aFaire",   label: "À planifier", valeur: repartition.aFaire,   couleur: "#94A3B8" },
+    { cle: "enCours",  label: "En cours",    valeur: repartition.enCours,  couleur: "#EA580C" },
+    { cle: "enRetard", label: "En retard",   valeur: repartition.enRetard, couleur: "#DC2626" },
+    { cle: "termine",  label: "Clôturées",   valeur: repartition.termine,  couleur: "#2E7D32" },
+    ...(repartition.annule > 0
+      ? [{ cle: "annule", label: "Annulées", valeur: repartition.annule, couleur: "#CBD5E1" }]
+      : []),
+  ];
 
   const titre = isEmploye ? "Mes actions correctives" : "Actions correctives";
 
@@ -396,128 +397,98 @@ function ActionsPage() {
       <div>
 
         {/* ── En-tête de page ── */}
-        <div className="mb-5">
-          <h1 className="text-2xl font-bold text-navy">{titre}</h1>
-          <p className="text-sm text-[#64748B] mt-0.5">
-            Suivi des actions correctives et préventives (CAPA){isEmploye ? " qui vous sont assignées" : ""}
-          </p>
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-navy">{titre}</h1>
+            <p className="text-sm text-[#64748B] mt-0.5">
+              Suivi des actions correctives et préventives (CAPA){isEmploye ? " qui vous sont assignées" : ""}
+            </p>
+          </div>
+          {isQhse && (
+            <Link to="/actions/historique"
+              className="shrink-0 flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-md border border-[#E2E8F0] text-[#475569] hover:bg-[#F8FAFC] transition-colors">
+              <History size={14} strokeWidth={2.2} />
+              Historique
+            </Link>
+          )}
         </div>
 
         {!chargement && !erreur && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-
-            {/* Carte "Action prioritaire" */}
-            {actionPrioritaire ? (
-              <div className="lg:col-span-2 text-white rounded-xl p-5 flex flex-col justify-between"
-                style={{ backgroundColor: "#0D2B4E" }}>
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider"
-                      style={{ backgroundColor: "#DC2626", color: "white" }}>
-                      Action prioritaire
-                    </span>
-                  </div>
-                  <h2 className="text-2xl font-bold text-white mb-1">
-                    {referenceOrigine(actionPrioritaire) || `#${actionPrioritaire.id.slice(0, 8).toUpperCase()}`}
-                  </h2>
-                  <p className="text-sm max-w-xl" style={{ color: "#b6c6ef" }}>{actionPrioritaire.description}</p>
-                </div>
-                <div className="flex items-center gap-6 mt-4">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-medium uppercase tracking-wide" style={{ color: "#8293b8" }}>Échéance</span>
-                    <span className="text-sm font-semibold">
-                      {actionPrioritaire.dateLimite
-                        ? new Date(actionPrioritaire.dateLimite).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })
-                        : "Non renseignée"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-medium uppercase tracking-wide" style={{ color: "#8293b8" }}>Priorité</span>
-                    <span className="text-sm font-semibold">{LABELS_PRIORITE[actionPrioritaire.priorite]}</span>
-                  </div>
-                  <button onClick={() => navigate(`/actions/${actionPrioritaire.id}`)}
-                    className="ml-auto flex items-center gap-2 bg-white px-5 py-2.5 text-sm rounded-lg font-semibold hover:bg-[#d8e2ff] transition-all active:scale-95"
-                    style={{ color: "#0D2B4E" }}>
-                    Voir les détails <ArrowRight size={16} />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="lg:col-span-2 rounded-xl p-8 flex flex-col items-center justify-center text-center gap-2"
-                style={{ backgroundColor: C.surfaceContainerLow }}>
-                <PartyPopper size={32} color={C.secondaryContainer} />
-                <p className="font-semibold" style={{ color: C.primary }}>Aucune action urgente en attente</p>
-                <p className="text-sm" style={{ color: C.onSurfaceVariant }}>Toutes les actions en cours sont sous contrôle.</p>
-              </div>
-            )}
-
-            {/* Résumé CAPA */}
-            <div className="rounded-lg border border-[#E2E8F0] p-6 flex flex-col justify-between" style={{ backgroundColor: "#F8FAFC" }}>
-              <div>
-                <h2 className="text-lg font-semibold text-navy mb-4">Résumé CAPA</h2>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold" style={{ color: "#DC2626" }}>{kpis.enRetard}</span>
-                    <span className="text-sm" style={{ color: C.onSurfaceVariant }}>En retard</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold" style={{ color: "#EA580C" }}>{kpis.enCours}</span>
-                    <span className="text-sm" style={{ color: C.onSurfaceVariant }}>En cours</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold" style={{ color: "#2E7D32" }}>{kpis.termine}</span>
-                    <span className="text-sm" style={{ color: C.onSurfaceVariant }}>Clôturées</span>
-                  </div>
-                </div>
-              </div>
+          <div className="bg-white border border-[#E2E8F0] rounded-xl p-5 mb-5">
+            <div className="flex items-baseline justify-between mb-3">
+              <h2 className="text-sm font-semibold text-navy">Répartition des actions</h2>
+              <p className="text-xs text-[#94A3B8]">
+                {repartition.total} action{repartition.total !== 1 ? "s" : ""} au total
+              </p>
             </div>
+
+            {repartition.total === 0 ? (
+              <div className="h-3 w-full rounded-full bg-[#F1F5F9]" />
+            ) : (
+              <>
+                <div className="flex h-3 w-full rounded-full overflow-hidden bg-[#F1F5F9]">
+                  {SEGMENTS_REPARTITION.filter((s) => s.valeur > 0).map((s) => (
+                    <div key={s.cle}
+                      style={{ width: `${(s.valeur / repartition.total) * 100}%`, backgroundColor: s.couleur }} />
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-x-5 gap-y-2 mt-3">
+                  {SEGMENTS_REPARTITION.map((s) => (
+                    <div key={s.cle} className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.couleur }} />
+                      <span className="text-xs text-[#64748B]">
+                        {s.label} <span className="font-semibold text-[#1E293B]">{s.valeur}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
 
         {/* ── Tableau de suivi CAPA ── */}
         <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">
-          <div className="p-6 border-b flex flex-wrap gap-4 justify-between items-center" style={{ borderColor: C.outlineVariant }}>
+          <div className="p-6 border-b border-[#E2E8F0] flex flex-wrap gap-4 justify-between items-center">
             <div>
               <h2 className="text-lg font-semibold text-navy">Plan d'Actions Correctives et Préventives (CAPA)</h2>
-              <p className="text-sm" style={{ color: C.onSurfaceVariant }}>
+              <p className="text-sm text-[#64748B]">
                 Suivi en temps réel des actions de mise en conformité{isEmploye ? " qui vous sont assignées" : ""}
               </p>
             </div>
             <div className="flex items-center gap-3">
               <button onClick={() => setFiltresOuverts((o) => !o)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
-                style={{ backgroundColor: filtresOuverts ? C.surfaceContainerLow : "transparent", color: C.onSurfaceVariant, border: `1px solid ${C.outlineVariant}` }}>
+                className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold border border-[#E2E8F0] text-[#475569] transition-colors"
+                style={{ backgroundColor: filtresOuverts ? "#F8FAFC" : "transparent" }}>
                 <Filter size={15} /> Filtrer
               </button>
             </div>
           </div>
 
           {filtresOuverts && (
-            <div className="px-6 py-4 flex flex-wrap items-center gap-2 border-b" style={{ borderColor: C.outlineVariant, backgroundColor: C.surface }}>
+            <div className="px-6 py-4 flex flex-wrap items-center gap-2 border-b border-[#E2E8F0] bg-[#F8FAFC]">
               <div className="relative flex-1 min-w-[160px] max-w-xs">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: C.onSurfaceVariant }} />
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#94A3B8]" />
                 <input type="text" placeholder="Rechercher une action…" value={recherche} onChange={(e) => setRecherche(e.target.value)}
-                  className={`pl-9 ${inputClsFull}`} style={{ borderColor: C.outlineVariant }} />
+                  className={`pl-9 ${inputClsFull} border-[#E2E8F0] focus:ring-[#0D2B4E]/30 focus:border-[#0D2B4E]`} />
               </div>
               <select value={filtreStatut} onChange={(e) => setFiltreStatut(e.target.value)}
-                className="py-2 pl-3 pr-7 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 transition"
-                style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>
+                className="px-3 py-2 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#1E293B] focus:outline-none focus:ring-2 focus:ring-[#0D2B4E]/30 focus:border-[#0D2B4E] transition">
                 <option value="">Tous les statuts</option>
                 {Object.entries(LABELS_STATUT).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
               <select value={filtrePriorite} onChange={(e) => setFiltrePriorite(e.target.value)}
-                className="py-2 pl-3 pr-7 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 transition"
-                style={{ borderColor: C.outlineVariant, color: C.onSurfaceVariant }}>
+                className="px-3 py-2 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#1E293B] focus:outline-none focus:ring-2 focus:ring-[#0D2B4E]/30 focus:border-[#0D2B4E] transition">
                 <option value="">Toutes priorités</option>
                 {Object.entries(LABELS_PRIORITE).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
               {(filtreStatut || filtrePriorite || recherche) && (
                 <button onClick={() => { setFiltreStatut(""); setFiltrePriorite(""); setRecherche(""); }}
-                  className="text-xs font-semibold hover:underline shrink-0" style={{ color: C.onSurfaceVariant }}>
+                  className="text-xs text-[#64748B] hover:text-[#1E293B] underline transition-colors shrink-0">
                   Réinitialiser
                 </button>
               )}
-              <span className="text-sm shrink-0 ml-auto" style={{ color: C.onSurfaceVariant }}>{filtres.length} résultat{filtres.length !== 1 ? "s" : ""}</span>
+              <p className="text-xs text-[#94A3B8] shrink-0 ml-auto">{filtres.length} résultat{filtres.length !== 1 ? "s" : ""}</p>
             </div>
           )}
 
@@ -533,7 +504,7 @@ function ActionsPage() {
               <table className="w-full min-w-[760px] text-sm">
                 <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide min-w-[140px]">Origine</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">Origine</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">Action</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">Responsable</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide">Date limite</th>
@@ -563,15 +534,15 @@ function ActionsPage() {
                         <tr key={action.id} onClick={() => navigate(`/actions/${action.id}`)}
                           className="group hover:bg-[#F8FAFC] transition-colors cursor-pointer">
 
-                          <td className="px-4 py-3 text-xs whitespace-nowrap">
+                          <td className="px-4 py-3 text-xs">
                             {reference
-                              ? <span className="font-semibold text-[#0D2B4E] group-hover:underline">{reference}</span>
+                              ? <span className="font-semibold text-[#0D2B4E] group-hover:underline block max-w-[140px] truncate">{reference}</span>
                               : <span className="text-[#94A3B8]">Sans origine</span>}
                           </td>
 
                           <td className="px-4 py-3">
                             <div className="max-w-xs">
-                              <p className="text-sm text-[#1E293B] truncate">{action.description}</p>
+                              <p className="text-sm text-[#475569] truncate">{action.description}</p>
                               {action.commentaireCloture && (
                                 <p className="text-xs italic truncate text-[#94A3B8]">
                                   Clôture : {action.commentaireCloture}
@@ -616,28 +587,41 @@ function ActionsPage() {
                 </tbody>
               </table>
             </div>
-            {filtres.length > 0 && (
-              <div className="px-6 py-4 flex items-center justify-between" style={{ borderTop: `1px solid ${C.outlineVariant}` }}>
-                <p className="text-sm" style={{ color: C.onSurfaceVariant }}>
-                  Affichage de {(page - 1) * 10 + 1} à {Math.min(page * 10, filtres.length)} sur {filtres.length} action{filtres.length !== 1 ? "s" : ""} au total
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-[#E2E8F0] bg-[#F8FAFC]">
+                <p className="text-xs text-[#64748B]">
+                  {Math.min((page - 1) * 10 + 1, filtres.length)}–{Math.min(page * 10, filtres.length)} sur {filtres.length} action{filtres.length !== 1 ? "s" : ""}
                 </p>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                    className="p-2 rounded-lg transition-colors disabled:opacity-30 hover:bg-[#eff4ff]">
-                    <ChevronLeft size={18} color={C.onSurfaceVariant} />
+                    className="px-3 py-1.5 text-xs font-medium border border-[#E2E8F0] rounded-md text-[#475569] hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    ← Précédent
                   </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
-                    <button key={n} onClick={() => setPage(n)}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold transition-colors"
-                      style={n === page
-                        ? { backgroundColor: C.primary, color: "white" }
-                        : { color: "#1E293B" }}>
-                      {n}
-                    </button>
-                  ))}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                    .reduce((acc, p, i, arr) => {
+                      if (i > 0 && p - arr[i - 1] > 1) acc.push("…");
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((p, i) =>
+                      p === "…" ? (
+                        <span key={`ellipse-${i}`} className="px-1.5 text-xs text-[#94A3B8]">…</span>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => setPage(p)}
+                          className="w-7 h-7 flex items-center justify-center text-xs font-medium rounded-md transition-colors"
+                          style={p === page
+                            ? { backgroundColor: "#0D2B4E", color: "white" }
+                            : { color: "#475569" }}>
+                          {p}
+                        </button>
+                      )
+                    )}
                   <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                    className="p-2 rounded-lg transition-colors disabled:opacity-30 hover:bg-[#eff4ff]">
-                    <ChevronRight size={18} color={C.onSurfaceVariant} />
+                    className="px-3 py-1.5 text-xs font-medium border border-[#E2E8F0] rounded-md text-[#475569] hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    Suivant →
                   </button>
                 </div>
               </div>

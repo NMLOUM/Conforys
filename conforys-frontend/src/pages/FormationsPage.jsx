@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
-import { Flame, ShieldCheck, Zap, Trash2, HeartPulse, Mountain, UserCheck } from "lucide-react";
+import { Flame, ShieldCheck, Zap, Trash2, HeartPulse, Mountain, UserCheck, History } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
+import Badge from "../components/ui/Badge";
+import ActionButton from "../components/ui/ActionButton";
 import { useRole } from "../hooks/useRole";
 import { useTable } from "../hooks/useTable";
 import { formationSchema } from "../validators/formationSchema";
@@ -34,24 +36,6 @@ function BadgeTheme({ theme }) {
       style={{ backgroundColor: "rgba(13,43,78,0.06)", color: "#0D2B4E" }}>
       <Icone size={10} strokeWidth={2} />
       {t.label}
-    </span>
-  );
-}
-
-// ── Statut de session — palette dédiée (navy/orange/vert/gris) ──────────────
-const CONFIG_STATUT = {
-  PLANIFIEE: { bg: "rgba(13,43,78,0.06)", text: "#0D2B4E", dot: "#0D2B4E", label: "Planifiée" },
-  EN_COURS:  { bg: "#FFF7ED",             text: "#EA580C", dot: "#EA580C", label: "En cours" },
-  TERMINEE:  { bg: "#F0FDF4",             text: "#2E7D32", dot: "#2E7D32", label: "Terminée" },
-  ANNULEE:   { bg: "#F1F5F9",             text: "#64748B", dot: "#94A3B8", label: "Annulée" },
-};
-
-function BadgeStatut({ statut }) {
-  const c = CONFIG_STATUT[statut] ?? CONFIG_STATUT.PLANIFIEE;
-  return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap" style={{ backgroundColor: c.bg, color: c.text }}>
-      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: c.dot }} />
-      {c.label}
     </span>
   );
 }
@@ -256,10 +240,17 @@ function FormationsPage() {
           <p className="text-xs text-[#94A3B8] mt-0.5">Tableau de bord <span className="mx-1">›</span> Formations</p>
         </div>
         {peutGerer && (
-          <button onClick={ouvrirCreation}
-            className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 transition-colors">
-            Nouvelle session
-          </button>
+          <div className="flex items-center gap-2">
+            <Link to="/formations/historique"
+              className="flex items-center gap-2 px-3 py-2 text-sm font-semibold rounded-md border border-[#E2E8F0] text-[#475569] hover:bg-[#F8FAFC] transition-colors">
+              <History size={15} strokeWidth={2.2} />
+              Historique
+            </Link>
+            <button onClick={ouvrirCreation}
+              className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 transition-colors">
+              Nouvelle session
+            </button>
+          </div>
         )}
       </div>
 
@@ -333,7 +324,7 @@ function FormationsPage() {
                             </div>
                           )}
                         </td>
-                        <td className="px-4 py-3"><BadgeStatut statut={f.statut} /></td>
+                        <td className="px-4 py-3"><Badge variant={f.statut} /></td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2 min-w-[100px]">
                             <BarreProgression valeur={progression} />
@@ -342,10 +333,9 @@ function FormationsPage() {
                         </td>
                         {peutGerer && (
                           <td className="px-4 py-3">
-                            <button onClick={(e) => { e.stopPropagation(); ouvrirModification(f); }}
-                              className="px-2.5 py-1 text-xs font-medium text-navy border border-[#E2E8F0] rounded-md hover:bg-[#F1F5F9] transition-colors">
+                            <ActionButton variant="outline" onClick={(e) => { e.stopPropagation(); ouvrirModification(f); }}>
                               Modifier
-                            </button>
+                            </ActionButton>
                           </td>
                         )}
                       </tr>

@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import {
   Plus, AlertTriangle, ShieldAlert, CheckCircle2, Clock, Download,
-  Siren, Leaf, Camera, ImagePlus, Crosshair, ArrowLeft, ArrowRight, Check,
 } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
@@ -13,6 +12,7 @@ import { useAuthStore } from "../store/authStore";
 import { useRole } from "../hooks/useRole";
 import Badge from "../components/ui/Badge";
 import AvatarInitiales from "../components/ui/AvatarInitiales";
+import ActionButton from "../components/ui/ActionButton";
 import ModalRejeterIncident from "../components/incidents/ModalRejeterIncident";
 import ModalValiderIncident from "../components/incidents/ModalValiderIncident";
 import { incidentSchema } from "../validators/incidentSchema";
@@ -27,10 +27,10 @@ const ETAPES_WIZARD = [
 ];
 
 const CONFIGS_TYPE = [
-  { value: "ACCIDENT",                 label: "Accident",                 desc: "Blessure physique survenue sur une personne",   icon: Siren,        color: "#DC2626" },
-  { value: "PRESQU_ACCIDENT",          label: "Presqu'accident",          desc: "Événement sans blessure mais à fort potentiel", icon: ShieldAlert,  color: "#EA580C" },
-  { value: "SITUATION_DANGEREUSE",     label: "Situation dangereuse",     desc: "Condition pouvant provoquer un accident",       icon: AlertTriangle, color: "#CA8A04" },
-  { value: "INCIDENT_ENVIRONNEMENTAL", label: "Incident environnemental", desc: "Impact direct sur l'environnement naturel",     icon: Leaf,          color: "#2E7D32" },
+  { value: "ACCIDENT",                 label: "Accident",                 desc: "Blessure physique survenue sur une personne",   color: "#DC2626" },
+  { value: "PRESQU_ACCIDENT",          label: "Presqu'accident",          desc: "Événement sans blessure mais à fort potentiel", color: "#EA580C" },
+  { value: "SITUATION_DANGEREUSE",     label: "Situation dangereuse",     desc: "Condition pouvant provoquer un accident",       color: "#CA8A04" },
+  { value: "INCIDENT_ENVIRONNEMENTAL", label: "Incident environnemental", desc: "Impact direct sur l'environnement naturel",     color: "#2E7D32" },
 ];
 
 const CONFIGS_GRAVITE = [
@@ -61,7 +61,7 @@ function StepperIndicateur({ etape }) {
                     : { backgroundColor: "white", color: "#0D2B4E", border: "2px solid #0D2B4E" }
                 }
               >
-                {done ? <Check size={14} strokeWidth={3} /> : info.num}
+                {info.num}
               </div>
               <span
                 className="mt-1.5 text-[10px] font-semibold uppercase tracking-wide text-center"
@@ -90,7 +90,7 @@ function Etape1({ valeurs, setValue, errors }) {
     <div className="pt-1">
       <p className="text-sm text-[#64748B] mb-4">Sélectionnez le type d'incident à déclarer.</p>
       <div className="grid grid-cols-2 gap-3">
-        {CONFIGS_TYPE.map(({ value, label, desc, icon: Icon, color }) => {
+        {CONFIGS_TYPE.map(({ value, label, desc, color }) => {
           const selected = valeurs.type === value;
           return (
             <button
@@ -104,18 +104,6 @@ function Etape1({ valeurs, setValue, errors }) {
                 boxShadow: selected ? `0 1px 3px ${color}33` : "0 1px 2px rgba(15,23,42,0.03)",
               }}
             >
-              {selected && (
-                <div className="absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: color }}>
-                  <Check size={11} color="white" strokeWidth={3} />
-                </div>
-              )}
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center mb-3"
-                style={{ backgroundColor: `${color}1A` }}
-              >
-                <Icon size={19} color={color} strokeWidth={2} />
-              </div>
               <p
                 className="text-sm font-semibold mb-1"
                 style={{ color: selected ? color : "#1E293B" }}
@@ -358,7 +346,6 @@ function Etape3({ media, onChange }) {
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-white rounded-lg cursor-pointer select-none transition-colors hover:opacity-90"
               style={{ backgroundColor: "#0D2B4E" }}
             >
-              <Camera size={16} strokeWidth={2} />
               Capturer
               <input type="file" accept="image/*" capture="environment" onChange={handleFichier} className="sr-only" />
             </label>
@@ -366,7 +353,6 @@ function Etape3({ media, onChange }) {
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg border cursor-pointer select-none transition-colors hover:bg-[#F8FAFC]"
               style={{ borderColor: "#0D2B4E", color: "#0D2B4E" }}
             >
-              <ImagePlus size={16} strokeWidth={2} />
               Importer
               <input type="file" accept="image/*" onChange={handleFichier} className="sr-only" />
             </label>
@@ -419,10 +405,7 @@ function Etape3({ media, onChange }) {
               Localisation en cours…
             </>
           ) : (
-            <>
-              <Crosshair size={15} strokeWidth={2} />
-              {positionOk ? "Mettre à jour ma position" : "Localiser ma position"}
-            </>
+            positionOk ? "Mettre à jour ma position" : "Localiser ma position"
           )}
         </button>
 
@@ -575,10 +558,6 @@ function IncidentWizard({ sites, onSuccess, onClose }) {
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
         <div className="w-full max-w-md bg-white rounded-xl border border-[#E2E8F0] shadow-lg mx-4 p-6">
           <div className="flex flex-col items-center text-center">
-            <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4"
-              style={{ backgroundColor: "rgba(46, 125, 50, 0.1)" }}>
-              <CheckCircle2 size={26} color="#2E7D32" strokeWidth={2} />
-            </div>
             <h2 className="text-lg font-semibold text-navy mb-1">Incident déclaré avec succès</h2>
             <p className="text-sm text-[#64748B] leading-relaxed max-w-xs">
               Enregistré en brouillon. Vous pourrez le soumettre pour traitement depuis sa fiche.
@@ -679,10 +658,9 @@ function IncidentWizard({ sites, onSuccess, onClose }) {
                 <button
                   type="button"
                   onClick={reculer}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold rounded-lg border transition-colors hover:bg-[#F8FAFC]"
+                  className="px-4 py-2 text-sm font-semibold rounded-lg border transition-colors hover:bg-[#F8FAFC]"
                   style={{ borderColor: "#0D2B4E", color: "#0D2B4E" }}
                 >
-                  <ArrowLeft size={15} strokeWidth={2.2} />
                   Précédent
                 </button>
               )}
@@ -692,11 +670,10 @@ function IncidentWizard({ sites, onSuccess, onClose }) {
                 <button
                   type="button"
                   onClick={avancer}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors hover:opacity-90"
+                  className="px-4 py-2 text-sm font-semibold text-white rounded-lg transition-colors hover:opacity-90"
                   style={{ backgroundColor: "#0D2B4E" }}
                 >
                   Continuer
-                  <ArrowRight size={15} strokeWidth={2.2} />
                 </button>
               ) : (
                 <button
@@ -729,50 +706,30 @@ function BoutonsAction({ incident, user, isQhse, enCours, onAction, onRejeter, o
 
   if (incident.statut === "BROUILLON" && estDeclarant) {
     return (
-      <button
-        onClick={() => onAction(incident.id, "soumettre")}
-        disabled={enCours}
-        className="px-2.5 py-1 text-xs font-semibold rounded-md text-white transition-colors disabled:opacity-50"
-        style={{ backgroundColor: "#0D2B4E" }}
-      >
-        {enCours ? "…" : "Soumettre"}
-      </button>
+      <ActionButton variant="primary" loading={enCours} onClick={() => onAction(incident.id, "soumettre")}>
+        Soumettre
+      </ActionButton>
     );
   }
 
   if (incident.statut === "OUVERT" && isQhse) {
     return (
       <div className="flex items-center gap-1.5">
-        <button
-          onClick={() => onValider(incident)}
-          disabled={enCours}
-          className="px-2.5 py-1 text-xs font-semibold rounded-md text-white transition-colors disabled:opacity-50"
-          style={{ backgroundColor: "#2E7D32" }}
-        >
-          {enCours ? "…" : "Valider"}
-        </button>
-        <button
-          onClick={() => onRejeter(incident)}
-          disabled={enCours}
-          className="px-2.5 py-1 text-xs font-semibold rounded-md border transition-colors disabled:opacity-50 hover:bg-red-50"
-          style={{ borderColor: "#DC2626", color: "#DC2626" }}
-        >
+        <ActionButton variant="success" loading={enCours} onClick={() => onValider(incident)}>
+          Valider
+        </ActionButton>
+        <ActionButton variant="dangerOutline" disabled={enCours} onClick={() => onRejeter(incident)}>
           Rejeter
-        </button>
+        </ActionButton>
       </div>
     );
   }
 
   if (incident.statut === "EN_COURS" && isQhse) {
     return (
-      <button
-        onClick={() => onAction(incident.id, "cloturer")}
-        disabled={enCours}
-        className="px-2.5 py-1 text-xs font-semibold rounded-md text-white transition-colors disabled:opacity-50"
-        style={{ backgroundColor: "#475569" }}
-      >
-        {enCours ? "…" : "Clôturer"}
-      </button>
+      <ActionButton variant="neutral" loading={enCours} onClick={() => onAction(incident.id, "cloturer")}>
+        Clôturer
+      </ActionButton>
     );
   }
 

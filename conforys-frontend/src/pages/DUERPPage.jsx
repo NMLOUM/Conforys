@@ -3,9 +3,11 @@ import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
-import { Plus, Search, X, FileDown, Trash2 } from "lucide-react";
+import { Plus, Search, X, FileDown, Trash2, CalendarCheck, History } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
+import Badge from "../components/ui/Badge";
+import ActionButton from "../components/ui/ActionButton";
 import { useRole } from "../hooks/useRole";
 import { useTable } from "../hooks/useTable";
 import { risqueSchema } from "../validators/risqueSchema";
@@ -59,6 +61,54 @@ function BadgeNiveau({ niveau }) {
       <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: c.texte }} />
       {c.label}
     </span>
+  );
+}
+
+// ── Statut de révision annuelle du DUERP — carte indépendante à côté de la
+// matrice (chacune se dimensionne à son propre contenu, alignées en haut :
+// pas d'étirement forcé qui laisserait un vide dans la plus courte des deux) ──
+function StatutRevisionPanel({ statut, onMarquerRevise, enCours, peutGerer }) {
+  const formatDate = (d) => d ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }) : "—";
+
+  if (!statut) {
+    return (
+      <div className="flex-1 p-5 bg-white border border-[#E2E8F0] rounded-xl">
+        <p className="text-xs text-[#94A3B8]">Chargement du statut de révision…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 p-5 bg-white border border-[#E2E8F0] rounded-xl">
+      <div className="flex items-center gap-2.5 mb-5">
+        <CalendarCheck size={20} color={statut.enRetard ? "#DC2626" : "#2E7D32"} strokeWidth={2} className="shrink-0" />
+        <p className="text-[15px] font-semibold text-[#1E293B]">Révision annuelle</p>
+        <span className={`ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${statut.enRetard ? "bg-red-50 text-[#DC2626]" : "bg-green-50 text-[#2E7D32]"}`}>
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: statut.enRetard ? "#DC2626" : "#2E7D32" }} />
+          {statut.enRetard ? "Révision en retard" : "À jour"}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 mb-5">
+        <div className="p-4 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
+          <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-1.5">Dernière révision</p>
+          <p className="text-lg font-bold text-[#1E293B]">{formatDate(statut.dateDerniereRevision)}</p>
+        </div>
+        <div className="p-4 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
+          <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-1.5">Prochaine échéance</p>
+          <p className="text-lg font-bold" style={{ color: statut.enRetard ? "#DC2626" : "#1E293B" }}>
+            {formatDate(statut.dateProchaineRevision)}
+          </p>
+        </div>
+      </div>
+
+      {peutGerer && (
+        <button onClick={onMarquerRevise} disabled={enCours}
+          className="px-4 py-2.5 text-sm font-semibold rounded-md text-white bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
+          {enCours ? "…" : "Marquer comme révisé aujourd'hui"}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -140,6 +190,8 @@ function DUERPPage() {
   const [filtreCategorie, setFiltreCategorie] = useState("");
   const [filtreNiveau,    setFiltreNiveau]    = useState("");
   const [genererEnCoursId, setGenererEnCoursId] = useState(null);
+  const [statutRevision,  setStatutRevision]  = useState(null);
+  const [marquerReviseEnCours, setMarquerReviseEnCours] = useState(false);
   const [telechargementPdf, setTelechargementPdf] = useState(false);
   const [risqueASupprimer, setRisqueASupprimer] = useState(null);
   const [suppressionEnCours, setSuppressionEnCours] = useState(false);
@@ -202,11 +254,34 @@ function DUERPPage() {
     }
   };
 
+  const chargerStatutRevision = async () => {
+    try {
+      const res = await api.get("/risques/statut-revision");
+      setStatutRevision(res.data.data);
+    } catch (e) {
+      console.error("Erreur chargement statut de révision:", e);
+    }
+  };
+
   useEffect(() => {
     charger();
     chargerMatrice();
+    chargerStatutRevision();
     api.get("/sites").then((r) => setSites(r.data.data || [])).catch(() => {});
   }, []);
+
+  const marquerRevise = async () => {
+    setMarquerReviseEnCours(true);
+    try {
+      const res = await api.post("/risques/marquer-revise");
+      setStatutRevision(res.data.data);
+      toast.success("DUERP marqué comme révisé");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Erreur lors de la mise à jour de la révision.");
+    } finally {
+      setMarquerReviseEnCours(false);
+    }
+  };
 
   const telechargerPdf = async () => {
     setTelechargementPdf(true);
@@ -322,6 +397,13 @@ function DUERPPage() {
           <p className="text-xs text-[#94A3B8] mt-0.5">Tableau de bord <span className="mx-1">›</span> DUERP</p>
         </div>
         <div className="shrink-0 flex items-center gap-2">
+          {peutGerer && (
+            <Link to="/duerp/historique"
+              className="flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-md border border-[#E2E8F0] text-[#475569] hover:bg-[#F8FAFC] transition-colors">
+              <History size={14} strokeWidth={2.2} />
+              Historique
+            </Link>
+          )}
           <button onClick={telechargerPdf} disabled={telechargementPdf}
             className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
             <FileDown size={14} strokeWidth={2.2} />
@@ -376,14 +458,20 @@ function DUERPPage() {
         <span className="text-xs text-[#94A3B8] pb-2 ml-auto shrink-0">{filtres.length} résultat{filtres.length !== 1 ? "s" : ""}</span>
       </div>
 
-      {/* ── Matrice en haut, Registre pleine largeur en dessous ── */}
+      {/* ── Matrice + révision annuelle en haut, Registre pleine largeur en dessous ── */}
       <div className="space-y-5">
-        <MatriceRisques cellules={matrice} filtreCase={filtreCase} onFiltrer={setFiltreCase} />
+        <div className="flex flex-col lg:flex-row gap-5 lg:items-start">
+          <MatriceRisques cellules={matrice} filtreCase={filtreCase} onFiltrer={setFiltreCase} />
+          <StatutRevisionPanel
+            statut={statutRevision} onMarquerRevise={marquerRevise}
+            enCours={marquerReviseEnCours} peutGerer={peutGerer}
+          />
+        </div>
 
         {chargement ? (
           <p className="text-sm text-[#64748B]">Chargement...</p>
         ) : (
-          <div className="border border-[#E2E8F0] rounded-xl overflow-hidden bg-white">
+          <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white">
             <div className="px-5 py-4 border-b border-[#E2E8F0]">
               <p className="text-[15px] font-semibold text-[#1E293B]">Registre des risques</p>
             </div>
@@ -417,8 +505,12 @@ function DUERPPage() {
                           <td className="px-4 py-3 text-[#64748B]">{r.zone || "—"}</td>
                           <td className="px-4 py-3 text-[#64748B]">{LABELS_PROBABILITE[r.probabilite]}</td>
                           <td className="px-4 py-3 text-[#64748B]">{LABELS_GRAVITE[r.gravite]}</td>
-                          <td className="px-4 py-3"><BadgeNiveau niveau={r.niveauQualitatif} /></td>
-                          <td className="px-4 py-3"><BadgeNiveau niveau={r.niveauQualitatifResiduel} /></td>
+                          <td className="px-4 py-3">
+                            {r.niveauQualitatif ? <Badge variant={r.niveauQualitatif} /> : <span className="text-[#94A3B8]">—</span>}
+                          </td>
+                          <td className="px-4 py-3">
+                            {r.niveauQualitatifResiduel ? <Badge variant={r.niveauQualitatifResiduel} /> : <span className="text-[#94A3B8]">—</span>}
+                          </td>
                           <td className="px-4 py-3 text-[#64748B] max-w-[200px] truncate">{r.mesuresPrevention || "—"}</td>
                           {peutGerer && (
                             <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -429,10 +521,9 @@ function DUERPPage() {
                                       Action {LABELS_STATUT_ACTION[r.actions?.[0]?.statut] ?? "générée"}
                                     </Link>
                                   ) : (
-                                    <button onClick={() => genererAction(r)} disabled={genererEnCoursId === r.id}
-                                      className="px-2.5 py-1 text-xs font-semibold rounded-md text-white bg-[#EA580C] hover:bg-[#EA580C]/90 disabled:opacity-50 transition-colors">
-                                      {genererEnCoursId === r.id ? "…" : "Générer une action"}
-                                    </button>
+                                    <ActionButton variant="primary" onClick={() => genererAction(r)} loading={genererEnCoursId === r.id}>
+                                      Générer une action
+                                    </ActionButton>
                                   )
                                 ) : (
                                   <span className="text-[#94A3B8]">—</span>
