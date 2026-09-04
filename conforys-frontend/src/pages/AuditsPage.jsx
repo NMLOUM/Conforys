@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
+import { History } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import { useAuthStore } from "../store/authStore";
@@ -180,9 +181,18 @@ function AuditsPage() {
       )}
 
       {/* ── Liste des audits ── */}
-      <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-3">
-        Vos audits
-      </p>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide">
+          Vos audits
+        </p>
+        {can("RESPONSABLE_QHSE") && (
+          <Link to="/audits/historique"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md border border-[#E2E8F0] text-[#475569] hover:bg-[#F8FAFC] transition-colors">
+            <History size={13} strokeWidth={2.2} />
+            Historique
+          </Link>
+        )}
+      </div>
       <div className="flex items-center gap-3 mb-4">
         <div className="relative flex-1 max-w-xs">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>

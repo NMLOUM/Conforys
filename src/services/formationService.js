@@ -1,6 +1,7 @@
 // Importation de l'instance Prisma partagée (connexion à la base)
 const prisma = require("../config/prisma");
 const attestationService = require("./attestationService");
+const { enregistrerFormation, getHistoriqueByFormation: getHistoriqueFormation } = require("./historiqueService");
 
 const MS_PAR_JOUR = 24 * 60 * 60 * 1000;
 
@@ -46,12 +47,12 @@ const verifierSite = async (siteId, entrepriseId) => {
 };
 
 // Crée une nouvelle formation
-const createFormation = async (data, entrepriseId) => {
+const createFormation = async (data, userId, entrepriseId) => {
   // participantIds est un tableau d'ids d'utilisateurs à inscrire (optionnel)
   const { participantIds, siteId, dateDebut, dateFin, ...rest } = data;
   await verifierSite(siteId, entrepriseId);
 
-  return await prisma.formation.create({
+  const formation = await prisma.formation.create({
     data: {
       ...rest,
       dateDebut: new Date(dateDebut),
@@ -63,13 +64,15 @@ const createFormation = async (data, entrepriseId) => {
     },
     include: INCLUDE_FORMATION,
   });
+  await enregistrerFormation(formation.id, userId, "Session créée", `${participantIds?.length ?? 0} participant(s) inscrit(s)`);
+  return formation;
 };
 
 // Met à jour une formation existante. La liste de participants, si fournie,
 // remplace l'inscription — mais en ne touchant qu'au delta (ajouts/retraits)
 // pour ne jamais écraser la présence/validation déjà enregistrée pour ceux
 // qui restent inscrits.
-const updateFormation = async (id, data, entrepriseId) => {
+const updateFormation = async (id, data, userId, entrepriseId) => {
   const existante = await prisma.formation.findFirst({ where: { id, site: { entrepriseId } } });
   if (!existante) throw new ErreurMetier("Formation introuvable.", 404);
 
@@ -94,11 +97,13 @@ const updateFormation = async (id, data, entrepriseId) => {
     };
   }
 
-  return await prisma.formation.update({
+  const formation = await prisma.formation.update({
     where: { id },
     data: dataToUpdate,
     include: INCLUDE_FORMATION,
   });
+  await enregistrerFormation(id, userId, "Session modifiée");
+  return formation;
 };
 
 // Supprime une formation
@@ -110,50 +115,59 @@ const deleteFormation = async (id, entrepriseId) => {
 
 // ── Workflow de statut ───────────────────────────────────────────────────────
 
-const changerStatut = async (id, entrepriseId, statutAttendu, nouveauStatut, messageErreur) => {
+const changerStatut = async (id, userId, entrepriseId, statutAttendu, nouveauStatut, messageErreur) => {
   const formation = await prisma.formation.findFirst({ where: { id, site: { entrepriseId } } });
   if (!formation) throw new ErreurMetier("Formation introuvable.", 404);
   if (formation.statut !== statutAttendu) {
     throw new ErreurMetier(messageErreur);
   }
-  return await prisma.formation.update({
+  const resultat = await prisma.formation.update({
     where: { id },
     data: { statut: nouveauStatut },
     include: INCLUDE_FORMATION,
   });
+  await enregistrerFormation(id, userId, `Statut changé : ${statutAttendu} → ${nouveauStatut}`);
+  return resultat;
 };
 
-const demarrer = (id, entrepriseId) =>
-  changerStatut(id, entrepriseId, "PLANIFIEE", "EN_COURS", "Seule une formation planifiée peut être démarrée.");
+const demarrer = (id, userId, entrepriseId) =>
+  changerStatut(id, userId, entrepriseId, "PLANIFIEE", "EN_COURS", "Seule une formation planifiée peut être démarrée.");
 
-const terminerFormation = (id, entrepriseId) =>
-  changerStatut(id, entrepriseId, "EN_COURS", "TERMINEE", "Seule une formation en cours peut être terminée.");
+const terminerFormation = (id, userId, entrepriseId) =>
+  changerStatut(id, userId, entrepriseId, "EN_COURS", "TERMINEE", "Seule une formation en cours peut être terminée.");
 
-const annuler = async (id, entrepriseId) => {
+const annuler = async (id, userId, entrepriseId) => {
   const formation = await prisma.formation.findFirst({ where: { id, site: { entrepriseId } } });
   if (!formation) throw new ErreurMetier("Formation introuvable.", 404);
   if (formation.statut === "TERMINEE" || formation.statut === "ANNULEE") {
     throw new ErreurMetier("Cette formation ne peut plus être annulée.");
   }
-  return await prisma.formation.update({
+  const resultat = await prisma.formation.update({
     where: { id },
     data: { statut: "ANNULEE" },
     include: INCLUDE_FORMATION,
   });
+  await enregistrerFormation(id, userId, `Statut changé : ${formation.statut} → ANNULEE`);
+  return resultat;
 };
 
 // ── Présence et validation par participant ───────────────────────────────────
 
-const marquerPresence = async (formationId, participantId, present, entrepriseId) => {
+const marquerPresence = async (formationId, participantId, present, userId, entrepriseId) => {
   const formation = await prisma.formation.findFirst({ where: { id: formationId, site: { entrepriseId } } });
   if (!formation) throw new ErreurMetier("Formation introuvable.", 404);
 
   try {
-    return await prisma.participationFormation.update({
+    const participation = await prisma.participationFormation.update({
       where: { formationId_participantId: { formationId, participantId } },
       data: { present },
       include: { participant: { select: { id: true, nom: true, prenom: true } } },
     });
+    await enregistrerFormation(
+      formationId, userId,
+      `Présence ${present ? "confirmée" : "retirée"} : ${participation.participant.prenom} ${participation.participant.nom}`
+    );
+    return participation;
   } catch (err) {
     if (err.code === "P2025") throw new ErreurMetier("Participation introuvable.", 404);
     throw err;
@@ -163,7 +177,7 @@ const marquerPresence = async (formationId, participantId, present, entrepriseId
 // Valider un participant atteste qu'il a suivi la formation — impossible pour
 // quelqu'un marqué absent, la présence est le préalable à la validation.
 // Déclenche la délivrance automatique d'une attestation (sans doublon).
-const validerParticipant = async (formationId, participantId, entrepriseId) => {
+const validerParticipant = async (formationId, participantId, userId, entrepriseId) => {
   const formation = await prisma.formation.findFirst({ where: { id: formationId, site: { entrepriseId } } });
   if (!formation) throw new ErreurMetier("Formation introuvable.", 404);
 
@@ -192,7 +206,16 @@ const validerParticipant = async (formationId, participantId, entrepriseId) => {
     source: "SESSION",
   });
 
+  await enregistrerFormation(formationId, userId, `Participant validé : ${resultat.participant.prenom} ${resultat.participant.nom}`);
+
   return resultat;
+};
+
+// Historique d'une formation — même garde-fou multi-tenant que les autres modules.
+const getHistoriqueByFormation = async (id, entrepriseId) => {
+  const formation = await prisma.formation.findFirst({ where: { id, site: { entrepriseId } } });
+  if (!formation) throw new ErreurMetier("Formation introuvable.", 404);
+  return getHistoriqueFormation(id);
 };
 
 // ── Consultation côté employé ─────────────────────────────────────────────────
@@ -258,4 +281,5 @@ module.exports = {
   validerParticipant,
   getFormationsByEmploye,
   getStats,
+  getHistoriqueByFormation,
 };

@@ -27,7 +27,7 @@ const getFormationById = async (req, res) => {
 // Crée une nouvelle formation
 const createFormation = async (req, res) => {
   try {
-    const formation = await formationService.createFormation(req.body, req.user.entrepriseId);
+    const formation = await formationService.createFormation(req.body, req.user.userId, req.user.entrepriseId);
     res.status(201).json({ success: true, data: formation });
   } catch (error) {
     handleErreur(res, error);
@@ -37,7 +37,7 @@ const createFormation = async (req, res) => {
 // Met à jour une formation
 const updateFormation = async (req, res) => {
   try {
-    const formation = await formationService.updateFormation(req.params.id, req.body, req.user.entrepriseId);
+    const formation = await formationService.updateFormation(req.params.id, req.body, req.user.userId, req.user.entrepriseId);
     res.status(200).json({ success: true, data: formation });
   } catch (error) {
     if (error.code === "P2025") {
@@ -63,7 +63,7 @@ const deleteFormation = async (req, res) => {
 // PUT /api/formations/:id/demarrer
 const demarrer = async (req, res) => {
   try {
-    const formation = await formationService.demarrer(req.params.id, req.user.entrepriseId);
+    const formation = await formationService.demarrer(req.params.id, req.user.userId, req.user.entrepriseId);
     res.status(200).json({ success: true, data: formation });
   } catch (error) {
     handleErreur(res, error);
@@ -73,7 +73,7 @@ const demarrer = async (req, res) => {
 // PUT /api/formations/:id/terminer
 const terminer = async (req, res) => {
   try {
-    const formation = await formationService.terminerFormation(req.params.id, req.user.entrepriseId);
+    const formation = await formationService.terminerFormation(req.params.id, req.user.userId, req.user.entrepriseId);
     res.status(200).json({ success: true, data: formation });
   } catch (error) {
     handleErreur(res, error);
@@ -83,7 +83,7 @@ const terminer = async (req, res) => {
 // PUT /api/formations/:id/annuler
 const annuler = async (req, res) => {
   try {
-    const formation = await formationService.annuler(req.params.id, req.user.entrepriseId);
+    const formation = await formationService.annuler(req.params.id, req.user.userId, req.user.entrepriseId);
     res.status(200).json({ success: true, data: formation });
   } catch (error) {
     handleErreur(res, error);
@@ -94,7 +94,7 @@ const annuler = async (req, res) => {
 const marquerPresence = async (req, res) => {
   try {
     const participation = await formationService.marquerPresence(
-      req.params.id, req.params.userId, Boolean(req.body.present), req.user.entrepriseId
+      req.params.id, req.params.userId, Boolean(req.body.present), req.user.userId, req.user.entrepriseId
     );
     res.status(200).json({ success: true, data: participation });
   } catch (error) {
@@ -105,8 +105,20 @@ const marquerPresence = async (req, res) => {
 // PUT /api/formations/:id/participants/:userId/valider
 const validerParticipant = async (req, res) => {
   try {
-    const participation = await formationService.validerParticipant(req.params.id, req.params.userId, req.user.entrepriseId);
+    const participation = await formationService.validerParticipant(
+      req.params.id, req.params.userId, req.user.userId, req.user.entrepriseId
+    );
     res.status(200).json({ success: true, data: participation });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+// GET /api/formations/:id/historique — piste d'audit en lecture seule
+const getHistorique = async (req, res) => {
+  try {
+    const historique = await formationService.getHistoriqueByFormation(req.params.id, req.user.entrepriseId);
+    res.status(200).json({ success: true, data: historique });
   } catch (error) {
     handleErreur(res, error);
   }
@@ -145,4 +157,5 @@ module.exports = {
   validerParticipant,
   getMesFormations,
   getStats,
+  getHistorique,
 };

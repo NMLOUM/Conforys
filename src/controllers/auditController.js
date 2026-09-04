@@ -52,7 +52,7 @@ const getAuditById = async (req, res) => {
 // Crée un nouvel audit
 const createAudit = async (req, res) => {
   try {
-    const audit = await auditService.createAudit(req.body, req.user.entrepriseId);
+    const audit = await auditService.createAudit(req.body, req.user.userId, req.user.entrepriseId);
     res.status(201).json({ success: true, data: audit });
   } catch (error) {
     handleErreur(res, error);
@@ -86,6 +86,7 @@ const repondreQuestion = async (req, res) => {
       req.params.id,
       req.params.questionId,
       req.body,
+      req.user.userId,
       req.user.entrepriseId
     );
     res.status(200).json({ success: true, data: audit });
@@ -99,7 +100,7 @@ const repondreQuestion = async (req, res) => {
 // PLANIFIE → EN_COURS
 const demarrer = async (req, res) => {
   try {
-    const audit = await auditService.demarrer(req.params.id, req.user.entrepriseId);
+    const audit = await auditService.demarrer(req.params.id, req.user.userId, req.user.entrepriseId);
     res.status(200).json({ success: true, data: audit });
   } catch (error) {
     handleErreur(res, error);
@@ -109,7 +110,7 @@ const demarrer = async (req, res) => {
 // EN_COURS → TERMINE
 const finaliser = async (req, res) => {
   try {
-    const audit = await auditService.finaliser(req.params.id, req.user.entrepriseId);
+    const audit = await auditService.finaliser(req.params.id, req.user.userId, req.user.entrepriseId);
     res.status(200).json({ success: true, data: audit });
   } catch (error) {
     handleErreur(res, error);
@@ -119,8 +120,18 @@ const finaliser = async (req, res) => {
 // * → ANNULE
 const annuler = async (req, res) => {
   try {
-    const audit = await auditService.annuler(req.params.id, req.user.entrepriseId);
+    const audit = await auditService.annuler(req.params.id, req.user.userId, req.user.entrepriseId);
     res.status(200).json({ success: true, data: audit });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+// GET /api/audits/:id/historique — piste d'audit en lecture seule
+const getHistorique = async (req, res) => {
+  try {
+    const historique = await auditService.getHistoriqueByAudit(req.params.id, req.user.entrepriseId);
+    res.status(200).json({ success: true, data: historique });
   } catch (error) {
     handleErreur(res, error);
   }
@@ -154,4 +165,5 @@ module.exports = {
   finaliser,
   annuler,
   genererRapportPdf,
+  getHistorique,
 };

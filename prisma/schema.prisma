@@ -97,6 +97,10 @@ model User {
   commentairesAction           CommentaireAction[]      @relation("CommentairesActionAuteur")
   // Relation : pièces jointes ajoutées sur une action corrective
   piecesJointesActionAjoutees  PieceJointeAction[]      @relation("PiecesJointesActionAjoutees")
+  // Relation : entrées d'historique d'audit dont cet utilisateur est l'auteur
+  historiqueAudits             HistoriqueAudit[]        @relation("HistoriqueAuditAuteur")
+  // Relation : entrées d'historique de formation dont cet utilisateur est l'auteur
+  historiqueFormations         HistoriqueFormation[]    @relation("HistoriqueFormationAuteur")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -637,10 +641,32 @@ model Audit {
   // Relation : actions correctives générées depuis les non-conformités de l'audit
   actionsCorrectives ActionCorrective[]
 
+  // Relation : historique / piste d'audit de cet audit (créé, démarré, question répondue, finalisé...)
+  historique HistoriqueAudit[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("audits")
+}
+
+// Piste d'audit d'un audit — même principe que HistoriqueIncident/HistoriqueRisque :
+// une ligne libre par événement (création, démarrage, réponse à une question,
+// finalisation, génération du plan d'actions), horodatée et attribuée à un auteur.
+model HistoriqueAudit {
+  id      String  @id @default(uuid())
+  action  String // Ex: "Audit créé", "Audit démarré", "Statut changé : EN_COURS → TERMINE"
+  details String?
+
+  audit   Audit  @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  auditId String @map("audit_id")
+
+  auteur   User   @relation("HistoriqueAuditAuteur", fields: [auteurId], references: [id])
+  auteurId String @map("auteur_id")
+
+  dateAction DateTime @default(now()) @map("date_action")
+
+  @@map("historique_audits")
 }
 
 // ── Checklist d'audit : questions et scoring pondéré ──────────────────────────
@@ -721,10 +747,32 @@ model Formation {
   // validation) — remplace l'ancienne relation many-to-many "participants"
   participations ParticipationFormation[]
 
+  // Relation : historique / piste d'audit de cette session (créée, démarrée,
+  // présence marquée, participant validé, terminée, annulée...)
+  historique HistoriqueFormation[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("formations")
+}
+
+// Piste d'audit d'une session de formation — même principe que les autres
+// modules : une ligne libre par événement, horodatée et attribuée à un auteur.
+model HistoriqueFormation {
+  id      String  @id @default(uuid())
+  action  String // Ex: "Session créée", "Présence marquée : Cheikh FALL", "Statut changé : PLANIFIEE → EN_COURS"
+  details String?
+
+  formation   Formation @relation(fields: [formationId], references: [id], onDelete: Cascade)
+  formationId String    @map("formation_id")
+
+  auteur   User   @relation("HistoriqueFormationAuteur", fields: [auteurId], references: [id])
+  auteurId String @map("auteur_id")
+
+  dateAction DateTime @default(now()) @map("date_action")
+
+  @@map("historique_formations")
 }
 
 // Table de jointure explicite (remplace l'ancienne M2M implicite) : porte le

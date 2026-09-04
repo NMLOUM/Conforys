@@ -5,7 +5,7 @@ const {
   createFormation, updateFormation, deleteFormation,
   demarrer, terminer, annuler,
   marquerPresence, validerParticipant,
-  getMesFormations, getStats,
+  getMesFormations, getStats, getHistorique,
 } = require("../controllers/formationController");
 const { protect }   = require("../middlewares/authMiddleware");
 const { authorize } = require("../middlewares/roleMiddleware");
@@ -19,8 +19,9 @@ router.get("/mes-formations", protect, getMesFormations);
 router.get("/stats", protect, getStats);
 
 // Lecture  →  tous les rôles
-router.get("/",    protect, getAllFormations);
-router.get("/:id", protect, getFormationById);
+router.get("/",              protect, getAllFormations);
+router.get("/:id",           protect, getFormationById);
+router.get("/:id/historique", protect, getHistorique);
 
 // Écritures  →  RESPONSABLE_QHSE uniquement
 router.post("/",      protect, authorize("RESPONSABLE_QHSE"), validate(formationSchema), createFormation);

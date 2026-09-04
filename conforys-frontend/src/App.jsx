@@ -23,6 +23,11 @@ import ActionDetailPage from "./pages/ActionDetailPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import JournalActivitePage from "./pages/JournalActivitePage";
 import EpiHistoriquePage from "./pages/EpiHistoriquePage";
+import RisqueHistoriquePage from "./pages/RisqueHistoriquePage";
+import ActionHistoriquePage from "./pages/ActionHistoriquePage";
+import AuditHistoriquePage from "./pages/AuditHistoriquePage";
+import FormationHistoriquePage from "./pages/FormationHistoriquePage";
+import AssistantPage from "./pages/AssistantPage";
 
 // Redirige vers le bon dashboard selon le rôle de l'utilisateur connecté
 function dashboardParRole(role) {
@@ -114,6 +119,12 @@ function App() {
         {/* Journal d'activité global — QHSE et ADMIN uniquement */}
         <Route path="/journal-activite" element={<ProtectedRoute element={<JournalActivitePage />} rolesAutorises={["ADMIN", "RESPONSABLE_QHSE"]} />} />
         <Route path="/epis/historique" element={<ProtectedRoute element={<EpiHistoriquePage />} rolesAutorises={["ADMIN", "RESPONSABLE_QHSE"]} />} />
+        <Route path="/duerp/historique"      element={<ProtectedRoute element={<RisqueHistoriquePage />}    rolesAutorises={["ADMIN", "RESPONSABLE_QHSE"]} />} />
+        <Route path="/actions/historique"    element={<ProtectedRoute element={<ActionHistoriquePage />}    rolesAutorises={["ADMIN", "RESPONSABLE_QHSE"]} />} />
+        <Route path="/audits/historique"     element={<ProtectedRoute element={<AuditHistoriquePage />}     rolesAutorises={["ADMIN", "RESPONSABLE_QHSE"]} />} />
+        <Route path="/formations/historique" element={<ProtectedRoute element={<FormationHistoriquePage />} rolesAutorises={["ADMIN", "RESPONSABLE_QHSE"]} />} />
+        {/* Assistant IA — ADMIN et RESPONSABLE_QHSE, cohérent avec le backend */}
+        <Route path="/assistant" element={<ProtectedRoute element={<AssistantPage />} rolesAutorises={["ADMIN", "RESPONSABLE_QHSE"]} />} />
 
         <Route path="*" element={<CatchAll />} />
       </Routes>

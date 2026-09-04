@@ -4,7 +4,7 @@ const {
   getTemplates, getHistoriqueScores, getAllAudits, getAuditById,
   createAudit, updateAudit, deleteAudit,
   repondreQuestion, demarrer, finaliser, annuler,
-  genererRapportPdf,
+  genererRapportPdf, getHistorique,
 } = require("../controllers/auditController");
 const { getActionsByAudit, genererActionsDepuisAudit } = require("../controllers/actionController");
 const { protect }   = require("../middlewares/authMiddleware");
@@ -21,6 +21,9 @@ router.get("/:id",               protect, getAuditById);
 
 // Rapport PDF  →  RESPONSABLE_QHSE et ADMIN uniquement
 router.get("/:id/rapport-pdf", protect, authorize("RESPONSABLE_QHSE", "ADMIN"), genererRapportPdf);
+
+// Piste d'audit en lecture seule  →  tous les rôles
+router.get("/:id/historique", protect, getHistorique);
 
 // Écritures  →  RESPONSABLE_QHSE uniquement
 router.post("/",      protect, authorize("RESPONSABLE_QHSE"), validate(auditSchema), createAudit);

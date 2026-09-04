@@ -412,6 +412,8 @@ function AuditDetailPage() {
   const [capaACloturer,   setCapaACloturer]   = useState(null);
   const [transitionEnCours, setTransitionEnCours] = useState(false);
   const [telechargementPdf, setTelechargementPdf] = useState(false);
+  const [historique,      setHistorique]      = useState([]);
+  const [showHistorique,  setShowHistorique]  = useState(false);
 
   useEffect(() => {
     document.title = "Audit";
@@ -438,12 +440,22 @@ function AuditDetailPage() {
     }
   };
 
-  useEffect(() => { charger(); chargerCapa(); }, [id]);
+  const chargerHistorique = async () => {
+    try {
+      const res = await api.get(`/audits/${id}/historique`);
+      setHistorique(res.data.data || []);
+    } catch (e) {
+      console.error("Erreur chargement historique:", e);
+    }
+  };
+
+  useEffect(() => { charger(); chargerCapa(); chargerHistorique(); }, [id]);
 
   const repondre = async (questionId, payload) => {
     try {
       const res = await api.put(`/audits/${id}/questions/${questionId}`, payload);
       setAudit(res.data.data);
+      if (payload.reponse === "NON_CONFORME") chargerHistorique();
     } catch (err) {
       const msg = err.response?.data?.message || "Erreur lors de l'enregistrement de la réponse.";
       toast.error(msg);
@@ -456,6 +468,7 @@ function AuditDetailPage() {
     try {
       const res = await api.post(`/audits/${id}/generer-actions`);
       setCapaActions(res.data.data || []);
+      chargerHistorique();
       toast.success("Plan d'actions correctives généré");
     } catch (err) {
       toast.error(err.response?.data?.message || "Erreur lors de la génération du plan d'actions.");
@@ -493,6 +506,7 @@ function AuditDetailPage() {
     try {
       const res = await api.put(`/audits/${id}/demarrer`);
       setAudit(res.data.data);
+      chargerHistorique();
       toast.success("Audit démarré");
     } catch (err) {
       toast.error(err.response?.data?.message || "Erreur lors du démarrage.");
@@ -506,6 +520,7 @@ function AuditDetailPage() {
     try {
       const res = await api.put(`/audits/${id}/finaliser`);
       setAudit(res.data.data);
+      chargerHistorique();
       toast.success("Audit finalisé");
     } catch (err) {
       toast.error(err.response?.data?.message || "Erreur lors de la finalisation.");
@@ -650,6 +665,64 @@ function AuditDetailPage() {
           onCloturer={setCapaACloturer}
           genererEnCours={genererEnCours}
         />
+      </div>
+
+      {/* ── Historique ── */}
+      <div className="mt-5 bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">
+        <button type="button" onClick={() => setShowHistorique((v) => !v)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#F8FAFC] transition-colors">
+          <div className="text-left">
+            <h2 className="text-lg font-semibold text-navy">
+              Historique
+              {historique.length > 0 && (
+                <span className="ml-2 text-[11px] font-normal text-[#94A3B8]">
+                  {historique.length} entrée{historique.length > 1 ? "s" : ""}
+                </span>
+              )}
+            </h2>
+            <p className="text-xs text-[#64748B] mt-0.5">Piste d'audit (lecture seule)</p>
+          </div>
+          <svg className={`w-4 h-4 text-[#94A3B8] shrink-0 transition-transform duration-200 ${showHistorique ? "rotate-180" : ""}`}
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+        {showHistorique && (
+          <>
+            <div className="border-t border-[#E2E8F0]" />
+            {historique.length === 0 ? (
+              <p className="px-5 py-8 text-sm text-[#94A3B8] text-center">Aucune entrée d'historique.</p>
+            ) : (
+              <ol className="px-5 py-4">
+                {historique.map((entree, i) => {
+                  const isLast = i === historique.length - 1;
+                  return (
+                    <li key={entree.id} className="flex gap-4">
+                      <div className="flex flex-col items-center shrink-0">
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#0D2B4E] border-2 border-white ring-1 ring-[#CBD5E1] mt-1 shrink-0" />
+                        {!isLast && <div className="w-px flex-1 bg-[#E2E8F0] my-1" />}
+                      </div>
+                      <div className="pb-4">
+                        <p className="text-sm font-medium text-[#1E293B] leading-snug">{entree.action}</p>
+                        {entree.details && (
+                          <p className="text-xs text-[#64748B] mt-0.5 italic">{entree.details}</p>
+                        )}
+                        <p className="text-xs text-[#94A3B8] mt-1">
+                          {entree.auteur ? `${entree.auteur.prenom} ${entree.auteur.nom}` : "Système"}
+                          {" · "}
+                          {new Date(entree.dateAction).toLocaleString("fr-FR", {
+                            day: "2-digit", month: "short", year: "numeric",
+                            hour: "2-digit", minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </>
+        )}
       </div>
 
       {capaACloturer && (

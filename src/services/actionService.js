@@ -1,5 +1,5 @@
 const prisma = require("../config/prisma");
-const { enregistrer, enregistrerAction } = require("./historiqueService");
+const { enregistrer, enregistrerAction, enregistrerAudit } = require("./historiqueService");
 const { creer: creerNotification } = require("./notificationService");
 
 // Erreur métier avec code HTTP (400/403/404) — évite de renvoyer 500 sur des cas attendus
@@ -301,6 +301,7 @@ const genererActionsDepuisAudit = async (auditId, entrepriseId) => {
           a.description.slice(0, 120), `/actions/${a.id}`
         );
       }
+      await enregistrerAudit(auditId, audit.auditeurId, "Plan d'actions correctives généré", `${creees.length} action(s) créée(s)`);
     }
   }
 

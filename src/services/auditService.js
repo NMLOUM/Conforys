@@ -1,6 +1,7 @@
 // Importation de l'instance Prisma partagée (connexion à la base)
 const prisma = require("../config/prisma");
 const { TEMPLATES_AUDIT, getTemplateById } = require("../config/auditTemplates");
+const { enregistrerAudit, getHistoriqueByAudit: getHistoriqueAudit } = require("./historiqueService");
 
 // Erreur métier avec code HTTP (400/404) — évite de renvoyer 500 sur des cas attendus
 class ErreurMetier extends Error {
@@ -66,7 +67,7 @@ const verifierSite = async (siteId, entrepriseId) => {
 // Crée un nouvel audit à partir d'un template : l'audit et ses questions
 // de checklist sont créés dans la même transaction, avec la même référence
 // atomique que pour les incidents (cohérence garantie même en cas d'erreur).
-const createAudit = async (data, entrepriseId) => {
+const createAudit = async (data, userId, entrepriseId) => {
   const template = getTemplateById(data.templateId);
   if (!template) {
     throw new ErreurMetier("Template d'audit introuvable.");
@@ -75,8 +76,8 @@ const createAudit = async (data, entrepriseId) => {
 
   const reference = await genererReference();
 
-  return await prisma.$transaction(async (tx) => {
-    const audit = await tx.audit.create({
+  const audit = await prisma.$transaction(async (tx) => {
+    const cree = await tx.audit.create({
       data: {
         reference,
         titre: data.titre,
@@ -92,13 +93,13 @@ const createAudit = async (data, entrepriseId) => {
       data: template.questions.map((q, index) => ({
         libelle: q.libelle,
         criticite: q.criticite,
-        auditId: audit.id,
+        auditId: cree.id,
         ordre: index,
       })),
     });
 
     return await tx.audit.findUnique({
-      where: { id: audit.id },
+      where: { id: cree.id },
       include: {
         auditeur: { select: { id: true, nom: true, prenom: true } },
         site: true,
@@ -106,6 +107,9 @@ const createAudit = async (data, entrepriseId) => {
       },
     });
   });
+
+  await enregistrerAudit(audit.id, userId, "Audit créé", `Référence : ${audit.reference} · Template : ${template.nom}`);
+  return audit;
 };
 
 // Vérifie qu'un audit appartient à l'entreprise du demandeur avant toute
@@ -145,7 +149,7 @@ const INCLUDE_AUDIT = {
 // ── Workflow de statuts ────────────────────────────────────────────────────────
 
 // PLANIFIE → EN_COURS : démarre la réalisation de l'audit sur le terrain
-const demarrer = async (id, entrepriseId) => {
+const demarrer = async (id, userId, entrepriseId) => {
   const audit = await verifierAppartenanceAudit(id, entrepriseId);
   if (audit.statut !== "PLANIFIE") {
     throw new ErreurMetier(
@@ -153,17 +157,19 @@ const demarrer = async (id, entrepriseId) => {
     );
   }
 
-  return await prisma.audit.update({
+  const resultat = await prisma.audit.update({
     where: { id },
     data: { statut: "EN_COURS" },
     include: INCLUDE_AUDIT,
   });
+  await enregistrerAudit(id, userId, "Statut changé : PLANIFIE → EN_COURS");
+  return resultat;
 };
 
 // EN_COURS → TERMINE : clôture l'audit après vérification que toutes les
 // questions ont reçu une réponse. Le score (déjà tenu à jour à chaque
 // réponse) est conservé tel quel — c'est la valeur finale figée.
-const finaliser = async (id, entrepriseId) => {
+const finaliser = async (id, userId, entrepriseId) => {
   await verifierAppartenanceAudit(id, entrepriseId);
   const audit = await prisma.audit.findUnique({
     where: { id },
@@ -182,15 +188,17 @@ const finaliser = async (id, entrepriseId) => {
     );
   }
 
-  return await prisma.audit.update({
+  const resultat = await prisma.audit.update({
     where: { id },
     data: { statut: "TERMINE", dateRealisee: new Date() },
     include: INCLUDE_AUDIT,
   });
+  await enregistrerAudit(id, userId, "Statut changé : EN_COURS → TERMINE", `Score de conformité : ${audit.scoreConformite ?? 0}%`);
+  return resultat;
 };
 
 // * → ANNULE (sauf audit déjà terminé ou déjà annulé)
-const annuler = async (id, entrepriseId) => {
+const annuler = async (id, userId, entrepriseId) => {
   const audit = await verifierAppartenanceAudit(id, entrepriseId);
   if (audit.statut === "TERMINE") {
     throw new ErreurMetier("Impossible d'annuler un audit déjà terminé.");
@@ -199,11 +207,13 @@ const annuler = async (id, entrepriseId) => {
     throw new ErreurMetier("Cet audit est déjà annulé.");
   }
 
-  return await prisma.audit.update({
+  const resultat = await prisma.audit.update({
     where: { id },
     data: { statut: "ANNULE" },
     include: INCLUDE_AUDIT,
   });
+  await enregistrerAudit(id, userId, `Statut changé : ${audit.statut} → ANNULE`);
+  return resultat;
 };
 
 // ── Scoring pondéré ───────────────────────────────────────────────────────────
@@ -277,7 +287,7 @@ const getHistoriqueScores = async (entrepriseId, { siteId, type } = {}) => {
 // Enregistre la réponse à une question et recalcule le score de l'audit.
 // Réservé aux audits EN_COURS : un audit PLANIFIE n'a pas encore démarré,
 // et un audit TERMINE/ANNULE est figé en lecture seule.
-const repondreQuestion = async (auditId, questionId, data, entrepriseId) => {
+const repondreQuestion = async (auditId, questionId, data, userId, entrepriseId) => {
   const audit = await verifierAppartenanceAudit(auditId, entrepriseId);
   if (audit.statut !== "EN_COURS") {
     throw new ErreurMetier(
@@ -301,7 +311,22 @@ const repondreQuestion = async (auditId, questionId, data, entrepriseId) => {
 
   await calculerScore(auditId);
 
+  // Seules les non-conformités sont journalisées individuellement — répondre
+  // "Conforme"/"N.A." à chaque question de la checklist noierait l'historique
+  // sous des entrées de routine sans valeur pour la piste d'audit.
+  if (data.reponse === "NON_CONFORME") {
+    await enregistrerAudit(auditId, userId, "Non-conformité enregistrée", question.libelle.slice(0, 160));
+  }
+
   return await getAuditById(auditId, entrepriseId);
+};
+
+// Historique d'un audit — vérifie d'abord qu'il appartient à l'entreprise du
+// demandeur (même garde-fou que pour le DUERP : l'id seul ne doit pas suffire
+// à consulter la piste d'audit d'un audit d'une autre entreprise).
+const getHistoriqueByAudit = async (id, entrepriseId) => {
+  await verifierAppartenanceAudit(id, entrepriseId);
+  return getHistoriqueAudit(id);
 };
 
 // Export de toutes les fonctions du service
@@ -318,4 +343,5 @@ module.exports = {
   demarrer,
   finaliser,
   annuler,
+  getHistoriqueByAudit,
 };
