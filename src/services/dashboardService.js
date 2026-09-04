@@ -232,7 +232,7 @@ const getIncidentStats = async (entrepriseId) => {
     auditsMoisCourant,
     conformiteEpi,
     // KPIs globaux
-    total, critiques, episEnAlerte, tauxConformite,
+    total, critiques, graves, episEnAlerte, tauxConformite,
     habilitationsExpirantes: habExpirantesCount,
     // DUERP
     risquesTotal: tousRisques.length,

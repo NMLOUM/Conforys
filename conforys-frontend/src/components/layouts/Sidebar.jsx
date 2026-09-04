@@ -62,6 +62,12 @@ const IcMatrice = () => (
   </svg>
 );
 
+const IcSparkle = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/>
+  </svg>
+);
+
 const ICONS = {
   "/dashboard-admin": <IcGrid />,
   "/dashboard":       <IcGrid />,
@@ -73,6 +79,7 @@ const ICONS = {
   "/formations":      <IcBook />,
   "/duerp":           <IcMatrice />,
   "/users":           <IcUsers />,
+  "/assistant":       <IcSparkle />,
 };
 
 const SectionLabel = ({ label }) => (
@@ -135,6 +142,9 @@ function Sidebar({ ouverte, onClose }) {
 
             <SectionLabel label="Consultation" />
             <Lien to="/incidents" label="Incidents" />
+
+            <SectionLabel label="Assistant" />
+            <Lien to="/assistant" label="Assistant IA" />
           </>
         )}
 
@@ -152,6 +162,9 @@ function Sidebar({ ouverte, onClose }) {
             <Lien to="/duerp"     label="DUERP" />
             <Lien to="/formations" label="Formations" />
             <Lien to="/users"     label="Utilisateurs" />
+
+            <SectionLabel label="Assistant" />
+            <Lien to="/assistant" label="Assistant IA" />
           </>
         )}
 
