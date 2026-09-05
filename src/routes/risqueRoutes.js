@@ -10,6 +10,7 @@ const { protect }   = require("../middlewares/authMiddleware");
 const { authorize } = require("../middlewares/roleMiddleware");
 const { validate }  = require("../middlewares/validate");
 const { risqueSchema, updateRisqueSchema } = require("../validators/risqueValidator");
+const { actionSchema } = require("../validators/actionValidator");
 
 // ⚠️ Routes spécifiques placées avant /:id pour éviter le conflit
 router.get("/matrice",         protect, getMatrice);
@@ -27,7 +28,7 @@ router.post("/",      protect, authorize("RESPONSABLE_QHSE"), validate(risqueSch
 router.put("/:id",    protect, authorize("RESPONSABLE_QHSE"), validate(updateRisqueSchema), updateRisque);
 router.delete("/:id", protect, authorize("RESPONSABLE_QHSE"), deleteRisque);
 
-// Génération d'une action de prévention — RESPONSABLE_QHSE uniquement
-router.post("/:id/generer-action", protect, authorize("RESPONSABLE_QHSE"), genererAction);
+// Génération d'une action de prévention — RESPONSABLE_QHSE uniquement, description + responsable saisis au préalable
+router.post("/:id/generer-action", protect, authorize("RESPONSABLE_QHSE"), validate(actionSchema), genererAction);
 
 module.exports = router;

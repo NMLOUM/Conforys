@@ -2,10 +2,14 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import Chart from "react-apexcharts";
 import toast from "react-hot-toast";
+import { X, CheckCircle2, CalendarDays, Save } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import Badge from "../components/ui/Badge";
 import { useRole } from "../hooks/useRole";
+
+const LABELS_ROLE = { ADMIN: "Admin", RESPONSABLE_QHSE: "Resp. QHSE", MANAGER: "Manager", EMPLOYE: "Employé" };
+const initiales = (u) => `${u.prenom?.[0] ?? ""}${u.nom?.[0] ?? ""}`.toUpperCase() || "?";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -330,6 +334,118 @@ function ModalCloturerCapa({ action, onSuccess, onClose }) {
 
 // ── Section "Plan d'actions correctives" ─────────────────────────────────────
 
+// ── Modale de génération du plan d'actions — responsable + échéance saisis
+// au préalable, appliqués à toutes les actions issues des non-conformités ──
+function ModalGenererActionsAudit({ nombreNonConformes, users, onClose, onConfirm }) {
+  const [responsableId, setResponsableId] = useState("");
+  const [dateLimite,    setDateLimite]    = useState("");
+  const [erreur,        setErreur]        = useState("");
+  const [envoi,         setEnvoi]         = useState(false);
+
+  const soumettre = async () => {
+    if (!responsableId) {
+      setErreur("Sélectionnez un responsable.");
+      return;
+    }
+    setErreur("");
+    setEnvoi(true);
+    try {
+      await onConfirm({ responsableId, dateLimite: dateLimite || null });
+    } catch (err) {
+      setErreur(err.response?.data?.message || "Erreur lors de la génération du plan d'actions.");
+    } finally {
+      setEnvoi(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+
+      <div className="relative w-full max-w-xl bg-white h-full shadow-2xl flex flex-col animate-slide-in-right">
+        {/* En-tête */}
+        <div className="px-8 py-6 border-b border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-between shrink-0">
+          <div>
+            <h3 className="text-xl font-bold text-navy">Générer le plan d'actions correctives</h3>
+            <div className="flex items-center gap-2 mt-1.5 text-sm">
+              <span className="text-[#64748B]">Contexte :</span>
+              <span className="font-semibold bg-navy/10 text-navy px-2 py-0.5 rounded text-xs">
+                {nombreNonConformes} non-conformité{nombreNonConformes > 1 ? "s" : ""}
+              </span>
+            </div>
+          </div>
+          <button type="button" onClick={onClose}
+            className="w-10 h-10 rounded-full hover:bg-[#E2E8F0] flex items-center justify-center transition-colors shrink-0">
+            <X size={18} className="text-[#64748B]" />
+          </button>
+        </div>
+
+        {/* Contenu */}
+        <div className="flex-1 overflow-y-auto px-8 py-8 space-y-8">
+          <p className="text-sm text-[#64748B]">
+            Chaque non-conformité générera sa propre action corrective, toutes assignées au même responsable
+            et à la même échéance — les descriptions restent dérivées individuellement de chaque question.
+          </p>
+          {erreur && <p className="text-xs text-[#DC2626] p-3 bg-red-50 border border-red-200 rounded-md">{erreur}</p>}
+
+          <div className="space-y-3">
+            <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider block">Responsable *</label>
+            <div className="grid grid-cols-2 gap-3">
+              {users.map((u) => {
+                const actif = responsableId === u.id;
+                return (
+                  <button key={u.id} type="button" onClick={() => setResponsableId(u.id)}
+                    className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+                      actif ? "border-navy bg-navy/5" : "border-[#E2E8F0] hover:border-navy/40 hover:bg-[#F8FAFC]"
+                    }`}>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                      style={{ backgroundColor: "#0D2B4E" }}>
+                      {initiales(u)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-navy truncate">{u.prenom} {u.nom}</p>
+                      <p className="text-[10px] text-[#64748B]">{LABELS_ROLE[u.role] ?? u.role}</p>
+                    </div>
+                    {actif && <CheckCircle2 size={18} className="text-navy shrink-0" style={{ fill: "#0D2B4E", color: "white" }} />}
+                  </button>
+                );
+              })}
+              {users.length === 0 && (
+                <p className="col-span-2 text-xs text-[#94A3B8]">Aucun utilisateur disponible.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider block">
+              Échéance <span className="font-normal normal-case">(optionnel, appliquée à toutes)</span>
+            </label>
+            <div className="relative">
+              <CalendarDays size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none" />
+              <input type="date" value={dateLimite} onChange={(e) => setDateLimite(e.target.value)}
+                className="w-full pl-10 pr-3 py-3 text-sm border border-[#E2E8F0] rounded-lg bg-white text-[#1E293B] focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition" />
+            </div>
+          </div>
+        </div>
+
+        {/* Pied de panneau */}
+        <div className="px-8 py-6 border-t border-[#E2E8F0] bg-white flex items-center justify-between shrink-0">
+          <button type="button" onClick={onClose}
+            className="px-6 py-3 text-sm font-bold text-[#64748B] rounded-lg hover:bg-[#F8FAFC] transition-colors">
+            Annuler
+          </button>
+          <button type="button" onClick={soumettre} disabled={envoi}
+            className="flex items-center gap-2 px-8 py-3 text-sm font-bold text-white rounded-lg shadow-lg disabled:opacity-50 transition-all"
+            style={{ backgroundColor: "#0D2B4E" }}>
+            <Save size={16} />
+            {envoi ? "Génération…" : "Générer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SectionCapa({ auditId, nombreNonConformes, auditTermine, can, actions, onGenerer, onCloturer, genererEnCours }) {
   if (!can("RESPONSABLE_QHSE")) return null;
 
@@ -407,8 +523,10 @@ function AuditDetailPage() {
   const { can } = useRole();
   const [audit,      setAudit]      = useState(null);
   const [chargement, setChargement] = useState(true);
+  const [users,           setUsers]           = useState([]);
   const [capaActions,     setCapaActions]     = useState([]);
   const [genererEnCours,  setGenererEnCours]  = useState(false);
+  const [showModalGenerer, setShowModalGenerer] = useState(false);
   const [capaACloturer,   setCapaACloturer]   = useState(null);
   const [transitionEnCours, setTransitionEnCours] = useState(false);
   const [telechargementPdf, setTelechargementPdf] = useState(false);
@@ -451,6 +569,10 @@ function AuditDetailPage() {
 
   useEffect(() => { charger(); chargerCapa(); chargerHistorique(); }, [id]);
 
+  useEffect(() => {
+    if (can("RESPONSABLE_QHSE")) api.get("/users").then((r) => setUsers(r.data.data || [])).catch(() => {});
+  }, []);
+
   const repondre = async (questionId, payload) => {
     try {
       const res = await api.put(`/audits/${id}/questions/${questionId}`, payload);
@@ -463,15 +585,14 @@ function AuditDetailPage() {
     }
   };
 
-  const genererCapa = async () => {
+  const confirmerGenererCapa = async (payload) => {
     setGenererEnCours(true);
     try {
-      const res = await api.post(`/audits/${id}/generer-actions`);
+      const res = await api.post(`/audits/${id}/generer-actions`, payload);
       setCapaActions(res.data.data || []);
       chargerHistorique();
+      setShowModalGenerer(false);
       toast.success("Plan d'actions correctives généré");
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Erreur lors de la génération du plan d'actions.");
     } finally {
       setGenererEnCours(false);
     }
@@ -661,11 +782,20 @@ function AuditDetailPage() {
           auditTermine={audit.statut === "TERMINE"}
           can={can}
           actions={capaActions}
-          onGenerer={genererCapa}
+          onGenerer={() => setShowModalGenerer(true)}
           onCloturer={setCapaACloturer}
           genererEnCours={genererEnCours}
         />
       </div>
+
+      {showModalGenerer && (
+        <ModalGenererActionsAudit
+          nombreNonConformes={repartition.NON_CONFORME}
+          users={users}
+          onClose={() => setShowModalGenerer(false)}
+          onConfirm={confirmerGenererCapa}
+        />
+      )}
 
       {/* ── Historique ── */}
       <div className="mt-5 bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">

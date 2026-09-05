@@ -258,9 +258,9 @@ const getActionsByAudit = async (auditId, entrepriseId) => {
 // Génère automatiquement une action corrective pour chaque question NON_CONFORME
 // de l'audit. Idempotent : si on régénère, les questions déjà couvertes par une
 // action existante (même description, donc même libellé) ne sont pas dupliquées.
-// Le responsable par défaut est l'auditeur — aucune saisie manuelle n'est possible
-// sur cet endpoint de génération en masse.
-const genererActionsDepuisAudit = async (auditId, entrepriseId) => {
+// Le responsable et l'échéance sont saisis par le QHSE avant la génération
+// (formulaire côté frontend) — appliqués à toutes les actions de ce lot.
+const genererActionsDepuisAudit = async (auditId, entrepriseId, { responsableId, dateLimite } = {}) => {
   const audit = await prisma.audit.findFirst({
     where: { id: auditId, auditeur: { entrepriseId } },
     include: { questions: true },
@@ -270,6 +270,8 @@ const genererActionsDepuisAudit = async (auditId, entrepriseId) => {
   const nonConformes = audit.questions.filter((q) => q.reponse === "NON_CONFORME");
 
   if (nonConformes.length > 0) {
+    await verifierResponsable(responsableId, entrepriseId);
+
     const existantes = await prisma.actionCorrective.findMany({
       where: { auditId },
       select: { description: true },
@@ -282,7 +284,8 @@ const genererActionsDepuisAudit = async (auditId, entrepriseId) => {
         priorite:      PRIORITE_PAR_CRITICITE[q.criticite],
         statut:        "A_FAIRE",
         auditId,
-        responsableId: audit.auditeurId,
+        responsableId,
+        dateLimite: dateLimite ? new Date(dateLimite) : null,
       }))
       .filter((a) => !descriptionsExistantes.has(a.description));
 
@@ -297,7 +300,7 @@ const genererActionsDepuisAudit = async (auditId, entrepriseId) => {
       for (const a of creees) {
         await enregistrerAction(a.id, audit.auditeurId, "Action créée", `Générée depuis l'audit : ${audit.reference}`);
         await creerNotification(
-          audit.auditeurId, "ACTION_ASSIGNEE", "Action corrective assignée",
+          responsableId, "ACTION_ASSIGNEE", "Action corrective assignée",
           a.description.slice(0, 120), `/actions/${a.id}`
         );
       }
@@ -339,4 +342,5 @@ module.exports = {
   getMesActions,
   getActionsByAudit,
   genererActionsDepuisAudit,
+  verifierResponsable,
 };

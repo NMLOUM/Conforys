@@ -78,8 +78,8 @@ router.post("/:id/analyse", protect, authorize("RESPONSABLE_QHSE"), initialiserA
 // PUT  /api/incidents/:id/analyse → met à jour l'analyse (RESPONSABLE_QHSE)
 router.put("/:id/analyse", protect, authorize("RESPONSABLE_QHSE"), validate(updateAnalyseSchema), updateAnalyse);
 
-// POST /api/incidents/:id/analyse/action → génère une action corrective depuis la cause racine (RESPONSABLE_QHSE)
-router.post("/:id/analyse/action", protect, authorize("RESPONSABLE_QHSE"), genererActionDepuisAnalyse);
+// POST /api/incidents/:id/analyse/action → génère une action corrective depuis la cause racine (RESPONSABLE_QHSE), description + responsable saisis au préalable
+router.post("/:id/analyse/action", protect, authorize("RESPONSABLE_QHSE"), validate(actionSchema), genererActionDepuisAnalyse);
 
 // ── Pièces jointes ────────────────────────────────────────────────────────────
 // GET  /api/incidents/:id/pieces-jointes → liste des pièces jointes d'un incident

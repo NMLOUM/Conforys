@@ -1,0 +1,147 @@
+@startuml CONFORYS_Diagramme_Classes
+
+' ===== Style sobre noir et blanc =====
+skinparam backgroundColor white
+skinparam classBackgroundColor white
+skinparam classBorderColor black
+skinparam classArrowColor black
+skinparam classFontName Arial
+skinparam shadowing false
+skinparam classFontSize 12
+skinparam classAttributeFontSize 11
+hide circle
+
+' ===== Entités =====
+
+class Entreprise {
+  +UUID id
+  +String nom
+  +String secteur
+  +String email
+  +DateTime dateRevisionDuerp
+}
+
+class Site {
+  +UUID id
+  +String nom
+  +String ville
+  +UUID entrepriseId
+}
+
+class User {
+  +UUID id
+  +String email
+  +String passwordHash
+  +String nom
+  +String prenom
+  +Role role
+  +UUID entrepriseId
+  --
+  +login()
+  +logout()
+}
+
+class Notification {
+  +UUID id
+  +TypeNotification type
+  +String titre
+  +Boolean lu
+  +UUID destinataireId
+}
+
+class Incident {
+  +UUID id
+  +String numeroReference
+  +TypeIncident type
+  +String description
+  +StatutIncident statut
+  +GraviteIncident gravite
+  +UUID declareParId
+  --
+  +declarer()
+  +valider()
+  +cloturer()
+}
+
+class AnalyseCauses {
+  +UUID id
+  +String probleme
+  +String causeRacine
+  +UUID incidentId
+}
+
+class ActionCorrective {
+  +UUID id
+  +String description
+  +PrioriteAction priorite
+  +StatutAction statut
+  +DateTime dateLimite
+  +UUID responsableId
+}
+
+class Audit {
+  +UUID id
+  +String reference
+  +TypeAudit type
+  +StatutAudit statut
+  +Float scoreConformite
+  +UUID siteId
+  --
+  +calculerScore()
+  +genererPDF()
+}
+
+class QuestionAudit {
+  +UUID id
+  +String libelle
+  +CriticiteQuestion criticite
+  +ReponseAudit reponse
+  +UUID auditId
+}
+
+class Risque {
+  +UUID id
+  +String danger
+  +CategorieRisque categorie
+  +Int probabilite
+  +Int gravite
+  +Int niveauRisque
+  +UUID siteId
+}
+
+class Epi {
+  +UUID id
+  +String designation
+  +Int quantite
+  +StatutEpi statut
+  +UUID siteId
+  --
+  +verifierStock()
+}
+
+class Formation {
+  +UUID id
+  +String titre
+  +ThemeFormation theme
+  +StatutFormation statut
+  +UUID siteId
+}
+
+' ===== Relations =====
+
+Entreprise "1" *-- "n" Site : possède
+Entreprise "1" *-- "n" User : emploie
+User "1" -- "n" Notification : reçoit
+Site "1" -- "n" Incident : survient sur
+Site "1" -- "n" Audit : est audité
+Site "1" -- "n" Risque : évalue
+Site "1" -- "n" Epi : possède
+Site "1" -- "n" Formation : propose
+Incident "1" -- "1" AnalyseCauses : analyse
+Audit "1" -- "n" QuestionAudit : contient
+Incident "1" -- "n" ActionCorrective : déclenche
+Audit "1" -- "n" ActionCorrective : déclenche
+Risque "1" -- "n" ActionCorrective : génère
+User "1" -- "n" ActionCorrective : est responsable de
+
+@enduml

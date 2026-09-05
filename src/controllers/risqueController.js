@@ -72,7 +72,7 @@ const deleteRisque = async (req, res) => {
 // POST /api/risques/:id/generer-action — RESPONSABLE_QHSE
 const genererAction = async (req, res) => {
   try {
-    const action = await risqueService.genererActionDepuisRisque(req.params.id, req.user.userId, req.user.entrepriseId);
+    const action = await risqueService.genererActionDepuisRisque(req.params.id, req.user.userId, req.user.entrepriseId, req.body);
     res.status(201).json({ success: true, data: action });
   } catch (error) {
     handleErreur(res, error);

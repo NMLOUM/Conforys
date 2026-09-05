@@ -2,6 +2,11 @@ import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { AlertTriangle, Plus, X, CheckCircle2, ArrowRight } from "lucide-react";
 import api from "../../api/axios";
+import ModalGenererAction from "../actions/ModalGenererAction";
+
+// Même dérivation de priorité que côté backend (analyseCausesService) —
+// juste pour pré-remplir le formulaire, le backend reste la source de vérité.
+const PRIORITE_PAR_GRAVITE = { FAIBLE: "FAIBLE", MOYEN: "MOYEN", GRAVE: "ELEVE", CRITIQUE: "CRITIQUE" };
 
 const LABELS_TYPE = {
   ACCIDENT:                 "Accident",
@@ -108,6 +113,12 @@ function AnalyseCausesRacines({ incident, peutGerer, onActionCreee }) {
   const [sauvegarde,        setSauvegarde]        = useState(false);
   const [validationEnCours, setValidationEnCours] = useState(false);
   const [genererEnCours,    setGenererEnCours]    = useState(false);
+  const [showModalGenerer,  setShowModalGenerer]  = useState(false);
+  const [users,             setUsers]             = useState([]);
+
+  useEffect(() => {
+    if (peutGerer) api.get("/users").then((r) => setUsers(r.data.data || [])).catch(() => {});
+  }, [peutGerer]);
 
   const appliquer = (data) => {
     setAnalyse(data);
@@ -225,15 +236,14 @@ function AnalyseCausesRacines({ incident, peutGerer, onActionCreee }) {
     }
   };
 
-  const genererAction = async () => {
+  const confirmerGenererAction = async (payload) => {
     setGenererEnCours(true);
     try {
-      await api.post(`/incidents/${incident.id}/analyse/action`);
+      await api.post(`/incidents/${incident.id}/analyse/action`, payload);
       toast.success("Action corrective créée depuis la cause racine");
+      setShowModalGenerer(false);
       await charger();
       onActionCreee?.();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Erreur lors de la création de l'action corrective.");
     } finally {
       setGenererEnCours(false);
     }
@@ -457,7 +467,7 @@ function AnalyseCausesRacines({ incident, peutGerer, onActionCreee }) {
                   <CheckCircle2 size={15} strokeWidth={2} />
                   {analyse.valideLe ? "Analyse validée" : validationEnCours ? "…" : "Valider l'analyse"}
                 </button>
-                <button type="button" onClick={genererAction} disabled={genererEnCours || !causeRacine.trim() || !analyse.valideLe || Boolean(analyse.actionGenereeLe)}
+                <button type="button" onClick={() => setShowModalGenerer(true)} disabled={genererEnCours || !causeRacine.trim() || !analyse.valideLe || Boolean(analyse.actionGenereeLe)}
                   title={!analyse.valideLe ? "Validez l'analyse avant de créer une action" : !causeRacine.trim() ? "Renseignez la cause racine avant de créer une action" : ""}
                   className="px-4 py-2 text-sm font-semibold text-white rounded-md disabled:opacity-50 transition-colors"
                   style={{ backgroundColor: "#0D2B4E" }}>
@@ -467,6 +477,18 @@ function AnalyseCausesRacines({ incident, peutGerer, onActionCreee }) {
             )}
           </div>
         </div>
+
+        {showModalGenerer && (
+          <ModalGenererAction
+            titre="Créer une action corrective"
+            contexte={`Incident : ${incident.numeroReference}`}
+            defaultDescription={`Action corrective suite à la cause racine : ${causeRacine}`}
+            defaultPriorite={PRIORITE_PAR_GRAVITE[incident.gravite] ?? "MOYEN"}
+            users={users}
+            onClose={() => setShowModalGenerer(false)}
+            onConfirm={confirmerGenererAction}
+          />
+        )}
       </div>
     </div>
   );

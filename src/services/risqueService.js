@@ -5,6 +5,7 @@
 const prisma = require("../config/prisma");
 const { enregistrerRisque, enregistrerAction, getHistoriqueByRisque: getHistorique } = require("./historiqueService");
 const { creer: creerNotification } = require("./notificationService");
+const { verifierResponsable } = require("./actionService");
 
 // Erreur métier avec code HTTP — cohérent avec les autres services
 class ErreurMetier extends Error {
@@ -206,7 +207,7 @@ const getMatrice = async (entrepriseId, siteId) => {
 // Génère une action de prévention (ActionCorrective) pour un risque élevé ou
 // critique. Idempotent : si une action existe déjà pour ce risque, elle est
 // simplement retournée (pas de doublon).
-const genererActionDepuisRisque = async (risqueId, auteurId, entrepriseId) => {
+const genererActionDepuisRisque = async (risqueId, auteurId, entrepriseId, { description, responsableId, priorite, dateLimite } = {}) => {
   const risque = await prisma.risque.findFirst({ where: { id: risqueId, site: { entrepriseId } } });
   if (!risque) throw new ErreurMetier("Risque introuvable.", 404);
 
@@ -218,13 +219,16 @@ const genererActionDepuisRisque = async (risqueId, auteurId, entrepriseId) => {
   const existante = await prisma.actionCorrective.findFirst({ where: { risqueId } });
   if (existante) return existante;
 
+  await verifierResponsable(responsableId, entrepriseId);
+
   const action = await prisma.actionCorrective.create({
     data: {
-      description:   `Mesure de prévention pour le risque : ${risque.danger}${risque.zone ? ` (${risque.zone})` : ""}`,
-      priorite:      niveauQualitatif, // "ELEVE" ou "CRITIQUE" — mêmes libellés que PrioriteAction
+      description:   description?.trim() || `Mesure de prévention pour le risque : ${risque.danger}${risque.zone ? ` (${risque.zone})` : ""}`,
+      priorite:      priorite || niveauQualitatif, // "ELEVE" ou "CRITIQUE" par défaut — mêmes libellés que PrioriteAction
       statut:        "A_FAIRE",
       risqueId,
-      responsableId: risque.auteurId,
+      responsableId,
+      dateLimite: dateLimite ? new Date(dateLimite) : null,
     },
     include: { responsable: { select: { id: true, nom: true, prenom: true } } },
   });

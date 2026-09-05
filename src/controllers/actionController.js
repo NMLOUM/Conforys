@@ -114,7 +114,7 @@ const getActionsByAudit = async (req, res) => {
 // POST /api/audits/:id/generer-actions — QHSE uniquement
 const genererActionsDepuisAudit = async (req, res) => {
   try {
-    const actions = await actionService.genererActionsDepuisAudit(req.params.id, req.user.entrepriseId);
+    const actions = await actionService.genererActionsDepuisAudit(req.params.id, req.user.entrepriseId, req.body);
     res.status(201).json({ success: true, data: actions });
   } catch (error) {
     handleErreur(res, error);

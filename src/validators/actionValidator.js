@@ -54,4 +54,17 @@ const listeActionsSchema = z.object({
   responsableId: z.string().uuid("Identifiant responsable invalide.").optional(),
 });
 
-module.exports = { actionSchema, updateActionSchema, cloturerActionSchema, listeActionsSchema };
+// Génération en masse depuis un audit : un seul responsable et une seule
+// échéance optionnelle, appliqués à toutes les actions issues des
+// non-conformités de ce lot — la description reste dérivée de chaque question
+const genererActionsAuditSchema = z.object({
+  responsableId: z
+    .string({ required_error: "Le responsable est obligatoire." })
+    .uuid("Identifiant responsable invalide."),
+  dateLimite: z.string().optional().nullable(),
+});
+
+module.exports = {
+  actionSchema, updateActionSchema, cloturerActionSchema, listeActionsSchema,
+  genererActionsAuditSchema,
+};

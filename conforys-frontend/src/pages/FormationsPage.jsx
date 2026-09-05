@@ -63,23 +63,39 @@ function BarreProgression({ valeur }) {
   );
 }
 
-// ── Cartes de synthèse ────────────────────────────────────────────────────────
+// ── Cartes de synthèse — le taux de participation (l'indicateur le plus
+// parlant) est mis en avant dans une grande carte, les deux autres sont
+// empilées, plus petites, à côté ──────────────────────────────────────────────
 function CartesSynthese({ stats }) {
-  const cartes = [
-    { label: "Sessions planifiées",     value: stats?.sessionsPlanifiees ?? 0,           sub: "à venir",                  accent: "#0D2B4E" },
-    { label: "Taux de participation",   value: `${stats?.tauxParticipation ?? 0}%`,      sub: "sessions réalisées",       accent: "#2E7D32" },
-    { label: "Recyclages à prévoir",    value: stats?.recyclagesAPrevoir ?? 0,           sub: "formations de +1 an",      accent: "#EA580C" },
+  const secondaires = [
+    { label: "Sessions planifiées",  value: stats?.sessionsPlanifiees ?? 0, sub: "à venir",             accent: "#0D2B4E" },
+    { label: "Recyclages à prévoir", value: stats?.recyclagesAPrevoir ?? 0, sub: "formations de +1 an", accent: "#EA580C" },
   ];
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
-      {cartes.map((c) => (
-        <div key={c.label} className="bg-white rounded-lg p-5 flex flex-col justify-between"
-          style={{ minHeight: "108px", border: "1px solid #E2E8F0", borderLeft: `4px solid ${c.accent}` }}>
-          <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide">{c.label}</p>
-          <p className="text-[28px] font-bold leading-none" style={{ color: c.accent }}>{c.value}</p>
-          <p className="text-[12px] text-[#94A3B8]">{c.sub}</p>
-        </div>
-      ))}
+    <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-4 mb-5">
+      {/* Carte mise en avant */}
+      <div className="bg-white rounded-lg p-6 flex flex-col justify-center"
+        style={{ border: "1px solid #E2E8F0", borderLeft: "4px solid #2E7D32" }}>
+        <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide">Taux de participation</p>
+        <p className="text-[48px] font-bold leading-none mt-2" style={{ color: "#2E7D32" }}>
+          {stats?.tauxParticipation ?? 0}%
+        </p>
+        <p className="text-[13px] text-[#94A3B8] mt-2">sessions réalisées</p>
+      </div>
+
+      {/* Cartes secondaires empilées */}
+      <div className="grid grid-rows-2 gap-4">
+        {secondaires.map((c) => (
+          <div key={c.label} className="bg-white rounded-lg px-5 py-3 flex items-center justify-between gap-3"
+            style={{ border: "1px solid #E2E8F0", borderLeft: `4px solid ${c.accent}` }}>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide truncate">{c.label}</p>
+              <p className="text-[11px] text-[#94A3B8] mt-0.5">{c.sub}</p>
+            </div>
+            <p className="text-[26px] font-bold leading-none shrink-0" style={{ color: c.accent }}>{c.value}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -89,7 +105,7 @@ function BibliothequeModules({ filtreTheme, onFiltrer }) {
   return (
     <div className="mb-5">
       <p className="text-[15px] font-semibold text-[#1E293B] mb-2">Bibliothèque de modules</p>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-3">
         {Object.entries(THEMES).map(([cle, { label, Icone }]) => {
           const actif = filtreTheme === cle;
           return (

@@ -35,7 +35,7 @@ const updateAnalyse = async (req, res) => {
 // POST /api/incidents/:id/analyse/action — génère une action corrective depuis la cause racine (RESPONSABLE_QHSE)
 const genererActionDepuisAnalyse = async (req, res) => {
   try {
-    const action = await analyseCausesService.genererActionDepuisAnalyse(req.params.id, req.user.entrepriseId);
+    const action = await analyseCausesService.genererActionDepuisAnalyse(req.params.id, req.user.entrepriseId, req.body);
     res.status(201).json({ success: true, data: action });
   } catch (error) {
     handleErreur(res, error);

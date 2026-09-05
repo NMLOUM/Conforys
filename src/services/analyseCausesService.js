@@ -5,6 +5,7 @@ const prisma = require("../config/prisma");
 const { enregistrer, enregistrerAction } = require("./historiqueService");
 const { creer: creerNotification } = require("./notificationService");
 const { peutAccederIncident } = require("./incidentService");
+const { verifierResponsable } = require("./actionService");
 
 class ErreurMetier extends Error {
   constructor(message, statusCode = 400) {
@@ -117,7 +118,7 @@ const updateAnalyse = async (incidentId, data, entrepriseId) => {
 // à l'incident). Le responsable par défaut est l'auteur de l'analyse (le
 // QHSE qui l'a menée) et la priorité est dérivée de la gravité de l'incident,
 // même principe que risqueService.genererActionDepuisRisque.
-const genererActionDepuisAnalyse = async (incidentId, entrepriseId) => {
+const genererActionDepuisAnalyse = async (incidentId, entrepriseId, { description, responsableId, priorite, dateLimite } = {}) => {
   const incident = await verifierIncident(incidentId, entrepriseId);
 
   const analyse = await prisma.analyseCauses.findUnique({ where: { incidentId } });
@@ -132,13 +133,16 @@ const genererActionDepuisAnalyse = async (incidentId, entrepriseId) => {
     throw new ErreurMetier("Une action corrective a déjà été générée pour cette analyse.");
   }
 
+  await verifierResponsable(responsableId, entrepriseId);
+
   const action = await prisma.actionCorrective.create({
     data: {
-      description:   `Action corrective suite à la cause racine : ${analyse.causeRacine}`,
-      priorite:      PRIORITE_PAR_GRAVITE[incident.gravite] ?? "MOYEN",
+      description:   description?.trim() || `Action corrective suite à la cause racine : ${analyse.causeRacine}`,
+      priorite:      priorite || PRIORITE_PAR_GRAVITE[incident.gravite] || "MOYEN",
       statut:        "A_FAIRE",
       incidentId,
-      responsableId: analyse.auteurId,
+      responsableId,
+      dateLimite: dateLimite ? new Date(dateLimite) : null,
     },
     include: { responsable: { select: { id: true, nom: true, prenom: true } } },
   });

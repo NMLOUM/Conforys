@@ -8,6 +8,7 @@ import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import Badge from "../components/ui/Badge";
 import ActionButton from "../components/ui/ActionButton";
+import ModalGenererAction from "../components/actions/ModalGenererAction";
 import { useRole } from "../hooks/useRole";
 import { useTable } from "../hooks/useTable";
 import { risqueSchema } from "../validators/risqueSchema";
@@ -180,6 +181,7 @@ function DUERPPage() {
 
   const [risques,     setRisques]     = useState([]);
   const [sites,       setSites]       = useState([]);
+  const [users,       setUsers]       = useState([]);
   const [matrice,     setMatrice]     = useState([]);
   const [chargement,  setChargement]  = useState(true);
   const [showModal,   setShowModal]   = useState(false);
@@ -195,6 +197,7 @@ function DUERPPage() {
   const [telechargementPdf, setTelechargementPdf] = useState(false);
   const [risqueASupprimer, setRisqueASupprimer] = useState(null);
   const [suppressionEnCours, setSuppressionEnCours] = useState(false);
+  const [risqueAGenererAction, setRisqueAGenererAction] = useState(null);
 
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm({
     mode: "onBlur",
@@ -268,6 +271,7 @@ function DUERPPage() {
     chargerMatrice();
     chargerStatutRevision();
     api.get("/sites").then((r) => setSites(r.data.data || [])).catch(() => {});
+    if (peutGerer) api.get("/users").then((r) => setUsers(r.data.data || [])).catch(() => {});
   }, []);
 
   const marquerRevise = async () => {
@@ -371,14 +375,14 @@ function DUERPPage() {
     }
   };
 
-  const genererAction = async (risque) => {
+  const confirmerGenererAction = async (payload) => {
+    const risque = risqueAGenererAction;
     setGenererEnCoursId(risque.id);
     try {
-      await api.post(`/risques/${risque.id}/generer-action`);
+      await api.post(`/risques/${risque.id}/generer-action`, payload);
       toast.success("Action de prévention générée avec succès");
+      setRisqueAGenererAction(null);
       charger();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Erreur lors de la génération de l'action.");
     } finally {
       setGenererEnCoursId(null);
     }
@@ -521,7 +525,7 @@ function DUERPPage() {
                                       Action {LABELS_STATUT_ACTION[r.actions?.[0]?.statut] ?? "générée"}
                                     </Link>
                                   ) : (
-                                    <ActionButton variant="primary" onClick={() => genererAction(r)} loading={genererEnCoursId === r.id}>
+                                    <ActionButton variant="primary" onClick={() => setRisqueAGenererAction(r)} loading={genererEnCoursId === r.id}>
                                       Générer une action
                                     </ActionButton>
                                   )
@@ -707,6 +711,18 @@ function DUERPPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {risqueAGenererAction && (
+        <ModalGenererAction
+          titre="Générer une action de prévention"
+          contexte={risqueAGenererAction.danger}
+          defaultDescription={`Mesure de prévention pour le risque : ${risqueAGenererAction.danger}${risqueAGenererAction.zone ? ` (${risqueAGenererAction.zone})` : ""}`}
+          defaultPriorite={risqueAGenererAction.niveauQualitatif === "CRITIQUE" ? "CRITIQUE" : "ELEVE"}
+          users={users}
+          onClose={() => setRisqueAGenererAction(null)}
+          onConfirm={confirmerGenererAction}
+        />
       )}
     </AppLayout>
   );

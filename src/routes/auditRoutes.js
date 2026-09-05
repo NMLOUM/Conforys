@@ -11,6 +11,7 @@ const { protect }   = require("../middlewares/authMiddleware");
 const { authorize } = require("../middlewares/roleMiddleware");
 const { validate }    = require("../middlewares/validate");
 const { auditSchema, updateAuditSchema, repondreQuestionSchema } = require("../validators/auditValidator");
+const { genererActionsAuditSchema } = require("../validators/actionValidator");
 
 // ⚠️ Routes spécifiques placées avant /:id pour éviter le conflit
 // Lecture  →  tous les rôles
@@ -48,7 +49,13 @@ router.put(
 // GET  /api/audits/:id/actions           → liste des CAPA de l'audit (tous rôles)
 router.get("/:id/actions", protect, getActionsByAudit);
 
-// POST /api/audits/:id/generer-actions   → génération automatique (RESPONSABLE_QHSE)
-router.post("/:id/generer-actions", protect, authorize("RESPONSABLE_QHSE"), genererActionsDepuisAudit);
+// POST /api/audits/:id/generer-actions   → génération (RESPONSABLE_QHSE), responsable + échéance saisis au préalable
+router.post(
+  "/:id/generer-actions",
+  protect,
+  authorize("RESPONSABLE_QHSE"),
+  validate(genererActionsAuditSchema),
+  genererActionsDepuisAudit
+);
 
 module.exports = router;

@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import Badge from "../components/ui/Badge";
+import ModalGenererAction from "../components/actions/ModalGenererAction";
 import { useRole } from "../hooks/useRole";
 
 const CONFIG_NIVEAU = {
@@ -109,9 +110,11 @@ function RisqueDetailPage() {
 
   const [risque,      setRisque]      = useState(null);
   const [chargement,  setChargement]  = useState(true);
+  const [users,       setUsers]       = useState([]);
   const [historique,      setHistorique]      = useState([]);
   const [showHistorique,  setShowHistorique]  = useState(false);
   const [genererEnCours,  setGenererEnCours]  = useState(false);
+  const [showModalGenerer, setShowModalGenerer] = useState(false);
   const [actionACloturer, setActionACloturer] = useState(null);
   const [suppressionEnCours, setSuppressionEnCours] = useState(false);
   const [confirmerSuppression, setConfirmerSuppression] = useState(false);
@@ -143,15 +146,18 @@ function RisqueDetailPage() {
 
   useEffect(() => { charger(); chargerHistorique(); }, [id]);
 
-  const genererAction = async () => {
+  useEffect(() => {
+    if (peutGerer) api.get("/users").then((r) => setUsers(r.data.data || [])).catch(() => {});
+  }, [peutGerer]);
+
+  const confirmerGenererAction = async (payload) => {
     setGenererEnCours(true);
     try {
-      await api.post(`/risques/${id}/generer-action`);
+      await api.post(`/risques/${id}/generer-action`, payload);
       toast.success("Action de prévention générée avec succès");
+      setShowModalGenerer(false);
       charger();
       chargerHistorique();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Erreur lors de la génération de l'action.");
     } finally {
       setGenererEnCours(false);
     }
@@ -241,7 +247,7 @@ function RisqueDetailPage() {
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-[#1E293B]">Action de prévention</p>
               {peutGenererAction && !action && (
-                <button type="button" onClick={genererAction} disabled={genererEnCours}
+                <button type="button" onClick={() => setShowModalGenerer(true)} disabled={genererEnCours}
                   className="px-3 py-1.5 text-xs font-semibold text-white rounded-md bg-[#EA580C] hover:bg-[#EA580C]/90 disabled:opacity-50 transition-colors">
                   {genererEnCours ? "Génération…" : "Générer une action"}
                 </button>
@@ -387,6 +393,18 @@ function RisqueDetailPage() {
           action={actionACloturer}
           onSuccess={apresClotureAction}
           onClose={() => setActionACloturer(null)}
+        />
+      )}
+
+      {showModalGenerer && (
+        <ModalGenererAction
+          titre="Générer une action de prévention"
+          contexte={risque.danger}
+          defaultDescription={`Mesure de prévention pour le risque : ${risque.danger}${risque.zone ? ` (${risque.zone})` : ""}`}
+          defaultPriorite={niveauQualitatif === "CRITIQUE" ? "CRITIQUE" : "ELEVE"}
+          users={users}
+          onClose={() => setShowModalGenerer(false)}
+          onConfirm={confirmerGenererAction}
         />
       )}
 
