@@ -47,7 +47,7 @@ const LABELS_STATUT_ACTION = { A_FAIRE: "à faire", EN_COURS: "en cours", TERMIN
 
 const FORM_DEFAUT = {
   danger: "", description: "", categorie: "AUTRE", zone: "", siteId: "",
-  probabilite: "", gravite: "", mesuresPrevention: "",
+  probabilite: "1", gravite: "1", mesuresPrevention: "",
   probabiliteResiduelle: "", graviteResiduelle: "",
 };
 
@@ -66,21 +66,20 @@ function BadgeNiveau({ niveau }) {
 }
 
 // ── Statut de révision annuelle du DUERP — carte indépendante à côté de la
-// matrice (chacune se dimensionne à son propre contenu, alignées en haut :
-// pas d'étirement forcé qui laisserait un vide dans la plus courte des deux) ──
+// matrice (chacune se dimensionne à son propre contenu) ──
 function StatutRevisionPanel({ statut, onMarquerRevise, enCours, peutGerer }) {
   const formatDate = (d) => d ? new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }) : "—";
 
   if (!statut) {
     return (
-      <div className="flex-1 p-5 bg-white border border-[#E2E8F0] rounded-xl">
+      <div className="p-5 bg-white border border-[#E2E8F0] rounded-xl">
         <p className="text-xs text-[#94A3B8]">Chargement du statut de révision…</p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 p-5 bg-white border border-[#E2E8F0] rounded-xl">
+    <div className="p-5 bg-white border border-[#E2E8F0] rounded-xl">
       <div className="flex items-center gap-2.5 mb-5">
         <CalendarCheck size={20} color={statut.enRetard ? "#DC2626" : "#2E7D32"} strokeWidth={2} className="shrink-0" />
         <p className="text-[15px] font-semibold text-[#1E293B]">Révision annuelle</p>
@@ -108,6 +107,45 @@ function StatutRevisionPanel({ statut, onMarquerRevise, enCours, peutGerer }) {
           className="px-4 py-2.5 text-sm font-semibold rounded-md text-white bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
           {enCours ? "…" : "Marquer comme révisé aujourd'hui"}
         </button>
+      )}
+    </div>
+  );
+}
+
+// ── Répartition des risques par niveau — vient compléter la colonne à côté
+// de la matrice avec de vraies données (comptage par niveau qualitatif) ──
+function RepartitionNiveau({ risques }) {
+  const total = risques.length;
+  const comptes = { FAIBLE: 0, MODERE: 0, ELEVE: 0, CRITIQUE: 0 };
+  risques.forEach((r) => { if (r.niveauQualitatif) comptes[r.niveauQualitatif]++; });
+
+  return (
+    <div className="p-5 bg-white border border-[#E2E8F0] rounded-xl">
+      <p className="text-[15px] font-semibold text-[#1E293B] mb-1">Répartition par niveau</p>
+      <p className="text-xs text-[#94A3B8] mb-4">{total} risque{total !== 1 ? "s" : ""} identifié{total !== 1 ? "s" : ""}</p>
+
+      {total === 0 ? (
+        <p className="text-sm text-[#94A3B8]">Aucun risque enregistré.</p>
+      ) : (
+        <>
+          <div className="flex w-full h-3 rounded-full overflow-hidden bg-[#F1F5F9]">
+            {Object.entries(comptes).map(([niveau, n]) => n > 0 && (
+              <div key={niveau} style={{ width: `${(n / total) * 100}%`, backgroundColor: CONFIG_NIVEAU[niveau].texte }}
+                title={`${CONFIG_NIVEAU[niveau].label} : ${n}`} />
+            ))}
+          </div>
+          <div className="flex flex-col gap-1.5 mt-3">
+            {Object.entries(comptes).map(([niveau, n]) => (
+              <div key={niveau} className="flex items-center justify-between text-xs text-[#475569]">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: CONFIG_NIVEAU[niveau].texte }} />
+                  {CONFIG_NIVEAU[niveau].label}
+                </span>
+                <span className="font-semibold text-[#1E293B]">{n}</span>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -462,14 +500,17 @@ function DUERPPage() {
         <span className="text-xs text-[#94A3B8] pb-2 ml-auto shrink-0">{filtres.length} résultat{filtres.length !== 1 ? "s" : ""}</span>
       </div>
 
-      {/* ── Matrice + révision annuelle en haut, Registre pleine largeur en dessous ── */}
+      {/* ── Matrice + colonne révision/répartition en haut, Registre pleine largeur en dessous ── */}
       <div className="space-y-5">
         <div className="flex flex-col lg:flex-row gap-5 lg:items-start">
           <MatriceRisques cellules={matrice} filtreCase={filtreCase} onFiltrer={setFiltreCase} />
-          <StatutRevisionPanel
-            statut={statutRevision} onMarquerRevise={marquerRevise}
-            enCours={marquerReviseEnCours} peutGerer={peutGerer}
-          />
+          <div className="flex-1 flex flex-col gap-5">
+            <StatutRevisionPanel
+              statut={statutRevision} onMarquerRevise={marquerRevise}
+              enCours={marquerReviseEnCours} peutGerer={peutGerer}
+            />
+            <RepartitionNiveau risques={risques} />
+          </div>
         </div>
 
         {chargement ? (
@@ -613,32 +654,52 @@ function DUERPPage() {
                 <textarea {...register("description")} rows={2} className={inputCls("description")} />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Probabilité</label>
-                  <select {...register("probabilite")} className={inputCls("probabilite")}>
-                    <option value="">Choisir</option>
-                    {[1, 2, 3, 4].map((p) => <option key={p} value={p}>{LABELS_PROBABILITE[p]} ({p})</option>)}
-                  </select>
-                  {errors.probabilite && <p className="mt-1 text-xs text-[#DC2626]">{errors.probabilite.message}</p>}
+              <div className="pt-3 border-t border-[#F1F5F9]">
+                <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-3">
+                  Évaluation du risque (criticité)
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-5 items-center">
+                  <div className="space-y-5">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-medium text-[#64748B] uppercase tracking-wide">Probabilité</label>
+                        <span className="text-sm font-bold text-navy">{LABELS_PROBABILITE[probabiliteSaisie]} ({probabiliteSaisie})</span>
+                      </div>
+                      <input type="range" min="1" max="4" step="1" {...register("probabilite")}
+                        className="w-full h-2 rounded-full appearance-none cursor-pointer accent-navy bg-[#E2E8F0]" />
+                      {errors.probabilite && <p className="mt-1 text-xs text-[#DC2626]">{errors.probabilite.message}</p>}
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-medium text-[#64748B] uppercase tracking-wide">Gravité</label>
+                        <span className="text-sm font-bold text-navy">{LABELS_GRAVITE[graviteSaisie]} ({graviteSaisie})</span>
+                      </div>
+                      <input type="range" min="1" max="4" step="1" {...register("gravite")}
+                        className="w-full h-2 rounded-full appearance-none cursor-pointer accent-navy bg-[#E2E8F0]" />
+                      {errors.gravite && <p className="mt-1 text-xs text-[#DC2626]">{errors.gravite.message}</p>}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-center justify-center p-4 bg-[#F8FAFC] border-2 border-dashed border-[#E2E8F0] rounded-xl min-w-[130px]">
+                    <div className="w-16 h-16 rounded-full flex items-center justify-center border-4 border-white shadow-md transition-colors"
+                      style={{ backgroundColor: niveauApercu ? CONFIG_NIVEAU[niveauApercu].cellule : "#F1F5F9" }}>
+                      <span className="text-2xl font-black" style={{ color: niveauApercu ? CONFIG_NIVEAU[niveauApercu].celluleTexte : "#94A3B8" }}>
+                        {probabiliteSaisie && graviteSaisie ? Number(probabiliteSaisie) * Number(graviteSaisie) : "—"}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-widest mt-2 text-center">Score de risque</span>
+                  </div>
                 </div>
-                <div>
-                  <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Gravité</label>
-                  <select {...register("gravite")} className={inputCls("gravite")}>
-                    <option value="">Choisir</option>
-                    {[1, 2, 3, 4].map((g) => <option key={g} value={g}>{LABELS_GRAVITE[g]} ({g})</option>)}
-                  </select>
-                  {errors.gravite && <p className="mt-1 text-xs text-[#DC2626]">{errors.gravite.message}</p>}
+
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-4">
+                  {Object.entries(CONFIG_NIVEAU).map(([cle, c]) => (
+                    <span key={cle} className="flex items-center gap-1.5 text-xs text-[#64748B]">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.texte }} />
+                      {c.plage} : {c.label}
+                    </span>
+                  ))}
                 </div>
               </div>
-
-              {niveauApercu && (
-                <div className="flex items-center gap-2 p-3 rounded-md" style={{ backgroundColor: CONFIG_NIVEAU[niveauApercu].fond }}>
-                  <span className="text-xs font-semibold text-[#475569]">Niveau de risque :</span>
-                  <BadgeNiveau niveau={niveauApercu} />
-                  <span className="text-xs text-[#94A3B8]">({probabiliteSaisie} × {graviteSaisie} = {Number(probabiliteSaisie) * Number(graviteSaisie)})</span>
-                </div>
-              )}
 
               <div>
                 <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">

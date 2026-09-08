@@ -200,7 +200,7 @@ function Dashboard() {
           {/* ── EN-TÊTE ─────────────────────────────────────────────── */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-navy">Vue d'ensemble QHSE</h1>
+              <h1 className="text-2xl font-bold text-navy">Vue d'ensemble</h1>
               <p className="text-xs text-[#94A3B8] capitalize mt-0.5">{dateAujourdhui}</p>
             </div>
             <div className="flex items-center gap-3">
@@ -254,12 +254,24 @@ function Dashboard() {
               sub={stats?.episEnAlerte > 0 ? `${stats.episEnAlerte} EPI sous le seuil` : "Stocks conformes"}
             />
             <KpiCard
-              iconColor={stats?.habilitationsExpirantes > 0 ? "#EA580C" : "#0D2B4E"}
-              label="Habilitations"
-              value={stats?.habilitationsExpirantes ?? 0}
-              valueColor={stats?.habilitationsExpirantes > 0 ? "#EA580C" : "#0D2B4E"}
-              sub="Expirent dans 30 j."
-              subColor={stats?.habilitationsExpirantes > 0 ? "text-[#EA580C] font-medium" : "text-[#94A3B8]"}
+              iconColor={
+                stats?.joursSansAccident == null ? "#2E7D32" :
+                stats.joursSansAccident === 0    ? "#DC2626" :
+                stats.joursSansAccident < 7      ? "#EA580C" : "#2E7D32"
+              }
+              label="Jours sans accident"
+              value={stats?.joursSansAccident ?? "—"}
+              valueColor={
+                stats?.joursSansAccident == null ? "#2E7D32" :
+                stats.joursSansAccident === 0    ? "#DC2626" :
+                stats.joursSansAccident < 7      ? "#EA580C" : "#2E7D32"
+              }
+              sub={
+                stats?.dateDernierAccident
+                  ? `Dernier : ${new Date(stats.dateDernierAccident).toLocaleDateString("fr-FR")}`
+                  : "Aucun accident déclaré"
+              }
+              subColor={stats?.joursSansAccident != null && stats.joursSansAccident < 7 ? "text-[#EA580C] font-medium" : "text-[#94A3B8]"}
             />
             <KpiCard
               iconColor={stats?.risquesCritiques > 0 ? "#DC2626" : "#0D2B4E"}

@@ -62,6 +62,15 @@
   ::-webkit-scrollbar-track  { background: transparent; }
   ::-webkit-scrollbar-thumb  { background: #CBD5E1; border-radius: 9999px; }
   ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+  /* Navigation de la sidebar — défilement fonctionnel mais sans barre visible */
+  .sidebar-nav {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .sidebar-nav::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Panneaux latéraux (side sheets) glissant depuis la droite */

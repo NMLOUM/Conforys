@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
-import { Mail, Lock, Eye, EyeOff, LogIn, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, LogIn, ShieldCheck } from "lucide-react";
 import api from "../api/axios";
 import { useAuthStore } from "../store/authStore";
 
@@ -54,7 +53,6 @@ function Login() {
             </div>
             <div className="flex items-center justify-center gap-2">
               <span className="text-2xl font-bold text-navy tracking-tight" translate="no">CONFORYS</span>
-              <span className="text-[10px] font-semibold text-vert bg-vert/15 px-1.5 py-0.5 rounded uppercase tracking-wider">QHSE</span>
             </div>
           </div>
 
@@ -73,36 +71,23 @@ function Login() {
                 <label htmlFor="email" className="block text-xs font-semibold text-navy uppercase tracking-wider">
                   Adresse email
                 </label>
-                <div className="relative">
-                  <Mail size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none" />
-                  <input
-                    id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                    required autoComplete="email" placeholder="vous@entreprise.sn"
-                    className="w-full pl-10 pr-4 py-3 text-sm border border-[#E2E8F0] rounded-lg bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition"
-                  />
-                </div>
+                <input
+                  id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                  required autoComplete="email" placeholder="vous@entreprise.sn"
+                  className="w-full px-4 py-3 text-sm border border-[#E2E8F0] rounded-lg bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition"
+                />
               </div>
 
               {/* Mot de passe */}
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <label htmlFor="password" className="block text-xs font-semibold text-navy uppercase tracking-wider">
-                    Mot de passe
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => toast("Fonctionnalité bientôt disponible.")}
-                    className="text-xs font-semibold text-[#EA580C] hover:underline"
-                  >
-                    Mot de passe oublié ?
-                  </button>
-                </div>
+                <label htmlFor="password" className="block text-xs font-semibold text-navy uppercase tracking-wider">
+                  Mot de passe
+                </label>
                 <div className="relative">
-                  <Lock size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none" />
                   <input
                     id="password" type={voirPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
                     required autoComplete="current-password" placeholder="••••••••"
-                    className="w-full pl-10 pr-11 py-3 text-sm border border-[#E2E8F0] rounded-lg bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition"
+                    className="w-full px-4 pr-11 py-3 text-sm border border-[#E2E8F0] rounded-lg bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition"
                   />
                   <button
                     type="button"

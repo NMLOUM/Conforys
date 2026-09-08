@@ -30,10 +30,10 @@ const getIncidentStats = async (entrepriseId) => {
     auditsMoisCourant,
     auditsEnRetard,
     incidentsGravesOuverts,
-    habExpirantesCount,
     habExpirantes7j,
     tousAttestations,
     tousRisques,
+    dernierAccident,
   ] = await Promise.all([
     prisma.incident.count({ where: scopeIncident }),
     prisma.incident.groupBy({ by: ["gravite"], where: scopeIncident, _count: { gravite: true } }),
@@ -78,7 +78,6 @@ const getIncidentStats = async (entrepriseId) => {
         dateIncident: true, site: { select: { nom: true } },
       },
     }),
-    prisma.habilitation.count({ where: { ...scopeHabilitation, dateExpiration: { gte: maintenant, lte: dans30Jours } } }),
     prisma.habilitation.findMany({
       where: { ...scopeHabilitation, dateExpiration: { gte: maintenant, lte: dans7Jours } },
       select: {
@@ -102,6 +101,14 @@ const getIncidentStats = async (entrepriseId) => {
         _count: { select: { actions: true } },
       },
     }),
+    // Dernier accident déclaré (type ACCIDENT strictement — pas les
+    // presqu'accidents/situations dangereuses) : base du compteur "jours
+    // sans accident" affiché au dashboard.
+    prisma.incident.findFirst({
+      where: { ...scopeIncident, type: "ACCIDENT" },
+      orderBy: { dateIncident: "desc" },
+      select: { dateIncident: true },
+    }),
   ]);
 
   // ── KPIs dérivés ──────────────────────────────────────────────
@@ -120,6 +127,11 @@ const getIncidentStats = async (entrepriseId) => {
   const risquesCritiques  = tousRisques.filter((r) => r.niveauRisque >= 8).length;
   const risquesTraites    = tousRisques.filter((r) => r.mesuresPrevention && r.mesuresPrevention.trim() !== "").length;
   const risquesSansAction = tousRisques.filter((r) => r.niveauRisque >= 8 && r._count.actions === 0);
+
+  // Jours sans accident — null si aucun accident n'a jamais été déclaré
+  const joursSansAccident = dernierAccident
+    ? Math.floor((maintenant - new Date(dernierAccident.dateIncident)) / (1000 * 60 * 60 * 24))
+    : null;
 
   // ── Score global de sécurité ──────────────────────────────────
   const scoreAudits    = tauxConformite;
@@ -233,7 +245,8 @@ const getIncidentStats = async (entrepriseId) => {
     conformiteEpi,
     // KPIs globaux
     total, critiques, graves, episEnAlerte, tauxConformite,
-    habilitationsExpirantes: habExpirantesCount,
+    joursSansAccident,
+    dateDernierAccident: dernierAccident?.dateIncident ?? null,
     // DUERP
     risquesTotal: tousRisques.length,
     risquesCritiques,

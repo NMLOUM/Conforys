@@ -117,9 +117,6 @@ function Sidebar({ ouverte, onClose }) {
           <span className="text-[15px] font-bold text-white tracking-wide" translate="no">
             CONFORYS
           </span>
-          <span className="ml-1.5 text-[10px] font-semibold text-vert bg-vert/20 px-1.5 py-0.5 rounded uppercase tracking-wider">
-            QHSE
-          </span>
         </div>
         <button
           type="button"
@@ -131,7 +128,7 @@ function Sidebar({ ouverte, onClose }) {
       </div>
 
       {/* Navigation principale */}
-      <nav className="flex-1 px-3 py-4 overflow-y-auto">
+      <nav className="sidebar-nav flex-1 px-3 py-4 overflow-y-auto">
 
         {/* ── ADMIN ────────────────────────────────────────────────────── */}
         {isAdmin && (
