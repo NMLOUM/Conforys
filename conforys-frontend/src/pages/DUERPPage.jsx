@@ -48,22 +48,11 @@ const LABELS_STATUT_ACTION = { A_FAIRE: "à faire", EN_COURS: "en cours", TERMIN
 const FORM_DEFAUT = {
   danger: "", description: "", categorie: "AUTRE", zone: "", siteId: "",
   probabilite: "1", gravite: "1", mesuresPrevention: "",
-  probabiliteResiduelle: "", graviteResiduelle: "",
+  probabiliteResiduelle: "1", graviteResiduelle: "1",
 };
 
 const selectCls =
   "px-3 py-2 text-sm border border-[#E2E8F0] rounded-md bg-white text-[#475569] focus:outline-none focus:ring-2 focus:ring-navy/30 transition min-w-[150px]";
-
-function BadgeNiveau({ niveau }) {
-  if (!niveau) return <span className="text-[#94A3B8]">—</span>;
-  const c = CONFIG_NIVEAU[niveau];
-  return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: c.fond, color: c.texte }}>
-      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: c.texte }} />
-      {c.label}
-    </span>
-  );
-}
 
 // ── Statut de révision annuelle du DUERP — carte indépendante à côté de la
 // matrice (chacune se dimensionne à son propre contenu) ──
@@ -127,25 +116,17 @@ function RepartitionNiveau({ risques }) {
       {total === 0 ? (
         <p className="text-sm text-[#94A3B8]">Aucun risque enregistré.</p>
       ) : (
-        <>
-          <div className="flex w-full h-3 rounded-full overflow-hidden bg-[#F1F5F9]">
-            {Object.entries(comptes).map(([niveau, n]) => n > 0 && (
-              <div key={niveau} style={{ width: `${(n / total) * 100}%`, backgroundColor: CONFIG_NIVEAU[niveau].texte }}
-                title={`${CONFIG_NIVEAU[niveau].label} : ${n}`} />
-            ))}
-          </div>
-          <div className="flex flex-col gap-1.5 mt-3">
-            {Object.entries(comptes).map(([niveau, n]) => (
-              <div key={niveau} className="flex items-center justify-between text-xs text-[#475569]">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: CONFIG_NIVEAU[niveau].texte }} />
-                  {CONFIG_NIVEAU[niveau].label}
-                </span>
-                <span className="font-semibold text-[#1E293B]">{n}</span>
-              </div>
-            ))}
-          </div>
-        </>
+        <div className="flex flex-col gap-1.5">
+          {Object.entries(comptes).map(([niveau, n]) => (
+            <div key={niveau} className="flex items-center justify-between text-xs text-[#475569]">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: CONFIG_NIVEAU[niveau].texte }} />
+                {CONFIG_NIVEAU[niveau].label}
+              </span>
+              <span className="font-semibold text-[#1E293B]">{n}</span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -225,6 +206,7 @@ function DUERPPage() {
   const [showModal,   setShowModal]   = useState(false);
   const [erreurForm,  setErreurForm]  = useState("");
   const [risqueEnEdition, setRisqueEnEdition] = useState(null);
+  const [residuelleActive, setResiduelleActive] = useState(false);
   const [filtreCase,  setFiltreCase]  = useState(null);
   const [filtreSite,      setFiltreSite]      = useState("");
   const [filtreCategorie, setFiltreCategorie] = useState("");
@@ -251,7 +233,7 @@ function DUERPPage() {
   const niveauApercu = probabiliteSaisie && graviteSaisie
     ? calculerNiveauQualitatif(Number(probabiliteSaisie) * Number(graviteSaisie))
     : null;
-  const niveauResiduelApercu = probResiduelleSaisie && graviteResiduelleSaisie
+  const niveauResiduelApercu = residuelleActive && probResiduelleSaisie && graviteResiduelleSaisie
     ? calculerNiveauQualitatif(Number(probResiduelleSaisie) * Number(graviteResiduelleSaisie))
     : null;
 
@@ -363,6 +345,7 @@ function DUERPPage() {
   const ouvrirCreation = () => {
     setErreurForm("");
     setRisqueEnEdition(null);
+    setResiduelleActive(false);
     reset(FORM_DEFAUT);
     setShowModal(true);
   };
@@ -370,6 +353,7 @@ function DUERPPage() {
   const ouvrirModification = (risque) => {
     setErreurForm("");
     setRisqueEnEdition(risque);
+    setResiduelleActive(Boolean(risque.probabiliteResiduelle && risque.graviteResiduelle));
     reset({
       danger: risque.danger,
       description: risque.description || "",
@@ -379,8 +363,8 @@ function DUERPPage() {
       probabilite: risque.probabilite,
       gravite: risque.gravite,
       mesuresPrevention: risque.mesuresPrevention || "",
-      probabiliteResiduelle: risque.probabiliteResiduelle || "",
-      graviteResiduelle: risque.graviteResiduelle || "",
+      probabiliteResiduelle: risque.probabiliteResiduelle || "1",
+      graviteResiduelle: risque.graviteResiduelle || "1",
     });
     setShowModal(true);
   };
@@ -392,8 +376,8 @@ function DUERPPage() {
       description: data.description || null,
       zone: data.zone || null,
       mesuresPrevention: data.mesuresPrevention || null,
-      probabiliteResiduelle: data.probabiliteResiduelle || null,
-      graviteResiduelle: data.graviteResiduelle || null,
+      probabiliteResiduelle: residuelleActive ? data.probabiliteResiduelle || null : null,
+      graviteResiduelle: residuelleActive ? data.graviteResiduelle || null : null,
     };
     try {
       if (risqueEnEdition) {
@@ -505,11 +489,11 @@ function DUERPPage() {
         <div className="flex flex-col lg:flex-row gap-5 lg:items-start">
           <MatriceRisques cellules={matrice} filtreCase={filtreCase} onFiltrer={setFiltreCase} />
           <div className="flex-1 flex flex-col gap-5">
+            <RepartitionNiveau risques={risques} />
             <StatutRevisionPanel
               statut={statutRevision} onMarquerRevise={marquerRevise}
               enCours={marquerReviseEnCours} peutGerer={peutGerer}
             />
-            <RepartitionNiveau risques={risques} />
           </div>
         </div>
 
@@ -606,55 +590,59 @@ function DUERPPage() {
 
       {/* ── Modale de création / modification ── */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-          onClick={(e) => e.target === e.currentTarget && setShowModal(false)}>
-          <div className="w-full max-w-lg bg-white rounded-lg border border-[#E2E8F0] p-6 mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-navy">{risqueEnEdition ? "Modifier le risque" : "Nouveau risque"}</h2>
-              <button onClick={() => setShowModal(false)}
-                className="w-7 h-7 flex items-center justify-center rounded text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9] transition text-base leading-none">
-                &#x2715;
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowModal(false)} />
+
+          <div className="relative w-full max-w-xl bg-white h-full shadow-2xl flex flex-col animate-slide-in-right">
+            {/* En-tête */}
+            <div className="px-8 py-6 border-b border-[#E2E8F0] bg-[#F8FAFC] flex items-center justify-between shrink-0">
+              <h2 className="text-xl font-bold text-navy">{risqueEnEdition ? "Modifier le risque" : "Nouveau risque"}</h2>
+              <button type="button" onClick={() => setShowModal(false)}
+                className="w-10 h-10 rounded-full hover:bg-[#E2E8F0] flex items-center justify-center transition-colors shrink-0">
+                <X size={18} className="text-[#64748B]" />
               </button>
             </div>
 
-            {erreurForm && (
-              <div className="mb-4 p-3 text-sm text-[#DC2626] bg-red-50 border border-red-200 rounded-md">{erreurForm}</div>
-            )}
+            {/* Contenu */}
+            <div className="flex-1 overflow-y-auto px-8 py-8">
+              {erreurForm && (
+                <div className="mb-5 p-3 text-sm text-[#DC2626] bg-red-50 border border-red-200 rounded-md">{erreurForm}</div>
+              )}
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Danger identifié</label>
-                <input type="text" {...register("danger")} placeholder="ex: Chute de hauteur" className={inputCls("danger")} />
-                {errors.danger && <p className="mt-1 text-xs text-[#DC2626]">{errors.danger.message}</p>}
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+              <form id="risque-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <div>
-                  <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Catégorie</label>
-                  <select {...register("categorie")} className={inputCls("categorie")}>
-                    {Object.entries(CATEGORIES).map(([cle, label]) => <option key={cle} value={cle}>{label}</option>)}
+                  <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Danger identifié</label>
+                  <input type="text" {...register("danger")} placeholder="ex: Chute de hauteur" className={inputCls("danger")} />
+                  {errors.danger && <p className="mt-1 text-xs text-[#DC2626]">{errors.danger.message}</p>}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Catégorie</label>
+                    <select {...register("categorie")} className={inputCls("categorie")}>
+                      {Object.entries(CATEGORIES).map(([cle, label]) => <option key={cle} value={cle}>{label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Zone / poste</label>
+                    <input type="text" {...register("zone")} placeholder="ex: Atelier soudure" className={inputCls("zone")} />
+                  </div>
+                </div>
+                <div>
+                  <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Site</label>
+                  <select {...register("siteId")} className={inputCls("siteId")}>
+                    <option value="">Sélectionner un site</option>
+                    {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
                   </select>
+                  {errors.siteId && <p className="mt-1 text-xs text-[#DC2626]">{errors.siteId.message}</p>}
                 </div>
                 <div>
-                  <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Zone / poste</label>
-                  <input type="text" {...register("zone")} placeholder="ex: Atelier soudure" className={inputCls("zone")} />
+                  <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
+                    Description <span className="font-normal normal-case text-[#94A3B8]">(optionnel)</span>
+                  </label>
+                  <textarea {...register("description")} rows={2} className={inputCls("description")} />
                 </div>
-              </div>
-              <div>
-                <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">Site</label>
-                <select {...register("siteId")} className={inputCls("siteId")}>
-                  <option value="">Sélectionner un site</option>
-                  {sites.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
-                </select>
-                {errors.siteId && <p className="mt-1 text-xs text-[#DC2626]">{errors.siteId.message}</p>}
-              </div>
-              <div>
-                <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
-                  Description <span className="font-normal normal-case text-[#94A3B8]">(optionnel)</span>
-                </label>
-                <textarea {...register("description")} rows={2} className={inputCls("description")} />
-              </div>
 
-              <div className="pt-3 border-t border-[#F1F5F9]">
+                <div className="pt-3 border-t border-[#F1F5F9]">
                 <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-3">
                   Évaluation du risque (criticité)
                 </p>
@@ -708,45 +696,74 @@ function DUERPPage() {
                 <textarea {...register("mesuresPrevention")} rows={3} placeholder="Mesures existantes ou à mettre en place…" className={inputCls("mesuresPrevention")} />
               </div>
 
-              <div className="pt-2 border-t border-[#F1F5F9]">
-                <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide mb-2">
-                  Cotation résiduelle <span className="font-normal normal-case text-[#94A3B8]">(après mesures, optionnel)</span>
-                </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block mb-1.5 text-xs text-[#94A3B8]">Probabilité résiduelle</label>
-                    <select {...register("probabiliteResiduelle")} className={inputCls("probabiliteResiduelle")}>
-                      <option value="">Choisir</option>
-                      {[1, 2, 3, 4].map((p) => <option key={p} value={p}>{LABELS_PROBABILITE[p]} ({p})</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block mb-1.5 text-xs text-[#94A3B8]">Gravité résiduelle</label>
-                    <select {...register("graviteResiduelle")} className={inputCls("graviteResiduelle")}>
-                      <option value="">Choisir</option>
-                      {[1, 2, 3, 4].map((g) => <option key={g} value={g}>{LABELS_GRAVITE[g]} ({g})</option>)}
-                    </select>
-                  </div>
-                </div>
-                {niveauResiduelApercu && (
-                  <div className="flex items-center gap-2 p-3 rounded-md mt-3" style={{ backgroundColor: CONFIG_NIVEAU[niveauResiduelApercu].fond }}>
-                    <span className="text-xs font-semibold text-[#475569]">Niveau résiduel :</span>
-                    <BadgeNiveau niveau={niveauResiduelApercu} />
-                  </div>
+              <div className="pt-3 border-t border-[#F1F5F9]">
+                <label className="flex items-center gap-2.5 cursor-pointer select-none mb-3">
+                  <input type="checkbox" checked={residuelleActive}
+                    onChange={(e) => setResiduelleActive(e.target.checked)}
+                    className="w-4 h-4 rounded border-[#E2E8F0] text-navy focus:ring-navy/30" />
+                  <span className="text-xs font-medium text-[#64748B] uppercase tracking-wide">
+                    Renseigner la cotation résiduelle <span className="font-normal normal-case text-[#94A3B8]">(après mesures)</span>
+                  </span>
+                </label>
+
+                {residuelleActive && (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-5 items-center">
+                      <div className="space-y-5">
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-xs font-medium text-[#64748B] uppercase tracking-wide">Probabilité résiduelle</label>
+                            <span className="text-sm font-bold text-navy">{LABELS_PROBABILITE[probResiduelleSaisie]} ({probResiduelleSaisie})</span>
+                          </div>
+                          <input type="range" min="1" max="4" step="1" {...register("probabiliteResiduelle")}
+                            className="w-full h-2 rounded-full appearance-none cursor-pointer accent-navy bg-[#E2E8F0]" />
+                        </div>
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <label className="text-xs font-medium text-[#64748B] uppercase tracking-wide">Gravité résiduelle</label>
+                            <span className="text-sm font-bold text-navy">{LABELS_GRAVITE[graviteResiduelleSaisie]} ({graviteResiduelleSaisie})</span>
+                          </div>
+                          <input type="range" min="1" max="4" step="1" {...register("graviteResiduelle")}
+                            className="w-full h-2 rounded-full appearance-none cursor-pointer accent-navy bg-[#E2E8F0]" />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-center justify-center p-4 bg-[#F8FAFC] border-2 border-dashed border-[#E2E8F0] rounded-xl min-w-[130px]">
+                        <div className="w-16 h-16 rounded-full flex items-center justify-center border-4 border-white shadow-md transition-colors"
+                          style={{ backgroundColor: niveauResiduelApercu ? CONFIG_NIVEAU[niveauResiduelApercu].cellule : "#F1F5F9" }}>
+                          <span className="text-2xl font-black" style={{ color: niveauResiduelApercu ? CONFIG_NIVEAU[niveauResiduelApercu].celluleTexte : "#94A3B8" }}>
+                            {probResiduelleSaisie && graviteResiduelleSaisie ? Number(probResiduelleSaisie) * Number(graviteResiduelleSaisie) : "—"}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-widest mt-2 text-center">Score résiduel</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-4">
+                      {Object.entries(CONFIG_NIVEAU).map(([cle, c]) => (
+                        <span key={cle} className="flex items-center gap-1.5 text-xs text-[#64748B]">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.texte }} />
+                          {c.plage} : {c.label}
+                        </span>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
+              </form>
+            </div>
 
-              <div className="flex justify-end gap-3 pt-2 border-t border-[#F1F5F9]">
-                <button type="button" onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-[#475569] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] transition-colors">
-                  Annuler
-                </button>
-                <button type="submit" disabled={isSubmitting}
-                  className="px-4 py-2 text-sm font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
-                  {isSubmitting ? "Enregistrement..." : "Enregistrer"}
-                </button>
-              </div>
-            </form>
+            {/* Pied de panneau */}
+            <div className="px-8 py-6 border-t border-[#E2E8F0] bg-white flex items-center justify-end gap-3 shrink-0">
+              <button type="button" onClick={() => setShowModal(false)}
+                className="px-6 py-3 text-sm font-bold text-[#64748B] rounded-lg hover:bg-[#F8FAFC] transition-colors">
+                Annuler
+              </button>
+              <button type="submit" form="risque-form" disabled={isSubmitting}
+                className="px-8 py-3 text-sm font-bold text-white rounded-lg shadow-lg disabled:opacity-50 transition-all bg-navy hover:bg-navy/90">
+                {isSubmitting ? "Enregistrement…" : "Enregistrer"}
+              </button>
+            </div>
           </div>
         </div>
       )}

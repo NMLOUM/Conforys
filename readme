@@ -1,0 +1,471 @@
+<!DOCTYPE html><html class="light" lang="fr"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>QHSE Safety Manager - Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet">
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .fill-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9ff;
+        }
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 24px;
+        }
+        .card-elevation {
+            box-shadow: 0px 2px 4px rgba(26, 43, 75, 0.05);
+            border: 1px solid #E2E8F0;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline": "#75777f",
+                        "inverse-surface": "#213145",
+                        "on-tertiary-container": "#b08d5b",
+                        "on-tertiary-fixed-variant": "#5d4217",
+                        "on-error-container": "#93000a",
+                        "background": "#f8f9ff",
+                        "secondary-fixed-dim": "#ffb688",
+                        "on-secondary-fixed": "#311300",
+                        "secondary-fixed": "#ffdbc7",
+                        "on-primary-fixed-variant": "#364768",
+                        "on-tertiary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "primary-fixed": "#d8e2ff",
+                        "surface-container-high": "#dce9ff",
+                        "on-secondary-fixed-variant": "#733600",
+                        "tertiary-fixed-dim": "#e8c08a",
+                        "on-secondary-container": "#5b2900",
+                        "inverse-on-surface": "#eaf1ff",
+                        "on-background": "#0b1c30",
+                        "on-surface": "#0b1c30",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#d3e4fe",
+                        "on-secondary": "#ffffff",
+                        "surface-tint": "#4e5e81",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary": "#974900",
+                        "on-surface-variant": "#44474e",
+                        "surface-container-highest": "#d3e4fe",
+                        "surface-dim": "#cbdbf5",
+                        "primary": "#031635",
+                        "surface-container-low": "#eff4ff",
+                        "surface": "#f8f9ff",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#f8f9ff",
+                        "primary-container": "#1a2b4b",
+                        "primary-fixed-dim": "#b6c6ef",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed": "#291800",
+                        "secondary-container": "#fc7d00",
+                        "on-primary-container": "#8293b8",
+                        "inverse-primary": "#b6c6ef",
+                        "outline-variant": "#c5c6cf",
+                        "tertiary-fixed": "#ffddb1",
+                        "tertiary-container": "#3e2700",
+                        "surface-container": "#e5eeff",
+                        "on-primary-fixed": "#081b3a",
+                        "tertiary": "#231400"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max": "1440px",
+                        "gutter": "20px",
+                        "xs": "4px",
+                        "unit": "4px",
+                        "sm": "8px",
+                        "md": "16px",
+                        "xl": "32px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "display": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "display": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface min-h-screen flex">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-screen w-64 bg-primary flex flex-col py-md px-sm gap-sm shadow-lg z-50">
+<div class="flex flex-col items-start px-md mb-xl">
+<h1 class="font-headline-md text-headline-md text-on-primary">Safety Hub</h1>
+<p class="font-label-md text-label-md text-on-primary/60">Enterprise Division</p>
+</div>
+<nav class="flex flex-col gap-xs flex-1">
+<a class="flex items-center gap-md px-md py-sm bg-secondary text-on-secondary rounded-lg font-bold scale-95 duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary-container hover:bg-primary-container/20 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">report_problem</span>
+<span class="font-label-md text-label-md">Incidents</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary-container hover:bg-primary-container/20 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">task_alt</span>
+<span class="font-label-md text-label-md">Actions</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary-container hover:bg-primary-container/20 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">safety_check</span>
+<span class="font-label-md text-label-md">EPI</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary-container hover:bg-primary-container/20 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">fact_check</span>
+<span class="font-label-md text-label-md">Audits</span>
+</a>
+<a class="flex items-center gap-md px-md py-sm text-on-primary-container hover:bg-primary-container/20 transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined">school</span>
+<span class="font-label-md text-label-md">Formations</span>
+</a>
+</nav>
+<button class="mt-auto mx-md mb-md bg-secondary-container text-on-secondary-container font-bold py-md px-lg rounded-lg flex items-center justify-center gap-sm hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined">report_problem</span>
+<span>Report Incident</span>
+</button>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 ml-64 flex flex-col">
+<!-- TopNavBar -->
+<header class="bg-surface sticky top-0 z-40 flex justify-between items-center w-full px-lg h-16 border-b border-outline-variant shadow-sm">
+<div class="flex items-center gap-xl">
+<span class="font-headline-md text-headline-md font-bold text-primary">QHSE Safety Manager</span>
+<div class="flex items-center gap-md bg-surface-container px-md py-xs rounded-lg">
+<span class="material-symbols-outlined text-outline">calendar_today</span>
+<select class="bg-transparent border-none focus:ring-0 font-body-md text-body-md text-on-surface">
+<option>Derniers 30 jours</option>
+<option>Dernier Trimestre</option>
+<option>Année en cours</option>
+</select>
+<div class="h-4 w-[1px] bg-outline-variant"></div>
+<span class="material-symbols-outlined text-outline">location_on</span>
+<select class="bg-transparent border-none focus:ring-0 font-body-md text-body-md text-on-surface">
+<option>Tous les sites</option>
+<option>Site Nord</option>
+<option>Siège Social</option>
+<option>Entrepôt Logistique</option>
+</select>
+</div>
+</div>
+<div class="flex items-center gap-lg">
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-low p-sm rounded-full transition-colors">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-low p-sm rounded-full transition-colors">settings</button>
+<div class="flex items-center gap-sm pl-md border-l border-outline-variant">
+<img class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="Corporate headshot of a senior QHSE manager with a professional smile, in a clean modern office environment with soft blue lighting and blurred architectural background. The image is crisp, professional, and exudes confidence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZa4URCuLnCBZPcg_nKLKL1nvNqXBQ_mlxH5q1kCBZKWuQHGRdErTJC41ZnZdjN4EARsxter6OqMay_zDaKoT6S5p2_2VckIjNT8wPIx-n3t8Rugq7V0lm8wxYSF19HF3Lf0zH3fPLDcfy6uLvZF0vqs05u7MdHaF-yICKZHEhfCpvO_sOzufQooYX1ECyiTplBvZMvVdXts2xq-HpEm3QyYt4b6exgE4Q1Q4k-XJKrD8QbHxs_BZTdcDUdPbYkRwHBBMwVcNxOA">
+<span class="font-label-md text-label-md font-bold text-primary">J. Dupont</span>
+</div>
+</div>
+</header>
+<!-- Dashboard Canvas -->
+<div class="p-lg max-w-container-max mx-auto w-full space-y-lg">
+<!-- Hero Section: Score Global -->
+<section class="bg-primary rounded-xl p-xl flex items-center justify-between shadow-lg text-white overflow-hidden relative">
+<div class="z-10">
+<h2 class="font-headline-md text-headline-md opacity-80 mb-sm">Score Global Sécurité</h2>
+<div class="flex items-baseline gap-md">
+<span class="font-display text-display">94.2%</span>
+<div class="flex items-center text-green-400 font-bold">
+<span class="material-symbols-outlined">arrow_upward</span>
+<span class="font-body-lg text-body-lg">2.4% vs mois dernier</span>
+</div>
+</div>
+<p class="font-body-md text-body-md mt-md opacity-70">Basé sur 12 indicateurs de performance QHSE actifs ce mois-ci.</p>
+</div>
+<div class="hidden md:block z-10 w-48 h-48 relative">
+<!-- Circular Progress Visualization Simplified -->
+<svg class="w-full h-full transform -rotate-90">
+<circle class="text-white/10" cx="96" cy="96" fill="transparent" r="80" stroke="currentColor" stroke-width="12"></circle>
+<circle class="text-secondary-container" cx="96" cy="96" fill="transparent" r="80" stroke="currentColor" stroke-dasharray="502.6" stroke-dashoffset="29.1" stroke-width="12"></circle>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center font-headline-lg text-headline-lg">A+</div>
+</div>
+<!-- Abstract BG decoration -->
+<div class="absolute right-0 top-0 w-1/3 h-full bg-gradient-to-l from-white/5 to-transparent skew-x-12 translate-x-20"></div>
+</section>
+<!-- KPI Row (4 cards) -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-lg">
+<!-- KPI 1: Incidents -->
+<div class="bg-white p-lg rounded-xl card-elevation flex flex-col gap-md">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-secondary bg-secondary/10 p-sm rounded-lg">report_problem</span>
+<span class="text-body-sm font-label-md text-outline">MOIS EN COURS</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-primary">8 Incidents</h3>
+<div class="mt-sm grid grid-cols-3 gap-xs">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-outline">Near Miss</span>
+<span class="font-bold text-primary">4</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-outline">Unsafe Act</span>
+<span class="font-bold text-primary">3</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-outline text-error">Accident</span>
+<span class="font-bold text-error">1</span>
+</div>
+</div>
+</div>
+</div>
+<!-- KPI 2: Audits -->
+<div class="bg-white p-lg rounded-xl card-elevation flex flex-col gap-md">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-primary bg-primary/10 p-sm rounded-lg">fact_check</span>
+<span class="text-body-sm font-label-md text-outline">CONFORMITÉ</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-primary">24 Audits</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">100% de l'objectif mensuel atteint</p>
+<div class="w-full bg-surface-container h-2 rounded-full mt-md overflow-hidden">
+<div class="bg-primary h-full w-full"></div>
+</div>
+</div>
+</div>
+<!-- KPI 3: EPI -->
+<div class="bg-white p-lg rounded-xl card-elevation flex flex-col gap-md">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-primary bg-primary/10 p-sm rounded-lg">safety_check</span>
+<span class="text-body-sm font-label-md text-outline">ÉQUIPEMENTS</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-primary">98% Conformité</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">Contrôles hebdomadaires validés</p>
+<div class="w-full bg-surface-container h-2 rounded-full mt-md overflow-hidden">
+<div class="bg-secondary-container h-full w-[98%]"></div>
+</div>
+</div>
+</div>
+<!-- KPI 4: Formations -->
+<div class="bg-white p-lg rounded-xl card-elevation flex flex-col gap-md">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-primary bg-primary/10 p-sm rounded-lg">school</span>
+<span class="text-body-sm font-label-md text-outline">ACADÉMIE</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-primary">12 Formations</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-xs">42 collaborateurs certifiés ce mois</p>
+<div class="flex -space-x-2 mt-md">
+<img class="w-8 h-8 rounded-full border-2 border-white object-cover" data-alt="Portrait of a young diverse male employee in a safety vest, high contrast lighting, clean background, professional look." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJr5YZg2tGAIUz4hTHi8CzDcznvgre53DcXK2ZowR4MdU2C3eTFs315yb3ZmttfAG7fcS_N0nhzcxJKWYdtLRoztK02xX0AJq8bTfTrC64UEHWPNt9w8OK3MBgmk-d-l6_6nEggYtepKQnpGYUhGjVLfTgnsjDUGSjACoZzhCu16R8_sHlwVrxhfMchAklRKYVZusJFejeOmFPIyPIzDHx9A0tr0GTt1Hr4Kckzj6mGP9JgG1D-1IpLVYLYdYlfPFnwPIx4U_rbg">
+<img class="w-8 h-8 rounded-full border-2 border-white object-cover" data-alt="Portrait of a female professional industrial worker with focused expression, sharp lighting, corporate safety aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBE11QGsA4t6xW6SiFVd38BcXbTKiAwRUX0018NJKN0oXwHf9Z1uRm59bKkR8M9mtP_IfYpybxlbWaeo4A9cf5dHekiH973XmGNuLXpu9b-GDSqh2zUnkRihe_8T_dgsMr33v8M8cQnSkruSITJzIt-jgx_YL1zwFtzwQMrum5DSCOPLSJ7QHPZMWG296CIBG2NIc95R8U3VwQjzZDXfxgqJGi7XL04FzduO5ONojEVl8NXxk3jICpYfI7WVup7sCZViS8nk-kUKQ">
+<img class="w-8 h-8 rounded-full border-2 border-white object-cover" data-alt="Portrait of a senior expert engineer in business casual attire, minimalist background, authoritative and trustworthy appearance." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBiAL2XM9SGyF9_IV9fHZPSihV2e8BF_ejCdAYskpsazUCij5suesE5RVbQTgTIT4dEQAdzuXCdAQr85KMXmQ-CE2TYvP29z59wJHQpx177P4imVeBkyThvpuQBcwNavoZmxPrDbZKaj7L1EHxnAKT3hm-DWmCnBqzZwwPxXKSHMYugULyUArFDci28VncL1p-UWiiQfOC6YdocMKoU6PynlJCoTsOiROHRG2D4PmPtMRziRnyDiysWWbZpN7C8gosvWCwWq0mnag">
+<div class="w-8 h-8 rounded-full bg-surface-container border-2 border-white flex items-center justify-center text-[10px] font-bold">+39</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Main Data Section: Evolution & Alerts -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+<!-- Chart Section -->
+<div class="lg:col-span-2 bg-white rounded-xl card-elevation p-lg flex flex-col h-[400px]">
+<div class="flex justify-between items-center mb-xl">
+<h3 class="font-headline-md text-headline-md text-primary">Évolution des Incidents (12 mois)</h3>
+<div class="flex gap-md">
+<span class="flex items-center gap-xs font-label-md text-label-md text-outline">
+<span class="w-3 h-3 rounded-full bg-primary"></span> Total
+                            </span>
+<span class="flex items-center gap-xs font-label-md text-label-md text-outline">
+<span class="w-3 h-3 rounded-full bg-error"></span> Graves
+                            </span>
+</div>
+</div>
+<!-- Chart Placeholder using CSS Grids/Flex as Canvas -->
+<div class="flex-1 relative flex items-end gap-md pb-md border-b border-l border-outline-variant px-sm">
+<!-- Bar/Line simulation -->
+<div class="flex-1 bg-surface-container hover:bg-primary/20 transition-colors h-[40%] rounded-t-sm relative group">
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-primary text-white text-[10px] px-xs py-1 rounded">6</div>
+</div>
+<div class="flex-1 bg-surface-container hover:bg-primary/20 transition-colors h-[55%] rounded-t-sm relative group">
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-primary text-white text-[10px] px-xs py-1 rounded">8</div>
+</div>
+<div class="flex-1 bg-surface-container hover:bg-primary/20 transition-colors h-[30%] rounded-t-sm relative group">
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-primary text-white text-[10px] px-xs py-1 rounded">4</div>
+</div>
+<div class="flex-1 bg-surface-container hover:bg-primary/20 transition-colors h-[20%] rounded-t-sm relative group">
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-primary text-white text-[10px] px-xs py-1 rounded">3</div>
+</div>
+<div class="flex-1 bg-primary h-[45%] rounded-t-sm relative group">
+<div class="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-primary text-white text-[10px] px-xs py-1 rounded">7</div>
+</div>
+<div class="flex-1 bg-primary h-[60%] rounded-t-sm relative group"></div>
+<div class="flex-1 bg-primary h-[35%] rounded-t-sm relative group"></div>
+<div class="flex-1 bg-primary h-[50%] rounded-t-sm relative group"></div>
+<div class="flex-1 bg-primary h-[25%] rounded-t-sm relative group"></div>
+<div class="flex-1 bg-primary h-[40%] rounded-t-sm relative group"></div>
+<div class="flex-1 bg-primary h-[15%] rounded-t-sm relative group"></div>
+<div class="flex-1 bg-primary h-[30%] rounded-t-sm relative group"></div>
+</div>
+<div class="flex justify-between mt-sm text-[10px] text-outline px-sm">
+<span>MAI</span><span>JUN</span><span>JUL</span><span>AOU</span><span>SEP</span><span>OCT</span><span>NOV</span><span>DEC</span><span>JAN</span><span>FEV</span><span>MAR</span><span>AVR</span>
+</div>
+</div>
+<!-- Alerts Sidebar -->
+<div class="bg-white rounded-xl card-elevation p-lg flex flex-col gap-lg">
+<h3 class="font-headline-md text-headline-md text-primary flex items-center gap-sm">
+<span class="material-symbols-outlined text-secondary">notifications_active</span>
+                        Alertes Temps Réel
+                    </h3>
+<div class="space-y-md">
+<!-- Stock EPI Warning -->
+<div class="p-md border-l-4 border-secondary bg-secondary-fixed/30 rounded-r-lg">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-on-secondary-fixed-variant">STOCK EPI</span>
+<span class="text-[10px] text-outline">12min ago</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface font-bold mt-xs">Rupture imminente : Gants Protection Niveau 5</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Seuils critiques atteints sur le site Logistique.</p>
+</div>
+<!-- Incident Urgent -->
+<div class="p-md border-l-4 border-error bg-error-container/30 rounded-r-lg">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-on-error-container">INCIDENT URGENT</span>
+<span class="text-[10px] text-outline">2h ago</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface font-bold mt-xs">Chute de hauteur signalée - Site Nord</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Rapport préliminaire en attente de validation.</p>
+</div>
+<!-- Audit Delay -->
+<div class="p-md border-l-4 border-outline bg-surface-container rounded-r-lg">
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-on-surface-variant">AUDIT RETARD</span>
+<span class="text-[10px] text-outline">Hier</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface font-bold mt-xs">Audit Trimestriel Incendie - Zone B</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">L'audit prévu le 12/04 n'a pas été complété.</p>
+</div>
+</div>
+<button class="mt-auto py-sm text-primary font-bold text-label-md hover:underline text-center">Voir toutes les alertes (14)</button>
+</div>
+</div>
+<!-- Bottom Section: Latest Incidents Table -->
+<section class="bg-white rounded-xl card-elevation overflow-hidden">
+<div class="p-lg border-b border-outline-variant flex justify-between items-center">
+<h3 class="font-headline-md text-headline-md text-primary">5 derniers incidents</h3>
+<button class="text-primary hover:bg-primary-container/10 px-md py-sm rounded-lg text-label-md font-bold transition-colors">Exporter Rapport PDF</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-low">
+<tr>
+<th class="px-lg py-md font-label-md text-label-md text-on-surface-variant">ID INCIDENT</th>
+<th class="px-lg py-md font-label-md text-label-md text-on-surface-variant">DATE</th>
+<th class="px-lg py-md font-label-md text-label-md text-on-surface-variant">TYPE</th>
+<th class="px-lg py-md font-label-md text-label-md text-on-surface-variant">STATUS</th>
+<th class="px-lg py-md font-label-md text-label-md text-on-surface-variant text-right">ACTION</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-lg py-md font-bold text-primary">#INC-2024-089</td>
+<td class="px-lg py-md text-on-surface-variant">14 Avr 2024 - 09:15</td>
+<td class="px-lg py-md">Near Miss (Presqu'accident)</td>
+<td class="px-lg py-md">
+<span class="px-sm py-1 bg-error-container/40 text-on-error-container rounded-full text-[10px] font-bold uppercase tracking-wider">Ouvert</span>
+</td>
+<td class="px-lg py-md text-right">
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors">visibility</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-lg py-md font-bold text-primary">#INC-2024-088</td>
+<td class="px-lg py-md text-on-surface-variant">13 Avr 2024 - 16:40</td>
+<td class="px-lg py-md">Accident de travail</td>
+<td class="px-lg py-md">
+<span class="px-sm py-1 bg-secondary-fixed/40 text-on-secondary-fixed-variant rounded-full text-[10px] font-bold uppercase tracking-wider">En cours</span>
+</td>
+<td class="px-lg py-md text-right">
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors">visibility</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-lg py-md font-bold text-primary">#INC-2024-087</td>
+<td class="px-lg py-md text-on-surface-variant">12 Avr 2024 - 11:20</td>
+<td class="px-lg py-md">Unsafe Act (Acte Dangereux)</td>
+<td class="px-lg py-md">
+<span class="px-sm py-1 bg-green-100 text-green-800 rounded-full text-[10px] font-bold uppercase tracking-wider">Clos</span>
+</td>
+<td class="px-lg py-md text-right">
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors">visibility</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-lg py-md font-bold text-primary">#INC-2024-086</td>
+<td class="px-lg py-md text-on-surface-variant">11 Avr 2024 - 14:05</td>
+<td class="px-lg py-md">Near Miss (Presqu'accident)</td>
+<td class="px-lg py-md">
+<span class="px-sm py-1 bg-green-100 text-green-800 rounded-full text-[10px] font-bold uppercase tracking-wider">Clos</span>
+</td>
+<td class="px-lg py-md text-right">
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors">visibility</button>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="px-lg py-md font-bold text-primary">#INC-2024-085</td>
+<td class="px-lg py-md text-on-surface-variant">10 Avr 2024 - 08:30</td>
+<td class="px-lg py-md">Accident de travail</td>
+<td class="px-lg py-md">
+<span class="px-sm py-1 bg-green-100 text-green-800 rounded-full text-[10px] font-bold uppercase tracking-wider">Clos</span>
+</td>
+<td class="px-lg py-md text-right">
+<button class="material-symbols-outlined text-outline hover:text-primary transition-colors">visibility</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+<!-- Footer / Credits -->
+<footer class="p-lg text-center font-label-md text-label-md text-outline">
+            © 2024 QHSE Safety Manager - Precision Safety Framework v4.2.1
+        </footer>
+</main>
+<script>
+        // Micro-interactions for dashboard hover effects
+        document.querySelectorAll('.card-elevation').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-2px)';
+                card.style.transition = 'all 0.2s ease-out';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0px)';
+            });
+        });
+    </script>
+</body></html>
