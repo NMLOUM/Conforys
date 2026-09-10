@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
 import {
-  Plus, AlertTriangle, ShieldAlert, CheckCircle2, Clock, Download,
+  Plus, AlertTriangle, ShieldAlert, CheckCircle2, Clock, Download, Sparkles, RefreshCw,
 } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
@@ -125,11 +125,33 @@ function Etape1({ valeurs, setValue, errors }) {
 // ── Étape 2 — Description ────────────────────────────────────────────────────
 
 function Etape2({ valeurs, setValue, errors, register, sites }) {
+  const [suggestionEnCours, setSuggestionEnCours] = useState(false);
   const inputCls = (name) =>
     `w-full px-3 py-2.5 text-sm border rounded-md bg-white text-[#1E293B] placeholder-[#94A3B8]
      focus:outline-none focus:ring-2 focus:ring-[#0D2B4E]/30 focus:border-[#0D2B4E] transition ${
       errors[name] ? "border-[#DC2626]" : "border-[#E2E8F0]"
     }`;
+
+  const suggererDescription = async () => {
+    if (!(valeurs.description || "").trim() && !valeurs.adresseLisible) {
+      toast.error("Décrivez au moins brièvement l'incident ou son lieu.");
+      return;
+    }
+    setSuggestionEnCours(true);
+    try {
+      const res = await api.post("/assistant/suggestion-contexte", {
+        type: "INCIDENT",
+        contexte: `Type : ${LABELS_TYPE[valeurs.type] || valeurs.type}\nGravité : ${valeurs.gravite}\nLieu : ${valeurs.adresseLisible || "non renseigné"}`,
+        contenuExistant: valeurs.description || "",
+      });
+      setValue("description", res.data.suggestion, { shouldValidate: true, shouldDirty: true });
+      toast.success("Description proposée. Vérifiez-la avant de continuer.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Impossible de générer une description.");
+    } finally {
+      setSuggestionEnCours(false);
+    }
+  };
 
   return (
     <div className="space-y-4 pt-1">
@@ -176,9 +198,14 @@ function Etape2({ valeurs, setValue, errors, register, sites }) {
       </div>
 
       <div>
-        <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
-          Description *
-        </label>
+          <div className="flex items-center justify-between gap-3 mb-1.5">
+            <label className="text-xs font-medium text-[#64748B] uppercase tracking-wide">Description *</label>
+            <button type="button" onClick={suggererDescription} disabled={suggestionEnCours}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-navy border border-[#CBD5E1] rounded-md hover:bg-[#F8FAFC] disabled:opacity-50 transition-colors">
+              <Sparkles size={13} />
+              {suggestionEnCours ? "Suggestion…" : "Améliorer avec l'IA"}
+            </button>
+          </div>
         <div className="relative">
           <textarea
             {...register("description")}
@@ -1040,6 +1067,16 @@ function IncidentsPage() {
         <div className="ml-auto flex items-center gap-3">
           <p className="text-xs text-[#94A3B8]">{chargement ? "Chargement…" : `${total} incident(s)`}</p>
           <button
+            type="button"
+            onClick={() => { charger(); chargerKpi(); }}
+            disabled={chargement}
+            title="Actualiser les incidents"
+            aria-label="Actualiser les incidents"
+            className="flex items-center justify-center w-8 h-8 text-[#64748B] border border-[#E2E8F0] rounded-md hover:bg-[#F8FAFC] hover:text-navy disabled:opacity-50 transition-colors"
+          >
+            <RefreshCw size={14} className={chargement ? "animate-spin" : ""} />
+          </button>
+          <button
             onClick={exporterCsv}
             disabled={exportEnCours}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-md border disabled:opacity-50 transition-colors hover:bg-[#F8FAFC]"
@@ -1077,10 +1114,10 @@ function IncidentsPage() {
       ) : (
         <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white">
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-sm">
+          <table className="w-full min-w-[850px] text-sm">
             <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
               <tr>
-                {["Référence", "Date", "Type", "Gravité", "Statut", "Déclarant", "Actions"].map((h) => (
+                {["Référence", "Date", "Type", "Site / lieu", "Gravité", "Statut", "Déclarant", "Actions"].map((h) => (
                   <th
                     key={h}
                     className="px-4 py-3 text-left text-xs font-medium text-[#64748B] uppercase tracking-wide"
@@ -1093,7 +1130,7 @@ function IncidentsPage() {
             <tbody className="divide-y divide-[#F1F5F9]">
               {incidents.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-[#94A3B8]">
+                  <td colSpan={8} className="px-4 py-12 text-center text-[#94A3B8]">
                     {filtresActifs
                       ? "Aucun incident ne correspond aux filtres sélectionnés."
                       : "Aucun incident enregistré."}
@@ -1119,6 +1156,10 @@ function IncidentsPage() {
                       </td>
                       <td className="px-4 py-3 text-[#475569]">
                         {LABELS_TYPE[inc.type] ?? inc.type}
+                      </td>
+                      <td className="px-4 py-3 max-w-[190px]">
+                        <p className="text-[#475569] truncate">{inc.site?.nom || "—"}</p>
+                        {inc.adresseLisible && <p className="text-xs text-[#94A3B8] truncate">{inc.adresseLisible}</p>}
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant={inc.gravite} />

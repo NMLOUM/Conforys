@@ -49,9 +49,9 @@ const login = async (req, res) => {
       });
     }
 
-    // Génération du token JWT — contient id, rôle et entreprise pour le filtrage côté API
+    // Génération du token JWT — contient le site pour le filtrage DUERP côté API
     const token = jwt.sign(
-      { userId: user.id, role: user.role, entrepriseId: user.entrepriseId },
+      { userId: user.id, role: user.role, entrepriseId: user.entrepriseId, siteId: user.siteId },
       process.env.JWT_SECRET,
       { expiresIn: "24h" }
     );
@@ -68,6 +68,7 @@ const login = async (req, res) => {
         email: user.email,
         role: user.role,
         entrepriseId: user.entrepriseId,
+        siteId: user.siteId,
       },
     });
   } catch (error) {

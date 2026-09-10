@@ -2,6 +2,61 @@ const prisma  = require("../config/prisma");
 const bcrypt  = require("bcrypt");
 const { handleErreur } = require("../utils/handleErreur");
 
+const PROFIL_SELECT = {
+  id: true,
+  nom: true,
+  prenom: true,
+  email: true,
+  role: true,
+  actif: true,
+  entreprise: { select: { id: true, nom: true, secteur: true } },
+  site: { select: { id: true, nom: true, ville: true } },
+};
+
+const getMe = async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId }, select: PROFIL_SELECT });
+    if (!user) return res.status(404).json({ success: false, message: "Utilisateur introuvable." });
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+const updateMe = async (req, res) => {
+  try {
+    const { nom, prenom, email, password } = req.body;
+    const data = {};
+
+    if (nom !== undefined) {
+      if (!nom.trim()) return res.status(400).json({ success: false, message: "Le nom est obligatoire." });
+      data.nom = nom.trim();
+    }
+    if (prenom !== undefined) {
+      if (!prenom.trim()) return res.status(400).json({ success: false, message: "Le prénom est obligatoire." });
+      data.prenom = prenom.trim();
+    }
+    if (email !== undefined) {
+      const emailNormalise = email.trim().toLowerCase();
+      if (!emailNormalise || !emailNormalise.includes("@")) {
+        return res.status(400).json({ success: false, message: "L'adresse email est invalide." });
+      }
+      const emailPris = await prisma.user.findFirst({ where: { email: emailNormalise, NOT: { id: req.user.userId } } });
+      if (emailPris) return res.status(409).json({ success: false, message: "Cette adresse email est déjà utilisée." });
+      data.email = emailNormalise;
+    }
+    if (password !== undefined && password !== "") {
+      if (password.length < 8) return res.status(400).json({ success: false, message: "Le mot de passe doit contenir au moins 8 caractères." });
+      data.password = await bcrypt.hash(password, 10);
+    }
+
+    const user = await prisma.user.update({ where: { id: req.user.userId }, data, select: PROFIL_SELECT });
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
 // Fonction qui récupère TOUS les utilisateurs — scopés à l'entreprise du demandeur
 const getAllUsers = async (req, res) => {
   try {
@@ -123,4 +178,4 @@ const deleteUser = async (req, res) => {
 };
 
 // Export des fonctions pour les utiliser dans les routes
-module.exports = { getAllUsers, createUser, updateUser, deleteUser };
+module.exports = { getMe, updateMe, getAllUsers, createUser, updateUser, deleteUser };

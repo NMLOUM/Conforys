@@ -13,6 +13,11 @@ export const useAuthStore = create((set) => ({
     set({ token, user });
   },
 
+  setUser: (user) => {
+    localStorage.setItem("user", JSON.stringify(user));
+    set({ user });
+  },
+
   // Action : déconnecter l'utilisateur
   logout: () => {
     localStorage.removeItem("token");

@@ -36,15 +36,19 @@ function Topbar({ titre, onOuvrirSidebar }) {
       </div>
 
       <div className="flex items-center gap-4">
-        <span className="hidden sm:block text-sm text-[#64748B]">
+        <button type="button" onClick={() => navigate("/profil")}
+          className="hidden sm:block text-sm text-[#64748B] hover:text-navy transition-colors">
           {user ? `${user.prenom} ${user.nom}` : ""}
-        </span>
+        </button>
 
         <NotificationBell />
 
-        <div className="flex items-center justify-center w-8 h-8 text-xs font-semibold text-white rounded-full bg-navy select-none">
+        <button type="button" onClick={() => navigate("/profil")}
+          title="Ouvrir mon profil"
+          aria-label="Ouvrir mon profil"
+          className="flex items-center justify-center w-8 h-8 text-xs font-semibold text-white rounded-full bg-navy select-none hover:ring-2 hover:ring-navy/20 transition">
           {initiales}
-        </div>
+        </button>
 
         <button
           onClick={handleLogout}

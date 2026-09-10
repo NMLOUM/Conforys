@@ -1,8 +1,11 @@
 const express = require("express");
 const router = express.Router();
-const { getAllUsers, createUser, updateUser, deleteUser } = require("../controllers/userController");
+const { getMe, updateMe, getAllUsers, createUser, updateUser, deleteUser } = require("../controllers/userController");
 const { protect }   = require("../middlewares/authMiddleware");
 const { authorize } = require("../middlewares/roleMiddleware");
+
+router.get("/me", protect, getMe);
+router.put("/me", protect, updateMe);
 
 // GET  /api/users      →  ADMIN et RESPONSABLE_QHSE peuvent consulter la liste
 router.get("/", protect, authorize("ADMIN", "RESPONSABLE_QHSE"), getAllUsers);

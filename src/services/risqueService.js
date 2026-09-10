@@ -34,6 +34,11 @@ const calculerNiveauQualitatif = (niveau) => {
   return "CRITIQUE";
 };
 
+const getRisqueScope = (entrepriseId, { role, siteId } = {}) => ({
+  site: { entrepriseId },
+  ...(role === "EMPLOYE" && { siteId: siteId || "__AUCUN_SITE__" }),
+});
+
 // Annote un risque (objet Prisma) avec ses niveaux qualitatifs calculés et le
 // nombre d'actions de prévention déjà générées (évite de re-proposer le
 // bouton "Générer une action" une fois que c'est déjà fait)
@@ -62,10 +67,10 @@ const INCLUDE_RISQUE = {
 };
 
 // Liste les risques de l'entreprise, avec filtres optionnels
-const getAllRisques = async (entrepriseId, { siteId, categorie, niveau } = {}) => {
+const getAllRisques = async (entrepriseId, { siteId, categorie, niveau } = {}, userScope = {}) => {
   const where = {
-    site: { entrepriseId },
-    ...(siteId    && { siteId }),
+    ...getRisqueScope(entrepriseId, userScope),
+    ...(userScope.role !== "EMPLOYE" && siteId && { siteId }),
     ...(categorie && { categorie }),
   };
   if (niveau && PLAGES_NIVEAU[niveau]) {
@@ -82,8 +87,8 @@ const getAllRisques = async (entrepriseId, { siteId, categorie, niveau } = {}) =
 
 // Récupère un risque par son id — scopé à l'entreprise du demandeur (renvoie
 // null si le risque n'existe pas ou appartient à une autre entreprise).
-const getRisqueById = async (id, entrepriseId) => {
-  const risque = await prisma.risque.findFirst({ where: { id, site: { entrepriseId } }, include: INCLUDE_RISQUE });
+const getRisqueById = async (id, entrepriseId, userScope = {}) => {
+  const risque = await prisma.risque.findFirst({ where: { id, ...getRisqueScope(entrepriseId, userScope) }, include: INCLUDE_RISQUE });
   return risque ? avecNiveaux(risque) : null;
 };
 
@@ -183,9 +188,10 @@ const deleteRisque = async (id, entrepriseId) => {
 // Données de la matrice 4×4 : une cellule par couple (probabilité, gravité),
 // avec le nombre de risques qui s'y trouvent — sert à la fois à l'affichage
 // et au comptage, sans recalcul côté frontend.
-const getMatrice = async (entrepriseId, siteId) => {
+const getMatrice = async (entrepriseId, siteId, userScope = {}) => {
+  const siteFiltre = userScope.role === "EMPLOYE" ? (userScope.siteId || "__AUCUN_SITE__") : siteId;
   const risques = await prisma.risque.findMany({
-    where: { site: { entrepriseId }, ...(siteId && { siteId }) },
+    where: { ...getRisqueScope(entrepriseId, userScope), ...(siteFiltre && { siteId: siteFiltre }) },
     select: { probabilite: true, gravite: true },
   });
 
@@ -244,8 +250,8 @@ const genererActionDepuisRisque = async (risqueId, auteurId, entrepriseId, { des
 // Historique d'un risque — vérifie d'abord qu'il appartient à l'entreprise du
 // demandeur (sans quoi l'id d'un risque d'une autre entreprise suffirait à en
 // lire tout l'historique de cotation).
-const getHistoriqueByRisque = async (risqueId, entrepriseId) => {
-  const risque = await prisma.risque.findFirst({ where: { id: risqueId, site: { entrepriseId } } });
+const getHistoriqueByRisque = async (risqueId, entrepriseId, userScope = {}) => {
+  const risque = await prisma.risque.findFirst({ where: { id: risqueId, ...getRisqueScope(entrepriseId, userScope) } });
   if (!risque) throw new ErreurMetier("Risque introuvable.", 404);
   return getHistorique(risqueId);
 };

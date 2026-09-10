@@ -28,6 +28,7 @@ import ActionHistoriquePage from "./pages/ActionHistoriquePage";
 import AuditHistoriquePage from "./pages/AuditHistoriquePage";
 import FormationHistoriquePage from "./pages/FormationHistoriquePage";
 import AssistantPage from "./pages/AssistantPage";
+import ProfilPage from "./pages/ProfilPage";
 
 // Redirige vers le bon dashboard selon le rôle de l'utilisateur connecté
 function dashboardParRole(role) {
@@ -58,6 +59,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/profil" element={<ProtectedRoute element={<ProfilPage />} rolesAutorises={["ADMIN", "RESPONSABLE_QHSE", "EMPLOYE"]} />} />
         {/* Vérification publique d'une attestation (QR code) — aucune authentification */}
         <Route path="/verifier/:code" element={<VerifierAttestationPage />} />
 

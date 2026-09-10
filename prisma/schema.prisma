@@ -56,6 +56,10 @@ model User {
   entreprise   Entreprise @relation(fields: [entrepriseId], references: [id])
   entrepriseId String
 
+  // Site de rattachement de l'employé pour limiter sa consultation DUERP
+  site   Site?  @relation(fields: [siteId], references: [id])
+  siteId String? @map("site_id")
+
   // Relation : incidents déclarés par cet utilisateur (employé déclarant)
   incidentsDeclares            Incident[]               @relation("IncidentsDeclares")
   // Relation : incidents validés par cet utilisateur (responsable QHSE)
@@ -116,6 +120,8 @@ model Site {
 
   entreprise   Entreprise @relation(fields: [entrepriseId], references: [id])
   entrepriseId String
+
+  users User[]
 
   incidents  Incident[]
   epis       Epi[]

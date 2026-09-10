@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { X, CheckCircle2, CalendarDays, Save } from "lucide-react";
+import { X, CheckCircle2, CalendarDays, Save, Sparkles } from "lucide-react";
+import toast from "react-hot-toast";
+import api from "../../api/axios";
 
 const PRIORITES = [
   { value: "FAIBLE",   label: "Faible" },
@@ -36,6 +38,24 @@ function ModalGenererAction({ titre, contexte, defaultDescription = "", defaultP
   const [dateLimite,    setDateLimite]    = useState("");
   const [erreur, setErreur] = useState("");
   const [envoi,  setEnvoi]  = useState(false);
+  const [suggestionEnCours, setSuggestionEnCours] = useState(false);
+
+  const suggererDescription = async () => {
+    setSuggestionEnCours(true);
+    try {
+      const res = await api.post("/assistant/suggestion-contexte", {
+        type: "ACTION",
+        contexte: contexte || "Action corrective QHSE",
+        contenuExistant: description,
+      });
+      setDescription(res.data.suggestion);
+      toast.success("Description proposée. Vérifiez-la avant l'enregistrement.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Impossible de générer une description.");
+    } finally {
+      setSuggestionEnCours(false);
+    }
+  };
 
   const soumettre = async () => {
     if (!description.trim() || description.trim().length < 5) {
@@ -86,7 +106,14 @@ function ModalGenererAction({ titre, contexte, defaultDescription = "", defaultP
           )}
 
           <div className="space-y-2">
-            <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider block">Description de l'action *</label>
+            <div className="flex items-center justify-between gap-3">
+              <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-wider block">Description de l'action *</label>
+              <button type="button" onClick={suggererDescription} disabled={suggestionEnCours}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-navy border border-[#CBD5E1] rounded-md hover:bg-[#F8FAFC] disabled:opacity-50 transition-colors">
+                <Sparkles size={13} />
+                {suggestionEnCours ? "Suggestion…" : "Suggérer avec l'IA"}
+              </button>
+            </div>
             <textarea value={description} onChange={(e) => setDescription(e.target.value)}
               rows={4} placeholder="Décrivez les étapes de l'action corrective…"
               className="w-full px-4 py-3 text-sm border border-[#E2E8F0] rounded-lg bg-white text-[#1E293B] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-navy/30 focus:border-navy transition resize-none" />

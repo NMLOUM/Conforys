@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "react-hot-toast";
-import { Plus, Search, X, FileDown, Trash2, CalendarCheck, History } from "lucide-react";
+import { Plus, Search, X, FileDown, Trash2, CalendarCheck, History, Sparkles } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 import Badge from "../components/ui/Badge";
@@ -218,8 +218,9 @@ function DUERPPage() {
   const [risqueASupprimer, setRisqueASupprimer] = useState(null);
   const [suppressionEnCours, setSuppressionEnCours] = useState(false);
   const [risqueAGenererAction, setRisqueAGenererAction] = useState(null);
+  const [suggestionIaEnCours, setSuggestionIaEnCours] = useState(false);
 
-  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, reset, watch, getValues, setValue, formState: { errors, isSubmitting } } = useForm({
     mode: "onBlur",
     resolver: zodResolver(risqueSchema),
     defaultValues: FORM_DEFAUT,
@@ -292,7 +293,7 @@ function DUERPPage() {
     chargerStatutRevision();
     api.get("/sites").then((r) => setSites(r.data.data || [])).catch(() => {});
     if (peutGerer) api.get("/users").then((r) => setUsers(r.data.data || [])).catch(() => {});
-  }, []);
+  }, [peutGerer]);
 
   const marquerRevise = async () => {
     setMarquerReviseEnCours(true);
@@ -319,7 +320,7 @@ function DUERPPage() {
       lien.click();
       lien.remove();
       window.URL.revokeObjectURL(url);
-    } catch (err) {
+    } catch {
       toast.error("Erreur lors du téléchargement du registre PDF.");
     } finally {
       setTelechargementPdf(false);
@@ -397,6 +398,31 @@ function DUERPPage() {
     }
   };
 
+  const suggererMesures = async () => {
+    const valeurs = getValues();
+    if (!valeurs.danger.trim()) {
+      toast.error("Renseignez d'abord le danger identifié.");
+      return;
+    }
+    setSuggestionIaEnCours(true);
+    try {
+      const res = await api.post("/assistant/suggestion-risque", {
+        danger: valeurs.danger,
+        categorie: valeurs.categorie,
+        zone: valeurs.zone || null,
+        probabilite: valeurs.probabilite,
+        gravite: valeurs.gravite,
+        mesuresPrevention: valeurs.mesuresPrevention || null,
+      });
+      setValue("mesuresPrevention", res.data.suggestion, { shouldDirty: true });
+      toast.success("Suggestion générée. Vérifiez-la avant de l'enregistrer.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Impossible de générer une suggestion.");
+    } finally {
+      setSuggestionIaEnCours(false);
+    }
+  };
+
   const confirmerGenererAction = async (payload) => {
     const risque = risqueAGenererAction;
     setGenererEnCoursId(risque.id);
@@ -419,7 +445,7 @@ function DUERPPage() {
     <AppLayout titre="DUERP">
       <div className="flex items-start justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-navy">Évaluation des risques</h1>
+          <h1 className="text-2xl font-bold text-navy">{peutGerer ? "Évaluation des risques" : "Mes risques"}</h1>
           <p className="text-xs text-[#94A3B8] mt-0.5">Tableau de bord <span className="mx-1">›</span> DUERP</p>
         </div>
         <div className="shrink-0 flex items-center gap-2">
@@ -430,11 +456,13 @@ function DUERPPage() {
               Historique
             </Link>
           )}
-          <button onClick={telechargerPdf} disabled={telechargementPdf}
-            className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
-            <FileDown size={14} strokeWidth={2.2} />
-            {telechargementPdf ? "Génération…" : "Exporter le registre PDF"}
-          </button>
+          {peutGerer && (
+            <button onClick={telechargerPdf} disabled={telechargementPdf}
+              className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50 transition-colors">
+              <FileDown size={14} strokeWidth={2.2} />
+              {telechargementPdf ? "Génération…" : "Exporter le registre PDF"}
+            </button>
+          )}
           {peutGerer && (
             <button onClick={ouvrirCreation}
               className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white rounded-md bg-navy hover:bg-navy/90 transition-colors">
@@ -690,9 +718,18 @@ function DUERPPage() {
               </div>
 
               <div>
-                <label className="block mb-1.5 text-xs font-medium text-[#64748B] uppercase tracking-wide">
-                  Mesures de prévention <span className="font-normal normal-case text-[#94A3B8]">(optionnel)</span>
-                </label>
+                <div className="flex items-center justify-between gap-3 mb-1.5">
+                  <label className="text-xs font-medium text-[#64748B] uppercase tracking-wide">
+                    Mesures de prévention <span className="font-normal normal-case text-[#94A3B8]">(optionnel)</span>
+                  </label>
+                  {peutGerer && (
+                    <button type="button" onClick={suggererMesures} disabled={suggestionIaEnCours}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-navy border border-[#CBD5E1] rounded-md hover:bg-[#F8FAFC] disabled:opacity-50 transition-colors">
+                      <Sparkles size={13} />
+                      {suggestionIaEnCours ? "Suggestion…" : "Suggérer avec l'IA"}
+                    </button>
+                  )}
+                </div>
                 <textarea {...register("mesuresPrevention")} rows={3} placeholder="Mesures existantes ou à mettre en place…" className={inputCls("mesuresPrevention")} />
               </div>
 

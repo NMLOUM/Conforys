@@ -61,9 +61,9 @@ async function main() {
     prisma.user.create({ data: { nom: "NDIAYE", prenom: "Fatou",    email: "f.ndiaye@petromer.sn",  password: await h("Qhse2026!"),   role: "RESPONSABLE_QHSE", entrepriseId: entreprise.id } }),
     prisma.user.create({ data: { nom: "SOW",    prenom: "Ibrahima", email: "i.sow@petromer.sn",     password: await h("Qhse2026!"),   role: "RESPONSABLE_QHSE", entrepriseId: entreprise.id } }),
     prisma.user.create({ data: { nom: "Loum",   prenom: "Mamadou",  email: "m.loum@dangote.sn",     password: await h("Qhse2026"),    role: "RESPONSABLE_QHSE", entrepriseId: entreprise.id } }),
-    prisma.user.create({ data: { nom: "FALL",   prenom: "Cheikh",   email: "c.fall@petromer.sn",    password: await h("Employe123!"), role: "EMPLOYE",          entrepriseId: entreprise.id } }),
-    prisma.user.create({ data: { nom: "SARR",   prenom: "Aminata",  email: "a.sarr@petromer.sn",    password: await h("Employe123!"), role: "EMPLOYE",          entrepriseId: entreprise.id } }),
-    prisma.user.create({ data: { nom: "MBAYE",  prenom: "Moussa",   email: "m.mbaye@petromer.sn",   password: await h("Employe123!"), role: "EMPLOYE",          entrepriseId: entreprise.id } }),
+    prisma.user.create({ data: { nom: "FALL",   prenom: "Cheikh",   email: "c.fall@petromer.sn",    password: await h("Employe123!"), role: "EMPLOYE",          entrepriseId: entreprise.id, siteId: siteDakar.id } }),
+    prisma.user.create({ data: { nom: "SARR",   prenom: "Aminata",  email: "a.sarr@petromer.sn",    password: await h("Employe123!"), role: "EMPLOYE",          entrepriseId: entreprise.id, siteId: siteStLouis.id } }),
+    prisma.user.create({ data: { nom: "MBAYE",  prenom: "Moussa",   email: "m.mbaye@petromer.sn",   password: await h("Employe123!"), role: "EMPLOYE",          entrepriseId: entreprise.id, siteId: siteThies.id } }),
   ]);
   console.log("Utilisateurs créés : 7");
 

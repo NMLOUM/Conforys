@@ -5,9 +5,9 @@ const { handleErreur } = require("../utils/handleErreur");
 // GET /api/risques — liste filtrable (siteId, categorie, niveau)
 const getAllRisques = async (req, res) => {
   try {
-    const { entrepriseId } = req.user;
+    const { entrepriseId, role } = req.user;
     const { siteId, categorie, niveau } = req.query;
-    const risques = await risqueService.getAllRisques(entrepriseId, { siteId, categorie, niveau });
+    const risques = await risqueService.getAllRisques(entrepriseId, { siteId, categorie, niveau }, { role, siteId: req.user.siteId });
     res.status(200).json({ success: true, data: risques });
   } catch (error) {
     handleErreur(res, error);
@@ -17,9 +17,9 @@ const getAllRisques = async (req, res) => {
 // GET /api/risques/matrice — répartition par case probabilité × gravité
 const getMatrice = async (req, res) => {
   try {
-    const { entrepriseId } = req.user;
+    const { entrepriseId, role } = req.user;
     const { siteId } = req.query;
-    const matrice = await risqueService.getMatrice(entrepriseId, siteId || null);
+    const matrice = await risqueService.getMatrice(entrepriseId, siteId || null, { role, siteId: req.user.siteId });
     res.status(200).json({ success: true, data: matrice });
   } catch (error) {
     handleErreur(res, error);
@@ -29,7 +29,7 @@ const getMatrice = async (req, res) => {
 // GET /api/risques/:id
 const getRisqueById = async (req, res) => {
   try {
-    const risque = await risqueService.getRisqueById(req.params.id, req.user.entrepriseId);
+    const risque = await risqueService.getRisqueById(req.params.id, req.user.entrepriseId, req.user);
     if (!risque) {
       return res.status(404).json({ success: false, message: "Risque introuvable." });
     }
@@ -82,7 +82,7 @@ const genererAction = async (req, res) => {
 // GET /api/risques/:id/historique — piste d'audit en lecture seule
 const getHistoriqueRisque = async (req, res) => {
   try {
-    const historique = await risqueService.getHistoriqueByRisque(req.params.id, req.user.entrepriseId);
+    const historique = await risqueService.getHistoriqueByRisque(req.params.id, req.user.entrepriseId, req.user);
     res.status(200).json({ success: true, data: historique });
   } catch (error) {
     handleErreur(res, error);

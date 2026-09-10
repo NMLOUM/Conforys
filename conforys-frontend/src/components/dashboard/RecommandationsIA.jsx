@@ -16,8 +16,8 @@ function RecommandationsIA() {
   const [chargement, setChargement] = useState(true);
   const [erreur,     setErreur]     = useState("");
 
-  const charger = async () => {
-    setChargement(true);
+  const charger = async (afficherChargement = true) => {
+    if (afficherChargement) setChargement(true);
     setErreur("");
     try {
       const res = await api.post("/assistant/chat", { question: QUESTION_RECOMMANDATIONS });
@@ -29,7 +29,10 @@ function RecommandationsIA() {
     }
   };
 
-  useEffect(() => { charger(); }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => charger(false), 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className="bg-white border border-[#E2E8F0] rounded-lg shadow-sm p-5">

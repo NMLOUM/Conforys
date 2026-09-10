@@ -10,4 +10,19 @@ const chatSchema = z.object({
     .max(2000, "La question est trop longue (2000 caractères maximum)."),
 });
 
-module.exports = { chatSchema };
+const suggestionRisqueSchema = z.object({
+  danger: z.string().trim().min(1).max(500),
+  categorie: z.string().trim().max(100).optional(),
+  zone: z.string().trim().max(300).nullable().optional(),
+  probabilite: z.coerce.number().int().min(1).max(4),
+  gravite: z.coerce.number().int().min(1).max(4),
+  mesuresPrevention: z.string().max(3000).nullable().optional(),
+});
+
+const suggestionContexteSchema = z.object({
+  type: z.enum(["INCIDENT", "ACTION"]),
+  contexte: z.string().trim().min(5).max(3000),
+  contenuExistant: z.string().max(3000).optional().default(""),
+});
+
+module.exports = { chatSchema, suggestionRisqueSchema, suggestionContexteSchema };

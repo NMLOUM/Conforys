@@ -158,7 +158,6 @@ function Sidebar({ ouverte, onClose }) {
             <Lien to="/audits"    label="Audits" />
             <Lien to="/duerp"     label="DUERP" />
             <Lien to="/formations" label="Formations" />
-            <Lien to="/users"     label="Utilisateurs" />
 
             <SectionLabel label="Assistant" />
             <Lien to="/assistant" label="Assistant IA" />
