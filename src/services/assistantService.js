@@ -1,8 +1,8 @@
 // Service de l'assistant IA conversationnel : construit un résumé chiffré,
-// anonyme, des données QHSE de l'entreprise, puis interroge Claude (API
-// Anthropic) avec ce résumé en contexte pour répondre aux questions du
+// anonyme, des données QHSE de l'entreprise, puis interroge Gemini avec ce
+// résumé en contexte pour répondre aux questions du
 // responsable QHSE en langage naturel.
-const Anthropic = require("@anthropic-ai/sdk");
+const { GoogleGenAI } = require("@google/genai");
 const prisma = require("../config/prisma");
 const { getIncidentStats } = require("./dashboardService");
 const { getHistoriqueScores } = require("./auditService");
@@ -14,10 +14,50 @@ class ErreurMetier extends Error {
   }
 }
 
-// Client Anthropic — une seule instance réutilisée entre les requêtes. La clé
-// est lue depuis process.env.ANTHROPIC_API_KEY par le SDK lui-même : jamais
-// codée en dur, jamais transmise au frontend.
-const client = new Anthropic();
+// Client Gemini — la clé reste uniquement côté backend.
+const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const modele = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
+
+const appelerGemini = async (systemPrompt, demande, maxOutputTokens) => {
+  try {
+    const response = await client.models.generateContent({
+      model: modele,
+      contents: `${systemPrompt}\n\nDemande utilisateur :\n${demande}`,
+      config: { maxOutputTokens },
+    });
+    const texte = response.text?.trim();
+    if (!texte) throw new ErreurMetier("L'assistant n'a pas pu générer de réponse.", 502);
+    return texte;
+  } catch (err) {
+    if (err instanceof ErreurMetier) throw err;
+    if (err?.status === 401 || err?.status === 403) {
+      console.error("[ASSISTANT] Clé API Gemini invalide ou non autorisée.");
+      throw new ErreurMetier("L'assistant est mal configuré. Vérifiez GEMINI_API_KEY.", 502);
+    }
+    if (err?.status === 429) {
+      throw new ErreurMetier("La limite gratuite Gemini est temporairement atteinte. Réessayez plus tard.", 429);
+    }
+    console.error("[ASSISTANT] Erreur Gemini :", err.message || err);
+    throw new ErreurMetier("Impossible de contacter l'assistant pour le moment.", 502);
+  }
+};
+
+const enregistrerHistorique = async (utilisateur, question, reponse) => {
+  await prisma.historiqueAssistant.create({
+    data: {
+      question,
+      reponse,
+      utilisateurId: utilisateur.userId,
+      entrepriseId: utilisateur.entrepriseId,
+    },
+  });
+};
+
+const getHistorique = async ({ userId, entrepriseId }) => prisma.historiqueAssistant.findMany({
+  where: { utilisateurId: userId, entrepriseId },
+  orderBy: { createdAt: "desc" },
+  take: 30,
+});
 
 // ── Résumé chiffré de l'entreprise ───────────────────────────────────────────
 //
@@ -99,7 +139,7 @@ Tendances (pour l'analyse d'évolution) :
 }
 `.trim();
 
-// ── Appel à Claude ────────────────────────────────────────────────────────────
+// ── Appel à Gemini ────────────────────────────────────────────────────────────
 const poserQuestion = async (question, entrepriseId) => {
   const resume = await construireResumeEntreprise(entrepriseId);
   const systemPrompt = `Tu es un assistant expert QHSE (Qualité, Hygiène, Sécurité, Environnement) intégré à la plateforme CONFORYS.
@@ -115,34 +155,7 @@ En plus de répondre aux questions factuelles, tu peux aussi :
 Données de l'entreprise :
 ${formaterResumePourPrompt(resume)}`;
 
-  try {
-    const response = await client.messages.create({
-      model: "claude-opus-5",
-      max_tokens: 1024,
-      output_config: { effort: "medium" },
-      system: systemPrompt,
-      messages: [{ role: "user", content: question }],
-    });
-
-    const texte = response.content.find((b) => b.type === "text")?.text;
-    if (!texte) throw new ErreurMetier("L'assistant n'a pas pu générer de réponse.", 502);
-    return texte;
-  } catch (err) {
-    if (err instanceof ErreurMetier) throw err;
-    if (err instanceof Anthropic.AuthenticationError) {
-      console.error("[ASSISTANT] Clé API Anthropic invalide.");
-      throw new ErreurMetier("L'assistant est mal configuré. Contactez un administrateur.", 502);
-    }
-    if (err instanceof Anthropic.RateLimitError) {
-      throw new ErreurMetier("L'assistant est temporairement surchargé. Réessayez dans quelques instants.", 429);
-    }
-    if (err instanceof Anthropic.APIError) {
-      console.error("[ASSISTANT] Erreur API Anthropic :", err.status, err.message);
-      throw new ErreurMetier("L'assistant est momentanément indisponible. Réessayez plus tard.", 502);
-    }
-    console.error("[ASSISTANT] Erreur inattendue :", err.message || err);
-    throw new ErreurMetier("Impossible de contacter l'assistant pour le moment.", 502);
-  }
+  return appelerGemini(systemPrompt, question, 1024);
 };
 
 const suggererMesuresRisque = async ({ danger, categorie, zone, probabilite, gravite, mesuresPrevention }) => {
@@ -155,60 +168,31 @@ const suggererMesuresRisque = async ({ danger, categorie, zone, probabilite, gra
     mesuresPrevention ? `Mesures déjà prévues : ${mesuresPrevention}` : "Aucune mesure déjà renseignée.",
   ].join("\n");
 
-  try {
-    const response = await client.messages.create({
-      model: "claude-opus-5",
-      max_tokens: 700,
-      output_config: { effort: "medium" },
-      system: `Tu es un expert QHSE. Propose des mesures de prévention concrètes pour un risque professionnel.
+  const systemPrompt = `Tu es un expert QHSE. Propose des mesures de prévention concrètes pour un risque professionnel.
 Réponds uniquement en français, sous forme de 3 à 6 lignes courtes, une mesure par ligne, sans puces, sans titre et sans inventer de norme ou de valeur réglementaire.
 Les mesures doivent être adaptées au danger, à la zone et à la cotation fournis. Si des mesures existent déjà, propose des compléments plutôt que de les répéter.
 Contexte du risque :
-${contexte}`,
-      messages: [{ role: "user", content: "Propose les mesures de prévention adaptées à ce risque." }],
-    });
-    const suggestion = response.content.find((bloc) => bloc.type === "text")?.text?.trim();
-    if (!suggestion) throw new ErreurMetier("L'assistant n'a pas pu proposer de mesures.", 502);
-    return suggestion;
-  } catch (err) {
-    if (err instanceof ErreurMetier) throw err;
-    if (err instanceof Anthropic.AuthenticationError) {
-      throw new ErreurMetier("L'assistant est mal configuré. Contactez un administrateur.", 502);
-    }
-    if (err instanceof Anthropic.RateLimitError) {
-      throw new ErreurMetier("L'assistant est temporairement surchargé. Réessayez dans quelques instants.", 429);
-    }
-    console.error("[ASSISTANT] Erreur suggestion risque :", err.message || err);
-    throw new ErreurMetier("Impossible de générer une suggestion pour le moment.", 502);
-  }
+${contexte}`;
+  return appelerGemini(systemPrompt, "Propose les mesures de prévention adaptées à ce risque.", 700);
 };
 
 const suggererDepuisContexte = async ({ type, contexte, contenuExistant }) => {
   const consigne = type === "INCIDENT"
     ? "Réécris la description de l'incident de façon factuelle et précise. Inclus les faits observables, le lieu, les conséquences connues et les éléments manquants à vérifier. Réponds en un paragraphe, sans titre."
     : "Propose une description concrète d'action corrective QHSE, avec un résultat attendu mesurable. Réponds en un paragraphe court, sans titre.";
-  try {
-    const response = await client.messages.create({
-      model: "claude-opus-5",
-      max_tokens: 500,
-      output_config: { effort: "medium" },
-      system: `Tu es un rédacteur QHSE. ${consigne}
+  const systemPrompt = `Tu es un rédacteur QHSE. ${consigne}
 N'invente aucune information absente du contexte et réponds uniquement en français.
 Contexte :
 ${contexte}
-${contenuExistant ? `Contenu déjà saisi :\n${contenuExistant}` : ""}`,
-      messages: [{ role: "user", content: "Génère une proposition directement utilisable dans le formulaire." }],
-    });
-    const suggestion = response.content.find((bloc) => bloc.type === "text")?.text?.trim();
-    if (!suggestion) throw new ErreurMetier("L'assistant n'a pas pu générer de proposition.", 502);
-    return suggestion;
-  } catch (err) {
-    if (err instanceof ErreurMetier) throw err;
-    if (err instanceof Anthropic.AuthenticationError) throw new ErreurMetier("L'assistant est mal configuré. Contactez un administrateur.", 502);
-    if (err instanceof Anthropic.RateLimitError) throw new ErreurMetier("L'assistant est temporairement surchargé. Réessayez dans quelques instants.", 429);
-    console.error("[ASSISTANT] Erreur suggestion contextuelle :", err.message || err);
-    throw new ErreurMetier("Impossible de générer une proposition pour le moment.", 502);
-  }
+${contenuExistant ? `Contenu déjà saisi :\n${contenuExistant}` : ""}`;
+  return appelerGemini(systemPrompt, "Génère une proposition directement utilisable dans le formulaire.", 500);
 };
 
-module.exports = { poserQuestion, suggererMesuresRisque, suggererDepuisContexte, construireResumeEntreprise };
+module.exports = {
+  poserQuestion,
+  suggererMesuresRisque,
+  suggererDepuisContexte,
+  enregistrerHistorique,
+  getHistorique,
+  construireResumeEntreprise,
+};

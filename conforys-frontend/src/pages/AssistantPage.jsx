@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
-import { RotateCcw, Send, ShieldCheck, Sparkles } from "lucide-react";
+import { BarChart3, RotateCcw, Send, ShieldCheck, Sparkles } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
 
@@ -58,6 +58,8 @@ function AssistantPage() {
   const [messages, setMessages]     = useState([]);
   const [question, setQuestion]     = useState("");
   const [chargement, setChargement] = useState(false);
+  const [analyseTendances, setAnalyseTendances] = useState("");
+  const [analyseEnCours, setAnalyseEnCours] = useState(false);
   const finDesMessages = useRef(null);
   const suggestions = [
     "Quels sont les incidents critiques à traiter ?",
@@ -112,6 +114,20 @@ function AssistantPage() {
     setQuestion("");
   };
 
+  const analyserTendances = async () => {
+    setAnalyseEnCours(true);
+    try {
+      const res = await api.post("/assistant/chat", {
+        question: "Analyse les tendances QHSE de mon entreprise. Compare l'évolution des incidents sur les 12 derniers mois, les scores des audits terminés, les risques DUERP, les actions correctives en retard et la conformité des EPI. Donne une conclusion claire et trois priorités. N'invente aucune donnée.",
+      });
+      setAnalyseTendances(res.data.reponse || "");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Impossible d'analyser les tendances.");
+    } finally {
+      setAnalyseEnCours(false);
+    }
+  };
+
   return (
     <AppLayout titre="Assistant IA">
       <div className="mb-5">
@@ -121,6 +137,7 @@ function AssistantPage() {
         </p>
       </div>
 
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-4 items-start">
       <div className="flex flex-col bg-white border border-[#E2E8F0] rounded-xl shadow-sm overflow-hidden" style={{ height: "min(68vh, 720px)", minHeight: "480px" }}>
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-[#E2E8F0] bg-[#FCFDFE]">
           <div className="flex items-center gap-3 min-w-0">
@@ -193,6 +210,38 @@ function AssistantPage() {
           </div>
           <p className="hidden sm:block mt-2 text-[11px] text-[#94A3B8]">Entrée pour envoyer · Maj + Entrée pour écrire sur plusieurs lignes</p>
         </form>
+      </div>
+
+      <aside className="bg-white border border-[#E2E8F0] rounded-xl shadow-sm overflow-hidden xl:max-h-[720px]">
+        <div className="flex items-center justify-between gap-2 px-4 py-4 border-b border-[#E2E8F0] bg-[#FCFDFE]">
+          <div className="flex items-center gap-2">
+          <BarChart3 size={17} className="text-navy" />
+          <div>
+            <h2 className="text-sm font-semibold text-[#1E293B]">Analyse des tendances</h2>
+            <p className="text-[11px] text-[#94A3B8]">Synthèse QHSE en temps réel</p>
+          </div>
+          </div>
+          <button type="button" onClick={analyserTendances} disabled={analyseEnCours}
+            className="px-2.5 py-1.5 text-[11px] font-semibold text-white rounded-md bg-navy hover:bg-navy/90 disabled:opacity-50">
+            {analyseEnCours ? "Analyse…" : analyseTendances ? "Actualiser" : "Analyser"}
+          </button>
+        </div>
+        <div className="max-h-[620px] overflow-y-auto p-4">
+          {!analyseTendances && !analyseEnCours ? (
+            <div className="flex flex-col items-center justify-center text-center py-12">
+              <BarChart3 size={28} className="text-[#94A3B8] mb-3" />
+              <p className="text-xs text-[#64748B]">Lancez une analyse pour voir les tendances de votre entreprise.</p>
+            </div>
+          ) : analyseEnCours ? (
+            <div className="flex items-center gap-2 py-12 justify-center text-xs text-[#64748B]">
+              <span className="w-4 h-4 border-2 border-navy border-t-transparent rounded-full animate-spin" />
+              Analyse des données en cours…
+            </div>
+          ) : (
+            <p className="text-sm leading-relaxed whitespace-pre-wrap text-[#1E293B]">{analyseTendances}</p>
+          )}
+        </div>
+      </aside>
       </div>
     </AppLayout>
   );

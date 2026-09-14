@@ -31,6 +31,7 @@ model Entreprise {
   // Relation : une entreprise a plusieurs utilisateurs
   users User[]
   sites Site[]
+  historiqueAssistant HistoriqueAssistant[]
 
   // Dernière date à laquelle le DUERP a été formellement révisé (obligation
   // légale : révision au moins annuelle). Alimente le calcul de l'échéance
@@ -59,6 +60,8 @@ model User {
   // Site de rattachement de l'employé pour limiter sa consultation DUERP
   site   Site?  @relation(fields: [siteId], references: [id])
   siteId String? @map("site_id")
+
+  historiqueAssistant HistoriqueAssistant[]
 
   // Relation : incidents déclarés par cet utilisateur (employé déclarant)
   incidentsDeclares            Incident[]               @relation("IncidentsDeclares")
@@ -110,6 +113,22 @@ model User {
   updatedAt DateTime @updatedAt
 
   @@map("users")
+}
+
+model HistoriqueAssistant {
+  id           String     @id @default(uuid())
+  question     String
+  reponse      String
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  utilisateur   User       @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+  utilisateurId String     @map("utilisateur_id")
+  entreprise    Entreprise @relation(fields: [entrepriseId], references: [id], onDelete: Cascade)
+  entrepriseId  String     @map("entreprise_id")
+
+  @@index([utilisateurId, createdAt])
+  @@index([entrepriseId, createdAt])
+  @@map("historique_assistant")
 }
 
 model Site {

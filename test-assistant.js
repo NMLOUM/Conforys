@@ -1,30 +1,26 @@
-// Script de test rapide : verifie que la cle API Anthropic fonctionne en
-// envoyant une question simple a Claude et en affichant la reponse.
+// Script de test rapide : vérifie que la clé API Gemini fonctionne.
 require("dotenv/config");
-const Anthropic = require("@anthropic-ai/sdk");
+const { GoogleGenAI } = require("@google/genai");
 
 async function main() {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.error("ANTHROPIC_API_KEY manquante. Ajoutez-la dans votre fichier .env.");
+  if (!process.env.GEMINI_API_KEY) {
+    console.error("GEMINI_API_KEY manquante. Ajoutez-la dans votre fichier .env.");
     process.exit(1);
   }
 
-  const client = new Anthropic();
+  const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-  const response = await client.messages.create({
-    model: "claude-opus-5",
-    max_tokens: 1024,
-    messages: [
-      { role: "user", content: "Reponds en une phrase : quelle est la capitale du Senegal ?" },
-    ],
+  const response = await client.models.generateContent({
+    model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
+    contents: "Réponds en une phrase : quelle est la capitale du Sénégal ?",
   });
 
-  const texte = response.content.find((b) => b.type === "text")?.text ?? "(pas de texte)";
-  console.log("✅ Cle API valide. Reponse de Claude :\n");
+  const texte = response.text ?? "(pas de texte)";
+  console.log("✅ Clé API Gemini valide. Réponse :\n");
   console.log(texte);
 }
 
 main().catch((err) => {
-  console.error("❌ Erreur lors de l'appel a l'API Anthropic :", err.message || err);
+  console.error("❌ Erreur lors de l'appel à l'API Gemini :", err.message || err);
   process.exit(1);
 });

@@ -767,15 +767,18 @@ function BoutonsAction({ incident, user, isQhse, enCours, onAction, onRejeter, o
 function CarteKpi({ icon: Icon, label, value, couleur = "#0D2B4E", alerte = false }) {
   return (
     <div
-      className="flex-1 min-w-[190px] p-4 bg-white border border-[#E2E8F0] rounded-lg flex items-center gap-3"
-      style={alerte ? { borderLeft: `3px solid ${couleur}` } : undefined}
+      className="min-w-0 min-h-[112px] p-4 bg-white border border-[#E2E8F0] rounded-xl flex flex-col justify-between gap-3 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+      style={alerte ? { borderTop: `3px solid ${couleur}` } : { borderTop: "3px solid transparent" }}
     >
-      <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: `${couleur}1A` }}>
-        <Icon size={16} color={couleur} strokeWidth={2} />
+      <div className="flex items-start justify-between gap-3">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${couleur}1A` }}>
+          <Icon size={18} color={couleur} strokeWidth={2} />
+        </div>
+        {alerte && <span className="w-2 h-2 rounded-full shrink-0 mt-1" style={{ backgroundColor: couleur }} />}
       </div>
-      <div className="min-w-0">
-        <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide truncate">{label}</p>
-        <p className="text-xl font-bold leading-tight" style={{ color: couleur }}>{value}</p>
+      <div className="min-w-0 flex items-end justify-between gap-2">
+        <p className="text-xs font-medium text-[#64748B] uppercase tracking-wide leading-snug">{label}</p>
+        <p className="text-[30px] font-bold leading-none shrink-0" style={{ color: couleur }}>{value}</p>
       </div>
     </div>
   );
@@ -1008,7 +1011,7 @@ function IncidentsPage() {
       </div>
 
       {/* ── Cartes KPI ── */}
-      <div className="flex flex-wrap gap-3 mb-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <CarteKpi icon={AlertTriangle} label="Incidents ouverts" value={kpi.ouverts} />
         <CarteKpi icon={ShieldAlert} label="Gravité critique" value={kpi.critiques} couleur="#DC2626" alerte />
         <CarteKpi icon={CheckCircle2} label="Actions clôturées" value={kpi.actionsCloturees} couleur="#2E7D32" />

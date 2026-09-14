@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
   ArrowLeft, ListChecks, Calendar, History, Pencil, Check, MessageSquare,
   Plus, Send, FileText, Image as ImageIcon, Download, UploadCloud, MapPin,
+  Sparkles,
 } from "lucide-react";
 import api from "../api/axios";
 import AppLayout from "../components/layouts/AppLayout";
@@ -270,6 +271,8 @@ function ActionDetailPage() {
   const [historique, setHistorique] = useState([]);
   const [commentaires, setCommentaires] = useState([]);
   const [pieces, setPieces] = useState([]);
+  const [suggestionIa, setSuggestionIa] = useState("");
+  const [suggestionIaEnCours, setSuggestionIaEnCours] = useState(false);
   const [users, setUsers] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [erreurPage, setErreurPage] = useState("");
@@ -283,14 +286,7 @@ function ActionDetailPage() {
   const [showCloture, setShowCloture] = useState(false);
   const [showModif, setShowModif] = useState(false);
 
-  useEffect(() => {
-    document.title = "Détail action corrective";
-    charger();
-    if (isQhse) api.get("/users").then((r) => setUsers(r.data.data || [])).catch(() => {});
-    return () => { document.title = "CONFORYS"; };
-  }, [id]);
-
-  const charger = async () => {
+  const charger = useCallback(async () => {
     setChargement(true); setErreurPage("");
     try {
       const resAction = await api.get(`/actions/${id}`);
@@ -308,7 +304,19 @@ function ActionDetailPage() {
     } catch (err) {
       setErreurPage(err.response?.data?.message || "Impossible de charger cette action.");
     } finally { setChargement(false); }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    document.title = "Détail action corrective";
+    const timer = setTimeout(() => {
+      charger();
+      if (isQhse) api.get("/users").then((r) => setUsers(r.data.data || [])).catch(() => {});
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      document.title = "CONFORYS";
+    };
+  }, [id, isQhse, charger]);
 
   // ── Checklist ──────────────────────────────────────────────────────────────
   const ajouterEtape = async () => {
@@ -414,6 +422,30 @@ function ActionDetailPage() {
     try { await api.delete(`/pieces-jointes-action/${pieceId}`); setPieces((prev) => prev.filter((p) => p.id !== pieceId)); }
     catch (err) { toast.error(err.response?.data?.message || "Erreur lors de la suppression."); }
     finally { setSuppIds((prev) => { const s = new Set(prev); s.delete(pieceId); return s; }); }
+  };
+
+  const genererSuggestionIa = async () => {
+    setSuggestionIaEnCours(true);
+    try {
+      const contexte = [
+        `Description : ${action.description}`,
+        `Priorité : ${action.priorite}`,
+        `Statut : ${action.statut}`,
+        site?.nom ? `Site : ${site.nom}` : "Site non renseigné",
+        origine?.label ? `Origine : ${origine.label}` : "Origine non renseignée",
+      ].join("\n");
+      const res = await api.post("/assistant/suggestion-contexte", {
+        type: "ACTION",
+        contexte,
+        contenuExistant: action.description,
+      });
+      setSuggestionIa(res.data.suggestion || "");
+      toast.success("Suggestion IA générée");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Impossible de générer la suggestion IA.");
+    } finally {
+      setSuggestionIaEnCours(false);
+    }
   };
 
   // ── Journal (note = commentaire) ──────────────────────────────────────────
@@ -676,6 +708,35 @@ function ActionDetailPage() {
               <span className="text-xs font-medium mt-2">Déposer un nouveau fichier</span>
               <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleFichiers} className="sr-only" />
             </label>
+          </section>
+
+          {/* Suggestion IA : proposée à la demande, jamais enregistrée automatiquement */}
+          <section className="col-span-12 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: C.primary }}>
+                  <Sparkles size={17} color="white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-navy">Suggestion IA</h2>
+                  <p className="text-sm mt-1" style={{ color: C.onSurfaceVariant }}>
+                    Obtenez une proposition d'amélioration pour cette action corrective.
+                  </p>
+                </div>
+              </div>
+              <button type="button" onClick={genererSuggestionIa} disabled={suggestionIaEnCours}
+                className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white rounded-md disabled:opacity-50 transition-colors"
+                style={{ backgroundColor: C.primary }}>
+                <Sparkles size={14} />
+                {suggestionIaEnCours ? "Analyse en cours…" : suggestionIa ? "Régénérer" : "Générer une suggestion"}
+              </button>
+            </div>
+            {suggestionIa && (
+              <div className="mt-4 p-4 rounded-lg border border-[#D9E3F0] bg-white">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#64748B] mb-2">Proposition à vérifier</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap text-[#1E293B]">{suggestionIa}</p>
+              </div>
+            )}
           </section>
         </div>
       </div>

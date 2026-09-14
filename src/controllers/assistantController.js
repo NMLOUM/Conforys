@@ -9,7 +9,17 @@ const chat = async (req, res) => {
   try {
     const { question } = req.body;
     const reponse = await assistantService.poserQuestion(question, req.user.entrepriseId);
+    await assistantService.enregistrerHistorique(req.user, question, reponse);
     res.status(200).json({ success: true, reponse });
+  } catch (error) {
+    handleErreur(res, error);
+  }
+};
+
+const historique = async (req, res) => {
+  try {
+    const donnees = await assistantService.getHistorique(req.user);
+    res.status(200).json({ success: true, data: donnees });
   } catch (error) {
     handleErreur(res, error);
   }
@@ -33,4 +43,4 @@ const suggestionContexte = async (req, res) => {
   }
 };
 
-module.exports = { chat, suggestionRisque, suggestionContexte };
+module.exports = { chat, historique, suggestionRisque, suggestionContexte };
